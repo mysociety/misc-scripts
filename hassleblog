@@ -14,7 +14,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: hassleblog,v 1.5 2005-03-17 20:17:32 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: hassleblog,v 1.6 2005-03-22 17:04:01 chris Exp $';
 
 use strict;
 
@@ -42,11 +42,21 @@ my @people = (
 );
 
 # Probability that we hassle anyone in any given hour. When p is small (any
-# sensible value) the number of hassles we will send per day is equal to pN,
-# where N is the number of hours in the day during which we can hassle. For
-# N = 9, p = 2 / 9.
-my $probability = 2. / 9.;
-
+# sensible value) the mean number of hassles we will send per day is equal to
+# pN, where N is the number of hours in the day during which we can hassle. For
+# an average of one hassle per day, p = 1/9. Occurences per day are then
+# Poisson distributed:
+#
+#   num hassles occurence
+#   ----------- ---------
+#       0         37%
+#       1         37%
+#       2         18%
+#       3          6.1%
+#       4          1.5%
+#      >4          0.36%
+#
+my $probability = 1. / 9.;
 
 my $help = 0;
 my $verbose = 0;
@@ -78,7 +88,7 @@ Options:
     --force     Always send a notification, even if it's out-of-hours or the
                 random-number-generator doesn't decide we should do
 
-$Id: hassleblog,v 1.5 2005-03-17 20:17:32 chris Exp $
+$Id: hassleblog,v 1.6 2005-03-22 17:04:01 chris Exp $
 Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
 Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 EOF
