@@ -14,7 +14,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: hassleblog,v 1.4 2005-03-17 19:50:41 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: hassleblog,v 1.5 2005-03-17 20:17:32 chris Exp $';
 
 use strict;
 
@@ -78,7 +78,7 @@ Options:
     --force     Always send a notification, even if it's out-of-hours or the
                 random-number-generator doesn't decide we should do
 
-$Id: hassleblog,v 1.4 2005-03-17 19:50:41 chris Exp $
+$Id: hassleblog,v 1.5 2005-03-17 20:17:32 chris Exp $
 Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
 Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 EOF
@@ -124,8 +124,7 @@ debug("decided to hassle %s <%s>\n", $person->[0], $person->[1]);
 debug("writing mail... ");
 my $m = new Mail::Send(
                     Subject => "It's time for you to write something on the mySociety web log",
-                    To => "$person->[0] <$person->[1]>",    # XXX MIME
-                    Bcc => 'chris@mysociety.org'            # XXX
+                    To => "$person->[0] <$person->[1]>"     # XXX MIME
                 ) or die "Mail::Send->new: $!";
 my $f = $m->open() or die "Mail::Send->open: $!";
 $f->print(<<EOF);
