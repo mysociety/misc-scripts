@@ -6,7 +6,7 @@
 # Copyright (c) 2004 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: backup-stuff,v 1.1 2004-11-25 17:22:39 chris Exp $
+# $Id: backup-stuff,v 1.2 2004-12-06 14:59:45 chris Exp $
 #
 
 set -e
@@ -27,7 +27,7 @@ else
     }
 fi
 
-for thing in /usr/local/cvs /data0/vhost/www.mysociety.org/moindata ; do
+for thing in /usr/local/cvs /usr/local/private/cvs /data0/vhost/www.mysociety.org/moindata ; do
     dir=$( echo $thing | sed s@/@_@g )
     now=$( date +%Y%m%dT%H%M%S )
     target=${dir}_$now
