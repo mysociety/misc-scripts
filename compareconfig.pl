@@ -7,7 +7,7 @@
 # which are present in one but not the other. Exits successfully if there are
 # no differences.
 #
-# $Id: compareconfig.pl,v 1.4 2004-12-10 01:27:10 francis Exp $
+# $Id: compareconfig.pl,v 1.5 2004-12-14 17:31:33 francis Exp $
 #
 
 use strict;
@@ -24,7 +24,7 @@ sub compare_one_way {
 
     foreach my $key (keys %$a) {
         if (!defined $b->{$key}) {
-            print STDERR $b->{'CONFIG_FILE_NAME'} . " does not contain $key, " . $a->{'CONFIG_FILE_NAME'} . "does\n";
+            print STDERR $b->{'CONFIG_FILE_NAME'} . " does not contain $key, " . $a->{'CONFIG_FILE_NAME'} . " does\n";
             ++$n;
         }
     }
