@@ -1,30 +1,44 @@
 #!/usr/bin/perl -w -I../perllib
+#
+# compareconfig.pl:
+# Compare two configuration files.
+#
+# Compares the two config files given on the command line, and displays keys
+# which are present in one but not the other. Exits successfully if there are
+# no differences.
+#
+# $Id: compareconfig.pl,v 1.3 2004-12-07 16:45:47 chris Exp $
+#
 
-# Script to compare two mySociety config files and give an error
-# if they don't contain exactly the same keys.
+use strict;
 
 use mySociety::Config;
-use Data::Dumper;
 
-die "Specify two config files as parameters" unless $#ARGV == 1;
-
-my $a = mySociety::Config::read_config($ARGV[0]);
-my $b = mySociety::Config::read_config($ARGV[1]);
-
-our $error = 0;
-
+# compare_one_way A B
+# A and B are references-to-hashes returned by mySociety::Config::read_config;
+# this function warns on cases where a key is present only in A. Returns the
+# number of such keys.
 sub compare_one_way {
-    ($a, $b) = @_;
+    my ($a, $b) = @_;
+    my $n = 0;
 
     foreach my $key (keys %$a) {
         if (!defined $b->{$key}) {
-            print $b->{'CONFIG_FILE_NAME'} . " does not contain $key, " . $a->{'CONFIG_FILE_NAME'} . " does\n";
-            $::error = 1;
+            print STDERR $b->{'CONFIG_FILE_NAME'} . " does not contain $key, " . $a->{'CONFIG_FILE_NAME'} . "does\n";
+            ++$n;
         }
     }
 }
 
-compare_one_way($a, $b);
-compare_one_way($b, $a);
+die "Specify two config files as parameters" unless (@ARGV == 2);
 
-exit $error;
+my $a = mySociety::Config::read_config($ARGV[0]);
+my $b = mySociety::Config::read_config($ARGV[1]);
+
+my $error = 0;
+$error += compare_one_way($a, $b);
+$error += compare_one_way($b, $a);
+
+$error = 127 if ($error > 127); # limited range of exit codes
+
+exit($error);
