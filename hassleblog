@@ -14,7 +14,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: hassleblog,v 1.2 2005-03-17 01:32:47 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: hassleblog,v 1.3 2005-03-17 17:55:33 chris Exp $';
 
 use strict;
 
@@ -78,7 +78,7 @@ Options:
     --force     Always send a notification, even if it's out-of-hours or the
                 random-number-generator doesn't decide we should do
 
-$Id: hassleblog,v 1.2 2005-03-17 01:32:47 chris Exp $
+$Id: hassleblog,v 1.3 2005-03-17 17:55:33 chris Exp $
 Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
 Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 EOF
@@ -115,7 +115,7 @@ my $person;
 while (1) {
     $person = $people[int(rand(@people))];
     my $days = $person->[3];
-    last if (grep { $_ == $l[2] } @$days);
+    last if (grep { $_ == $l[6] } @$days);
 }
 
 debug("decided to hassle %s <%s>\n", $person->[0], $person->[1]);
