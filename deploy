@@ -6,7 +6,7 @@
 # Copyright (c) 2004 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: deploy,v 1.5 2004-11-25 17:09:17 francis Exp $
+# $Id: deploy,v 1.6 2004-11-26 11:42:18 francis Exp $
 #
 
 set -e
@@ -57,6 +57,7 @@ END
     read_conf $SERVICES_VHOST/mysociety/services/conf/general
     check_sqlite_schema $SERVICES_VHOST/mysociety/services/mapit-dadem-loading/mapit-schema.sql $OPTION_MAPIT_SQLITE_DB
     check_sqlite_schema $SERVICES_VHOST/mysociety/services/mapit-dadem-loading/dadem-schema.sql $OPTION_DADEM_SQLITE_DB
+    check_pgsql_schema $SERVICES_VHOST/mysociety/services/Ratty/schema.sql $OPTION_RATTY_DB_NAME $OPTION_RATTY_DB_USER $OPTION_RATTY_DB_PASS
 
     daemon_start fyrqd
     apachectl graceful
