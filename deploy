@@ -6,7 +6,7 @@
 # Copyright (c) 2004 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: deploy,v 1.9 2004-12-07 14:01:02 francis Exp $
+# $Id: deploy,v 1.10 2004-12-07 14:24:20 francis Exp $
 #
 
 set -e
@@ -51,17 +51,17 @@ END
     cvs_export $SERVICES_UNAME $SERVICES_VHOST $SERVICES_DEPLOYSPACE
 
     echo "Checking config files..."
-    check_config_files $FYR_VHOST/mysociety/fyr/conf
-    check_config_files $SERVICES_VHOST/mysociety/services/conf
+    check_config_files $FYR_DEPLOYSPACE/mysociety/fyr/conf
+    check_config_files $SERVICES_DEPLOYSPACE/mysociety/services/conf
 
     echo "Checking database schemas..."
-    read_conf $FYR_VHOST/mysociety/fyr/conf/general
-    check_pgsql_schema $FYR_VHOST/mysociety/fyr/db/schema.sql $OPTION_FYR_QUEUE_DB_NAME $OPTION_FYR_QUEUE_DB_USER $OPTION_FYR_QUEUE_DB_PASS
+    read_conf $FYR_DEPLOYSPACE/mysociety/fyr/conf/general
+    check_pgsql_schema $FYR_DEPLOYSPACE/mysociety/fyr/db/schema.sql $OPTION_FYR_QUEUE_DB_NAME $OPTION_FYR_QUEUE_DB_USER $OPTION_FYR_QUEUE_DB_PASS
 
-    read_conf $SERVICES_VHOST/mysociety/services/conf/general
-    check_pgsql_schema $SERVICES_VHOST/mysociety/services/Ratty/schema.sql $OPTION_RATTY_DB_NAME $OPTION_RATTY_DB_USER $OPTION_RATTY_DB_PASS
-    check_pgsql_schema $SERVICES_VHOST/mysociety/services/mapit-dadem-loading/mapit-schema.sql $OPTION_MAPIT_DB_NAME $OPTION_MAPIT_DB_USER $OPTION_MAPIT_DB_PASS
-    check_pgsql_schema $SERVICES_VHOST/mysociety/services/mapit-dadem-loading/dadem-schema.sql $OPTION_DADEM_DB_NAME $OPTION_DADEM_DB_USER $OPTION_DADEM_DB_PASS 
+    read_conf $SERVICES_DEPLOYSPACE/mysociety/services/conf/general
+    check_pgsql_schema $SERVICES_DEPLOYSPACE/mysociety/services/Ratty/schema.sql $OPTION_RATTY_DB_NAME $OPTION_RATTY_DB_USER $OPTION_RATTY_DB_PASS
+    check_pgsql_schema $SERVICES_DEPLOYSPACE/mysociety/services/mapit-dadem-loading/mapit-schema.sql $OPTION_MAPIT_DB_NAME $OPTION_MAPIT_DB_USER $OPTION_MAPIT_DB_PASS
+    check_pgsql_schema $SERVICES_DEPLOYSPACE/mysociety/services/mapit-dadem-loading/dadem-schema.sql $OPTION_DADEM_DB_NAME $OPTION_DADEM_DB_USER $OPTION_DADEM_DB_PASS 
 
     echo "Stopping services..."
     down_notice $FYR_VHOST $FYR_NAME
@@ -186,12 +186,12 @@ check_pgsql_schema () {
     dropdb -q -U $PSQL_SCHEMATEST_USER schematest || echo "schematest already dropped, continuing"
     createdb -q -U $PSQL_SCHEMATEST_USER schematest
     psql --file=$1 -U $PSQL_SCHEMATEST_USER -q schematest
-    pg_dump -s -U $PSQL_SCHEMATEST_USER schematest | egrep -v "^--|SET SESSION AUTHORIZATION|\\connect - " | sort > $CVS_SCHEMA_FILE
+    pg_dump -s -U $PSQL_SCHEMATEST_USER schematest | egrep -v "^--|SET SESSION AUTHORIZATION|\\connect - " > $CVS_SCHEMA_FILE
 
     # ... the live database dump
-    pg_dump -s -U $3 $4 | egrep -v "^--|SET SESSION AUTHORIZATION|\\connect - " | sort > $CURRENT_SCHEMA_FILE
+    pg_dump -s -U $3 $4 | egrep -v "^--|SET SESSION AUTHORIZATION|\\connect - " > $CURRENT_SCHEMA_FILE
 
-    # Note:  Using sort in the above is completely evil.  It is because
+    # Note:  Using sort here is completely evil.  It is because
     # older verions of pg_dump don't output the tables in a stable
     # order.  The above code would get confused it a column was moved
     # from one table to another with no other changes.  Hopefully this
@@ -199,13 +199,17 @@ check_pgsql_schema () {
     # script could be used to compare schemas.
     # If you hate this send us a patch ;)  Better actually release a
     # comprehensive schema comparing tool...
+    cat $CVS_SCHEMA_FILE | sort > $CVS_SCHEMA_FILE.sorted
+    cat $CURRENT_SCHEMA_FILE | sort > $CURRENT_SCHEMA_FILE.sorted
 
     # Compare them
-    if ! diff $CVS_SCHEMA_FILE $CURRENT_SCHEMA_FILE 
+    if ! diff $CVS_SCHEMA_FILE.sorted $CURRENT_SCHEMA_FILE.sorted
     then
         echo
         echo "Schema in CVS differs from that in pgsql database, you need to update it"
         echo "Database: $2 User:$3 Schema: $1"
+        echo "CVS schema: $CVS_SCHEMA_FILE"
+        echo "Current schema: $CURRENT_SCHEMA_FILE"
         echo 
         exit 1
     fi

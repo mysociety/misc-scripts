@@ -18,7 +18,7 @@ sub compare_one_way {
 
     foreach my $key (keys %$a) {
         if (!defined $b->{$key}) {
-            print $b->{'CONFIG_FILE_NAME'} . " does not contain $key, " . $a->{'CONFIG_FILE_NAME'} . "does\n";
+            print $b->{'CONFIG_FILE_NAME'} . " does not contain $key, " . $a->{'CONFIG_FILE_NAME'} . " does\n";
             $::error = 1;
         }
     }
