@@ -6,7 +6,7 @@
 # Copyright (c) 2004 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: backup-stuff,v 1.4 2005-01-27 10:37:02 francis Exp $
+# $Id: backup-stuff,v 1.5 2005-03-03 16:08:30 francis Exp $
 #
 
 set -e
@@ -14,7 +14,7 @@ PATH=/software/bin:$PATH
 
 RSYNC_RSH=ssh
 export RSYNC_RSH
-rsyncopts=-ra
+rsyncopts=-raq
 
 if [ tty 2>&1 > /dev/null ] ; then
     function debug () {
@@ -27,7 +27,7 @@ else
     }
 fi
 
-for thing in /usr/local/pgsql/backups /usr/local/cvs /usr/local/privatecvs /data0/vhost/www.mysociety.org/moindata; do
+for thing in /data/pgsql/backups /usr/local/cvs /usr/local/privatecvs /data0/vhost/www.mysociety.org/moindata; do
     dir=$( echo $thing | sed s@/@_@g )
     now=$( date +%Y%m%dT%H%M%S )
     target=${dir}_$now
