@@ -4,8 +4,8 @@
 # Reads perldoc from a Perl class implementing a RABX interface, and produces a
 # PHP include file for talking to that RABX interface.
 #
-# $Id: rabxtophp.pl,v 1.1 2005-03-30 11:37:16 francis Exp $
-#
+
+my $rcsid = ''; $rcsid .= '$Id: rabxtophp.pl,v 1.2 2005-03-30 18:12:05 francis Exp $';
 
 use strict;
 
@@ -62,7 +62,8 @@ sub process_items {
             print <<END;
 function ${php_namespace}_$function_name($opt_list) {
     global \$${php_namespace}_client;
-    \$result = \$${php_namespace}_client->call('${rabx_namespace}.${function_name}', func_get_args());
+    \$params = func_get_args();
+    \$result = \$${php_namespace}_client->call('${rabx_namespace}.${function_name}', \$params);
     return \$result;
 }
 
@@ -75,7 +76,7 @@ END
 my $description;
 foreach my $head1 ($pom->head1()) {
     if ($head1->title() eq "DESCRIPTION") {
-        $description = $view->view_text($head1);
+        $description = trim($view->view_text($head1));
     }
     if ($head1->title() eq "NAME") {
         $rabx_namespace = trim($view->view_text($head1));
@@ -96,11 +97,10 @@ print <<END;
  * Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
  * WWW: http://www.mysociety.org
  *
- * \$Id: rabxtophp.pl,v 1.1 2005-03-30 11:37:16 francis Exp $
+ * $rcsid
  *
  */
 
-require_once('error.php');
 require_once('rabx.php');
 
 /* ${php_namespace}_get_error R
