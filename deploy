@@ -6,7 +6,7 @@
 # Copyright (c) 2004 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: deploy,v 1.8 2004-11-26 15:18:51 francis Exp $
+# $Id: deploy,v 1.9 2004-12-07 14:01:02 francis Exp $
 #
 
 set -e
@@ -59,9 +59,9 @@ END
     check_pgsql_schema $FYR_VHOST/mysociety/fyr/db/schema.sql $OPTION_FYR_QUEUE_DB_NAME $OPTION_FYR_QUEUE_DB_USER $OPTION_FYR_QUEUE_DB_PASS
 
     read_conf $SERVICES_VHOST/mysociety/services/conf/general
-    #check_sqlite_schema $SERVICES_VHOST/mysociety/services/mapit-dadem-loading/mapit-schema.sql $OPTION_MAPIT_SQLITE_DB
-    #check_sqlite_schema $SERVICES_VHOST/mysociety/services/mapit-dadem-loading/dadem-schema.sql $OPTION_DADEM_SQLITE_DB
     check_pgsql_schema $SERVICES_VHOST/mysociety/services/Ratty/schema.sql $OPTION_RATTY_DB_NAME $OPTION_RATTY_DB_USER $OPTION_RATTY_DB_PASS
+    check_pgsql_schema $SERVICES_VHOST/mysociety/services/mapit-dadem-loading/mapit-schema.sql $OPTION_MAPIT_DB_NAME $OPTION_MAPIT_DB_USER $OPTION_MAPIT_DB_PASS
+    check_pgsql_schema $SERVICES_VHOST/mysociety/services/mapit-dadem-loading/dadem-schema.sql $OPTION_DADEM_DB_NAME $OPTION_DADEM_DB_USER $OPTION_DADEM_DB_PASS 
 
     echo "Stopping services..."
     down_notice $FYR_VHOST $FYR_NAME
@@ -109,6 +109,7 @@ cvs_export () {
     export CVSROOT=/usr/local/cvs
     su $1 -c "cvs -Q export -r HEAD -d mysociety mysociety"
 
+    # Copy over config files
     cd $2
     for X in mysociety/*/conf/general 
     do
