@@ -7,7 +7,7 @@
 # which are present in one but not the other. Exits successfully if there are
 # no differences.
 #
-# $Id: compareconfig.pl,v 1.3 2004-12-07 16:45:47 chris Exp $
+# $Id: compareconfig.pl,v 1.4 2004-12-10 01:27:10 francis Exp $
 #
 
 use strict;
@@ -28,6 +28,7 @@ sub compare_one_way {
             ++$n;
         }
     }
+    return $n;
 }
 
 die "Specify two config files as parameters" unless (@ARGV == 2);
