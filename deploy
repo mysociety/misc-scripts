@@ -1,8 +1,15 @@
-set -e
+#!/bin/sh
+#
+# bin/deploy
+# Uploading website to server.
+#
+# Copyright (c) 2004 UK Citizens Online Democracy. All rights reserved.
+# Email: francis@mysociety.org; WWW: http://www.mysociety.org/
+#
+# $Id: deploy,v 1.4 2004-11-25 13:32:24 francis Exp $
+#
 
-# TODO:
-# Show diff of database schemas
-# Check config files are updated
+set -e
 
 # Fax Your Representative
 FYR_VHOST=/data/vhost/notfinished.faxyourrepresentative.com
@@ -23,7 +30,7 @@ MYSOCIETY_BIN=`pwd`
 PSQL_SCHEMATEST_USER=pgsql
 
 # Main body of script
-function main {
+main () {
     # Currently just FYR and services to update
 
     cat << END
@@ -33,7 +40,7 @@ function main {
 
     Press RETURN to continue.
 END
-    read
+    read DUMMY
 
     down_notice $FYR_VHOST $FYR_NAME
     daemon_stop fyrqd
@@ -58,7 +65,7 @@ END
 }
 
 # Check we are root@$EXPECTED_HOST
-function check_who_where {
+check_who_where () {
     if [ ! -d "../../mysociety/bin" ] 
     then 
         echo "Please run with mysociety/bin as current directory."
@@ -81,7 +88,7 @@ function check_who_where {
 # Updates CVS checkout for a vhost.
 # $1 - user name to su to 
 # $2 - path to vhost
-function cvs_update {
+cvs_update () {
     cd $2/mysociety
     su $1 -c "cvs -Q update -dP"
 }
@@ -89,7 +96,7 @@ function cvs_update {
 # Marks a vhost as being down for maintenance.
 # $1 - path to vhost
 # $2 - display name of website
-function down_notice {
+down_notice () {
     cat >$1/docs/.down.html.new <<END
 <html>
 <head>
@@ -108,25 +115,25 @@ END
 
 # Removes the file which displays a vhost as being down for maintenance.
 # $1 - path to vhost
-function up_notice {
+up_notice () {
     rm $1/docs/down.html
 }
 
 # Stops a daemon
 # $1 - name of daemon
-function daemon_stop {
+daemon_stop () {
     /usr/local/etc/rc.d/$1.sh stop || echo "daemon stop failed, continuing anyway"
 }
 
 # Starts a daemon
 # $1 - name of daemon
-function daemon_start {
+daemon_start () {
     /usr/local/etc/rc.d/$1.sh start
 }
 
 # Checks config file has all options
 # $1 - path to conf folder with general and general-example in it
-function check_config_files {
+check_config_files () {
     cd $MYSOCIETY_BIN
     ./compareconfig.pl $1/general $1/general-example || exit 1
     cd -
@@ -138,7 +145,7 @@ function check_config_files {
 # $2 - pgsql db name
 # $3 - pgsql db user
 # $4 - pgsql db pass
-function check_pgsql_schema {
+check_pgsql_schema () {
     CVS_SCHEMA_FILE=`mktemp /tmp/ms-deploy-cvsschema.XXXXXX`
     CURRENT_SCHEMA_FILE=`mktemp /tmp/ms-deploy-currentschema.XXXXXX`
 
@@ -174,7 +181,7 @@ function check_pgsql_schema {
 
 # $1 - schema file
 # $2 - sqlite db file
-function check_sqlite_schema {
+check_sqlite_schema () {
     CURRENT_SCHEMA_FILE=`mktemp /tmp/ms-deploy-currentschema.XXXXXX`
 
     # Dump current schema
@@ -197,10 +204,10 @@ function check_sqlite_schema {
 # Reads in config file
 # Currently doesn't read in numeric values
 # $1 - config file
-function read_conf {
+read_conf () {
     CONF_SOURCE=`mktemp /tmp/ms-deploy-configsource.XXXXXX`
     cat $1 | grep define | egrep -v "^\/\/" | sed "s/define('\(.*\)', '\(.*\)'.*/\1=\"\2\"/" | egrep -v "define|mySociety::Config" >$CONF_SOURCE
-    source $CONF_SOURCE
+    . $CONF_SOURCE
 }
 
 check_who_where
