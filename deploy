@@ -1,4 +1,3 @@
-#! /bin/bash
 set -e
 
 # TODO:
@@ -20,11 +19,14 @@ EXPECTED_HOST=very.unfortu.net
 # Location of mysociety/bin scripts
 MYSOCIETY_BIN=`pwd`
 
+# User to load test schema
+PSQL_SCHEMATEST_USER=pgsql
+
 # Main body of script
 function main {
     # Currently just FYR and services to update
 
-    echo << END
+    cat << END
     This will update services.mysociety and notfinished.faxyourrepresentative.com
     from CVS and gracefully restart Apache.  It will not update any database
     schemas which need updating, or add entries to any config files.
@@ -39,8 +41,8 @@ END
     cvs_update $FYR_UNAME $FYR_VHOST
     cvs_update $SERVICES_UNAME $SERVICES_VHOST
 
-    check_config_files $FYR_VHOST
-    check_config_files $SERVICES_VHOST
+    check_config_files $FYR_VHOST/mysociety/fyr/conf
+    check_config_files $SERVICES_VHOST/mysociety/services/conf
 
     read_conf $FYR_VHOST/mysociety/fyr/conf/general
     check_pgsql_schema $FYR_VHOST/mysociety/fyr/db/schema.sql $OPTION_FYR_QUEUE_DB_NAME $OPTION_FYR_QUEUE_DB_USER $OPTION_FYR_QUEUE_DB_PASS
@@ -52,7 +54,7 @@ END
     daemon_start fyrqd
     apachectl graceful
 
-    up_notice $FYR_VHOST $FYR_NAME
+    up_notice $FYR_VHOST
 }
 
 # Check we are root@$EXPECTED_HOST
@@ -88,40 +90,43 @@ function cvs_update {
 # $1 - path to vhost
 # $2 - display name of website
 function down_notice {
-   echo >$1/docs/down.html <<END
+   cat >$1/docs/down.html <<END
 <head>
 <title>$2 - Down for Maintenance</title>
 </head>
 <body>
-<p>Sorry, but $2 is currently not available for maintenance.  Check back
-in a few minutes.  Thanks for your patience!
-<p> -- the <a href="http://www.mysociety.org">mySociety</a> developers
+<p>Sorry, but $2 is currently not available.  We're doing a spot of
+maintenance.  Check back in a few minutes, and everything should be
+restored to order.  Thanks for your patience!
+<p> &mdash; the <a href="http://www.mysociety.org">mySociety</a> developers
 </body>
 END
 }
 
 # Removes the file which displays a vhost as being down for maintenance.
-# $2 - path to vhost
+# $1 - path to vhost
 function up_notice {
-    rm $1/docs/down,html
+    rm $1/docs/down.html
 }
 
 # Stops a daemon
 # $1 - name of daemon
 function daemon_stop {
-    /usr/local/etc/rc.d/$1 stop
+    /usr/local/etc/rc.d/$1.sh stop || echo "daemon stop failed, continuing anyway"
 }
 
 # Starts a daemon
 # $1 - name of daemon
 function daemon_start {
-    /usr/local/etc/rc.d/$2 stop
+    /usr/local/etc/rc.d/$1.sh start
 }
 
 # Checks config file has all options
-# $1 - path to vhost
+# $1 - path to conf folder with general and general-example in it
 function check_config_files {
-    $MYSOCIETY_BIN/compareconfig.pl $1/mysociety/conf/general $2/mysociety/conf/general-example || exit 1
+    cd $MYSOCIETY_BIN
+    ./compareconfig.pl $1/general $1/general-example || exit 1
+    cd -
 }
 
 # Tests if the schema in a file is the same as in a postgra postgresql
@@ -131,18 +136,18 @@ function check_config_files {
 # $3 - pgsql db user
 # $4 - pgsql db pass
 function check_pgsql_schema {
-    CVS_SCHEMA_FILE=`mktemp`
-    CURRENT_SCHEMA_FILE=`mktemp`
+    CVS_SCHEMA_FILE=`mktemp /tmp/ms-deploy-cvsschema.XXXXXX`
+    CURRENT_SCHEMA_FILE=`mktemp /tmp/ms-deploy-currentschema.XXXXXX`
 
     # load file schema into a temporary place to dump it
     # in the same format as ...
-    dropdb -q schematest
-    createdb -q schematest
-    psql --file=$1 -q schematest
-    pg_dump -s schematest | egrep -v "^--|SET SESSION AUTHORIZATION" | sort > $CVS_SCHEMA_FILE
+    dropdb -q -U $PSQL_SCHEMATEST_USER schematest || echo "schematest already dropped, continuing"
+    createdb -q -U $PSQL_SCHEMATEST_USER schematest
+    psql --file=$1 -U $PSQL_SCHEMATEST_USER -q schematest
+    pg_dump -s -U $PSQL_SCHEMATEST_USER schematest | egrep -v "^--|SET SESSION AUTHORIZATION|\\connect - " | sort > $CVS_SCHEMA_FILE
 
     # ... the live database dump
-    pg_dump -s -U $3 $4 | egrep -v "^--|SET SESSION AUTHORIZATION" | sort > $CURRENT_SCHEMA_FILE
+    pg_dump -s -U $3 $4 | egrep -v "^--|SET SESSION AUTHORIZATION|\\connect - " | sort > $CURRENT_SCHEMA_FILE
 
     # Note:  Using sort in the above is completely evil.  It is because
     # older verions of pg_dump don't output the tables in a stable
@@ -167,7 +172,7 @@ function check_pgsql_schema {
 # $1 - schema file
 # $2 - sqlite db file
 function check_sqlite_schema {
-    CURRENT_SCHEMA_FILE=`mktemp`
+    CURRENT_SCHEMA_FILE=`mktemp /tmp/ms-deploy-currentschema.XXXXXX`
 
     # Dump current schema
     sqlite $2 .schema > $CURRENT_SCHEMA_FILE
@@ -190,12 +195,11 @@ function check_sqlite_schema {
 # Currently doesn't read in numeric values
 # $1 - config file
 function read_conf {
-    CONF_SOURCE=`mktemp`
+    CONF_SOURCE=`mktemp /tmp/ms-deploy-configsource.XXXXXX`
     cat $1 | grep define | egrep -v "^\/\/" | sed "s/define('\(.*\)', '\(.*\)'.*/\1=\"\2\"/" | egrep -v "define|mySociety::Config" >$CONF_SOURCE
     source $CONF_SOURCE
 }
 
-exit 0
 check_who_where
 main
 
