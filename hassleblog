@@ -1,0 +1,144 @@
+#!/usr/bin/perl -w
+#
+# hassleblog:
+# Hassle a random mySociety person to write something on the www.mysociety.org
+# web log.
+#
+# This script should be run once per hour from cron.
+#
+# Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
+# Email: chris@mysociety.org; WWW: http://www.mysociety.org/
+#
+
+my $rcsid = ''; $rcsid .= '$Id: hassleblog,v 1.1 2005-03-17 01:14:53 chris Exp $';
+
+use strict;
+
+use Getopt::Long;
+use Mail::Send;
+
+# Days on which we send hassle.
+my %days = map { $_ => 1 } qw(1 2 3 4 5);
+
+# Hours during which we send hassle (local time).
+my %hours = map { $_ => 1 } (10 .. 19);
+    # I'm not saying that we actually work those hours. I'm just saying that
+    # we might.... --chris
+
+# People we can hassle.
+my @people = (
+    # Name,             email address,           IRC nick   days
+    ['Chris Lightfoot', 'chris@mysociety.org',   'chris',   [qw(1 2 3 4 5)]],
+    ['Francis Irving',  'francis@mysociety.org', 'frabcus', [qw(1 2 3 4 5)]],
+    ['Tom Steinberg',   'tom@mysociety.org',     'Steiny',  [qw(1 2 3 4 5)]],
+    ['Matthew Somerville',
+                        'matthew@mysociety.org', 'Matthew', [5]]
+);
+
+# Probability that we hassle anyone in any given hour. When p is small (any
+# sensible value) the number of hassles we will send per day is equal to pN,
+# where N is the number of hours in the day during which we can hassle. For
+# N = 9, p = 2 / 9.
+my $probability = 2. / 9.;
+
+
+my $help = 0;
+my $verbose = 0;
+my $nowait = 0;
+my $force = 0;
+
+GetOptions(
+        help =>     \$help,
+        verbose =>  \$verbose,
+        nowait =>   \$nowait,
+        force =>    \$force
+    );
+
+sub debug ($@) {
+    my ($fmt, @args) = @_;
+    $verbose or return;
+    print STDERR sprintf($fmt, @args);
+}
+
+
+if ($help) {
+    print <<'EOF';
+hassleblog - hassle a random mySociety developer to write a web log entry
+
+Options:
+    --help      Display this message
+    --verbose   Show verbose progress messages
+    --nowait    Don't sleep before notifying the developer
+    --force     Always send a notification, even if it's out-of-hours or the
+                random-number-generator doesn't decide we should do
+
+$Id: hassleblog,v 1.1 2005-03-17 01:14:53 chris Exp $
+Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
+Email: chris@mysociety.org; WWW: http://www.mysociety.org/
+EOF
+    exit(0);
+}
+
+my $t = time();
+my @l = localtime($t);
+debug("current time is %s\n", scalar(localtime($t)));
+
+# check whether this is a time when we're allowed to hassle anyone
+if (!exists($days{$l[6]}) || !exists($hours{$l[2]})) {
+    debug("not a suitable time of day for hassling\n");
+    exit(0) if (!$force);
+    debug("but forced to continue anyway...\n");
+}
+
+my $r = rand();
+if ($r > $probability) {
+    debug("r = %.3f, would not hassle anyone this time round\n", $r);
+    exit(0) if (!$force);
+    debug("but forced to continue anyway\n");
+}
+
+if (!$nowait) {
+    my $t = int(rand(3600));
+    debug('waiting for %d seconds...', $t);
+    sleep($t);
+    debug("done\n");
+}
+
+# Pick person to hassle.
+my $person;
+while (1) {
+    $person = $people[int(rand(@people))];
+    my $days = $person->[3];
+    last if (grep { $_ == $l[2] } @$days);
+}
+
+debug("decided to hassle %s <%s>\n", $person->[0], $person->[1]);
+
+# OK, we have somebody to hassle. Send them a hassling email.
+my $m = new Mail::Send(
+                    Subject => "It's time for you to write something on the mySociety web log",
+#                    To => "$person->[0] <$person->[1]>",    # XXX MIME
+                    To => "$person->[0] <chris\@ex-parrot.com>",    # XXX MIME
+                    Bcc => 'chris@mysociety.org'            # XXX
+                ) or die "Mail::Send->new: $!";
+my $f = $m->open() or die "Mail::Send->open: $!";
+$f->print(<<EOF);
+
+*** IT COULD BE YOU ***
+    -- and, as it turned out, it was
+
+It's time to write a post on the mySociety web log, or the
+mySociety developers' web log, as appropriate. Please do so
+now. Write a hundred words or so, unless you're feeling
+inspired to greater things, and write about what you were
+doing immediately before this email interrupted you, unless
+you have something more interesting to remark on.
+
+If you really can't be arsed to write something, hassle
+someone else to do so.
+
+Remember: YOUR PUBLIC NEEDS YOU
+
+-- 
+$rcsid
+EOF
