@@ -1,0 +1,51 @@
+#!/bin/sh
+#
+# very-backup:
+# Backup from very to another host, using snapshots and rsync.
+#
+# Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
+# Email: chris@mysociety.org; WWW: http://www.mysociety.org/
+#
+# $Id: very-backup,v 1.1 2005-02-02 02:20:04 chris Exp $
+#
+
+set -ex
+
+stderr () {
+    echo "very-backup: $@" 1>&2
+}
+
+tempdirname () {
+    echo "/tmp/very-backup.$( date +%s ).$( ps | sum | cut '-d ' -f1 ).$$"
+}
+
+# Create a mountpoint for the snapshot. Usually creating these in /tmp is a
+# Bad Idea, but these are for read-only use....
+mountpoint=$( tempdirname )
+while ! mkdir -m 0700 $mountpoint ; do
+    mountpoint=$( tempdirname )
+done
+
+RSYNC_RSH='ssh -i /root/.ssh/id_dsa_backup_caesious'
+export RSYNC_RSH
+
+for filesystem in / /usr /var ; do
+    remote="/scratch/very-backups/$( echo $filesystem | sed 's#/#_#g' )"
+    snap=$( echo "$filesystem/snapshot" | sed 's#//#/#g' )
+    if [ -e $snap ] ; then
+        stderr "$snap already exists; aborting"
+        exit 1
+    else
+        mount -u -o snapshot $snap $filesystem
+        md_unit=$( mdconfig -a -t vnode -f $snap -n )
+        mount -o ro /dev/md$md_unit $mountpoint
+
+        rsync -vaHrSz --delete $mountpoint/. caesious.beasts.org:$remote/.
+
+        umount $mountpoint
+        mdconfig -d -u $md_unit
+        rm -f $snap # -f in case we're run from an interactive shell
+    fi
+done
+
+rmdir $mountpoint
