@@ -6,7 +6,7 @@
 # Copyright (c) 2004 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: deploy,v 1.11 2004-12-07 16:54:29 chris Exp $
+# $Id: deploy,v 1.12 2004-12-07 17:20:37 chris Exp $
 #
 
 set -e
@@ -31,9 +31,13 @@ MYSOCIETY_BIN=`pwd`
 # User to load test schema
 PSQL_SCHEMATEST_USER=pgsql
 
-function die {
+die () {
     echo "deploy:" "$@" 1>&2
     exit 1
+}
+
+warn () {
+    echo "deploy:" "$@" 1>&2
 }
 
 # Main body of script
@@ -51,15 +55,15 @@ main () {
 END
     read DUMMY
 
-    echo "Exporting from CVS..."
+    warn "Exporting from CVS..."
     cvs_export $FYR_UNAME $FYR_VHOST $FYR_DEPLOYSPACE
     cvs_export $SERVICES_UNAME $SERVICES_VHOST $SERVICES_DEPLOYSPACE
 
-    echo "Checking config files..."
+    warn "Checking config files..."
     check_config_files $FYR_DEPLOYSPACE/mysociety/fyr/conf
     check_config_files $SERVICES_DEPLOYSPACE/mysociety/services/conf
 
-    echo "Checking database schemas..."
+    warn "Checking database schemas..."
     read_conf $FYR_DEPLOYSPACE/mysociety/fyr/conf/general
     check_pgsql_schema $FYR_DEPLOYSPACE/mysociety/fyr/db/schema.sql $OPTION_FYR_QUEUE_DB_NAME $OPTION_FYR_QUEUE_DB_USER $OPTION_FYR_QUEUE_DB_PASS
 
@@ -68,15 +72,15 @@ END
     check_pgsql_schema $SERVICES_DEPLOYSPACE/mysociety/services/mapit-dadem-loading/mapit-schema.sql $OPTION_MAPIT_DB_NAME $OPTION_MAPIT_DB_USER $OPTION_MAPIT_DB_PASS
     check_pgsql_schema $SERVICES_DEPLOYSPACE/mysociety/services/mapit-dadem-loading/dadem-schema.sql $OPTION_DADEM_DB_NAME $OPTION_DADEM_DB_USER $OPTION_DADEM_DB_PASS 
 
-    echo "Stopping services..."
+    warn "Stopping services..."
     down_notice $FYR_VHOST $FYR_NAME
     daemon_stop fyrqd
 
-    echo "Rsyncing new data files..."
+    warn "Rsyncing new data files..."
     rsync_across $FYR_DEPLOYSPACE $FYR_VHOST
     rsync_across $SERVICES_DEPLOYSPACE $SERVICES_VHOST
 
-    echo "Starting services..."
+    warn "Starting services..."
     daemon_start fyrqd
     apachectl graceful
     up_notice $FYR_VHOST
@@ -154,8 +158,8 @@ up_notice () {
 
 # Stops a daemon
 # $1 - name of daemon
-function daemon_stop {
-    /usr/local/etc/rc.d/$1.sh stop || echo "deploy: daemon stop failed, continuing anyway" 1>&2
+daemon_stop () {
+    /usr/local/etc/rc.d/$1.sh stop || warn "daemon stop failed, continuing anyway"
 }
 
 # Starts a daemon
@@ -184,7 +188,7 @@ check_pgsql_schema () {
 
     # load file schema into a temporary place to dump it
     # in the same format as ...
-    dropdb -q -U $PSQL_SCHEMATEST_USER schematest || echo "schematest already dropped, continuing"
+    dropdb -q -U $PSQL_SCHEMATEST_USER schematest || warn "schematest already dropped, continuing"
     createdb -q -U $PSQL_SCHEMATEST_USER schematest
     psql --file=$1 -U $PSQL_SCHEMATEST_USER -q schematest
     pg_dump -s -U $PSQL_SCHEMATEST_USER schematest | egrep -v "^--|SET SESSION AUTHORIZATION|\\connect - " > $CVS_SCHEMA_FILE
@@ -206,12 +210,9 @@ check_pgsql_schema () {
     # Compare them
     if ! diff $CVS_SCHEMA_FILE.sorted $CURRENT_SCHEMA_FILE.sorted
     then
-        echo
-        echo "Schema in CVS differs from that in pgsql database, you need to update it"
-        echo "Database: $2 User:$3 Schema: $1"
-        echo "CVS schema: $CVS_SCHEMA_FILE"
-        echo "Current schema: $CURRENT_SCHEMA_FILE"
-        echo 
+        warn "Schema in CVS differs from that in pgsql database, you need to update it"
+        warn "database: $2; user: $3 schema: $1"
+        warn "CVS schema: $CVS_SCHEMA_FILE; current schema: $CURRENT_SCHEMA_FILE"
         exit 1
     fi
 }
@@ -226,14 +227,13 @@ check_sqlite_schema () {
 
     # Note: How does sqlite cope schemas altered with "alter table"?
     # This could be a problem.
+    # It doesn't support "alter table" -- chris 20041207
 
     # Compare them
     if ! diff $1 $CURRENT_SCHEMA_FILE 
     then
-        echo
-        echo "Schema in CVS differs from that in sqlite database, you need to update it"
-        echo "Database: $2 Schema: $1"
-        echo 
+        warn "Schema in CVS differs from that in sqlite database, you need to update it"
+        warn "database: $2; schema: $1"
         exit 1
     fi
 }
@@ -242,6 +242,7 @@ check_sqlite_schema () {
 # Currently doesn't read in numeric values
 # $1 - config file
 read_conf () {
+    # XXX use of mktemp here not safe; should make a temporary directory
     CONF_SOURCE=`mktemp /tmp/ms-deploy-configsource.XXXXXX`
     cat $1 | grep define | egrep -v "^\/\/" | sed "s/define('\(.*\)', '\(.*\)'.*/\1=\"\2\"/" | egrep -v "define|mySociety::Config" >$CONF_SOURCE
     . $CONF_SOURCE
