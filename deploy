@@ -1,12 +1,12 @@
 #!/bin/sh
 #
-# bin/deploy
-# Uploading website from CVS to server.
+# deploy:
+# Update installation of FYR from CVS.
 #
 # Copyright (c) 2004 UK Citizens Online Democracy. All rights reserved.
-# Email: francis@mysociety.org; WWW: http://www.mysociety.org/
+# Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: deploy,v 1.10 2004-12-07 14:24:20 francis Exp $
+# $Id: deploy,v 1.11 2004-12-07 16:54:29 chris Exp $
 #
 
 set -e
@@ -30,6 +30,11 @@ MYSOCIETY_BIN=`pwd`
 
 # User to load test schema
 PSQL_SCHEMATEST_USER=pgsql
+
+function die {
+    echo "deploy:" "$@" 1>&2
+    exit 1
+}
 
 # Main body of script
 main () {
@@ -81,20 +86,16 @@ END
 check_who_where () {
     if [ ! -d "../../mysociety/bin" ] 
     then 
-        echo "Please run with mysociety/bin as current directory."
-        echo "Or fix it up to find the other scripts somehow else :)"
-        exit 1
+        die "must run with mysociety/bin as current directory"
     fi
     if [ "`id -u`" != "0" ]
     then
-        echo "Please run as root only"
-        exit 1
+        die "must run as root"
     fi
 
     if [ `hostname` != "$EXPECTED_HOST" ]
     then
-        echo "Please run on $EXPECTED_HOST only"
-        exit 1
+        die "this script is only for $EXPECTED_HOST"
     fi
 }
 
@@ -153,8 +154,8 @@ up_notice () {
 
 # Stops a daemon
 # $1 - name of daemon
-daemon_stop () {
-    /usr/local/etc/rc.d/$1.sh stop || echo "daemon stop failed, continuing anyway"
+function daemon_stop {
+    /usr/local/etc/rc.d/$1.sh stop || echo "deploy: daemon stop failed, continuing anyway" 1>&2
 }
 
 # Starts a daemon
@@ -167,7 +168,7 @@ daemon_start () {
 # $1 - path to conf folder with general and general-example in it
 check_config_files () {
     cd $MYSOCIETY_BIN
-    ./compareconfig.pl $1/general $1/general-example || exit 1
+    ./compareconfig.pl $1/general $1/general-example || die "configuration files differ"
     cd -
 }
 
