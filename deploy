@@ -1,0 +1,201 @@
+#! /bin/bash
+set -e
+
+# TODO:
+# Show diff of database schemas
+# Check config files are updated
+
+# Fax Your Representative
+FYR_VHOST=/data/vhost/notfinished.faxyourrepresentative.com
+FYR_NAME="WriteToThem.com"
+FYR_UNAME=fyr
+
+# Web services (Ratty, DaDem, MaPit etc.)
+SERVICES_VHOST=/data/vhost/services.mysociety.org
+SERVICES_UNAME=mysociety
+
+# Server this script checks it is being run upon
+EXPECTED_HOST=very.unfortu.net
+
+# Location of mysociety/bin scripts
+MYSOCIETY_BIN=`pwd`
+
+# Main body of script
+function main {
+    # Currently just FYR and services to update
+
+    echo << END
+    This will update services.mysociety and notfinished.faxyourrepresentative.com
+    from CVS and gracefully restart Apache.  It will not update any database
+    schemas which need updating, or add entries to any config files.
+
+    Press RETURN to continue.
+END
+    read
+
+    down_notice $FYR_VHOST $FYR_NAME
+    daemon_stop fyrqd
+
+    cvs_update $FYR_UNAME $FYR_VHOST
+    cvs_update $SERVICES_UNAME $SERVICES_VHOST
+
+    check_config_files $FYR_VHOST
+    check_config_files $SERVICES_VHOST
+
+    read_conf $FYR_VHOST/mysociety/fyr/conf/general
+    check_pgsql_schema $FYR_VHOST/mysociety/fyr/db/schema.sql $OPTION_FYR_QUEUE_DB_NAME $OPTION_FYR_QUEUE_DB_USER $OPTION_FYR_QUEUE_DB_PASS
+
+    read_conf $SERVICES_VHOST/mysociety/services/conf/general
+    check_sqlite_schema $SERVICES_VHOST/mysociety/services/DaDem/schema.sql $OPTION_DADEM_SQLITE_DB
+    check_sqlite_schema $SERVICES_VHOST/mysociety/services/MaPit/schema.sql $OPTION_MAPIT_SQLITE_DB
+
+    daemon_start fyrqd
+    apachectl graceful
+
+    up_notice $FYR_VHOST $FYR_NAME
+}
+
+# Check we are root@$EXPECTED_HOST
+function check_who_where {
+    if [ ! -d "../../mysociety/bin" ] 
+    then 
+        echo "Please run with mysociety/bin as current directory."
+        echo "Or fix it up to find the other scripts somehow else :)"
+        exit 1
+    fi
+    if [ "`id -u`" != "0" ]
+    then
+        echo "Please run as root only"
+        exit 1
+    fi
+
+    if [ `hostname` != "$EXPECTED_HOST" ]
+    then
+        echo "Please run on $EXPECTED_HOST only"
+        exit 1
+    fi
+}
+
+# Updates CVS checkout for a vhost.
+# $1 - user name to su to 
+# $2 - path to vhost
+function cvs_update {
+    cd $2/mysociety
+    su $1 -c "cvs -Q update -dP"
+}
+
+# Marks a vhost as being down for maintenance.
+# $1 - path to vhost
+# $2 - display name of website
+function down_notice {
+   echo >$1/docs/down.html <<END
+<head>
+<title>$2 - Down for Maintenance</title>
+</head>
+<body>
+<p>Sorry, but $2 is currently not available for maintenance.  Check back
+in a few minutes.  Thanks for your patience!
+<p> -- the <a href="http://www.mysociety.org">mySociety</a> developers
+</body>
+END
+}
+
+# Removes the file which displays a vhost as being down for maintenance.
+# $2 - path to vhost
+function up_notice {
+    rm $1/docs/down,html
+}
+
+# Stops a daemon
+# $1 - name of daemon
+function daemon_stop {
+    /usr/local/etc/rc.d/$1 stop
+}
+
+# Starts a daemon
+# $1 - name of daemon
+function daemon_start {
+    /usr/local/etc/rc.d/$2 stop
+}
+
+# Checks config file has all options
+# $1 - path to vhost
+function check_config_files {
+    $MYSOCIETY_BIN/compareconfig.pl $1/mysociety/conf/general $2/mysociety/conf/general-example || exit 1
+}
+
+# Tests if the schema in a file is the same as in a postgra postgresql
+# database.
+# $1 - schema file
+# $2 - pgsql db name
+# $3 - pgsql db user
+# $4 - pgsql db pass
+function check_pgsql_schema {
+    CVS_SCHEMA_FILE=`mktemp`
+    CURRENT_SCHEMA_FILE=`mktemp`
+
+    # load file schema into a temporary place to dump it
+    # in the same format as ...
+    dropdb -q schematest
+    createdb -q schematest
+    psql --file=$1 -q schematest
+    pg_dump -s schematest | egrep -v "^--|SET SESSION AUTHORIZATION" | sort > $CVS_SCHEMA_FILE
+
+    # ... the live database dump
+    pg_dump -s -U $3 $4 | egrep -v "^--|SET SESSION AUTHORIZATION" | sort > $CURRENT_SCHEMA_FILE
+
+    # Note:  Using sort in the above is completely evil.  It is because
+    # older verions of pg_dump don't output the tables in a stable
+    # order.  The above code would get confused it a column was moved
+    # from one table to another with no other changes.  Hopefully this
+    # is unlikely.  More recent pgsql have a fixed pg_dump.  Or a Perl
+    # script could be used to compare schemas.
+    # If you hate this send us a patch ;)  Better actually release a
+    # comprehensive schema comparing tool...
+
+    # Compare them
+    if ! diff $CVS_SCHEMA_FILE $CURRENT_SCHEMA_FILE 
+    then
+        echo
+        echo "Schema in CVS differs from that in pgsql database, you need to update it"
+        echo "Database: $2 User:$3 Schema: $1"
+        echo 
+        exit 1
+    fi
+}
+
+# $1 - schema file
+# $2 - sqlite db file
+function check_sqlite_schema {
+    CURRENT_SCHEMA_FILE=`mktemp`
+
+    # Dump current schema
+    sqlite $2 .schema > $CURRENT_SCHEMA_FILE
+
+    # Note: How does sqlite cope schemas altered with "alter table"?
+    # This could be a problem.
+
+    # Compare them
+    if ! diff $1 $CURRENT_SCHEMA_FILE 
+    then
+        echo
+        echo "Schema in CVS differs from that in sqlite database, you need to update it"
+        echo "Database: $2 Schema: $1"
+        echo 
+        exit 1
+    fi
+}
+
+# Reads in config file
+# Currently doesn't read in numeric values
+# $1 - config file
+function read_conf {
+    CONF_SOURCE=`mktemp`
+    cat $1 | grep define | egrep -v "^\/\/" | sed "s/define('\(.*\)', '\(.*\)'.*/\1=\"\2\"/" | egrep -v "define|mySociety::Config" >$CONF_SOURCE
+    source $CONF_SOURCE
+}
+
+exit 0
+check_who_where
+main
+
