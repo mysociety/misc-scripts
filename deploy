@@ -90,7 +90,8 @@ function cvs_update {
 # $1 - path to vhost
 # $2 - display name of website
 function down_notice {
-   cat >$1/docs/down.html <<END
+    cat >$1/docs/.down.html.new <<END
+<html>
 <head>
 <title>$2 - Down for Maintenance</title>
 </head>
@@ -100,7 +101,9 @@ maintenance.  Check back in a few minutes, and everything should be
 restored to order.  Thanks for your patience!
 <p> &mdash; the <a href="http://www.mysociety.org">mySociety</a> developers
 </body>
+</html>
 END
+    mv $1/docs/.down.html.new $1/docs/down.html
 }
 
 # Removes the file which displays a vhost as being down for maintenance.
