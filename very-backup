@@ -3,10 +3,14 @@
 # very-backup:
 # Backup from very to another host, using snapshots and rsync.
 #
+# TODO:
+#   - trap EXIT and clean up on error/abort
+#   - exclude /tmp, corefiles, etc.
+#
 # Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: very-backup,v 1.1 2005-02-02 02:20:04 chris Exp $
+# $Id: very-backup,v 1.2 2005-02-02 02:24:59 chris Exp $
 #
 
 set -ex
