@@ -1,12 +1,12 @@
 #!/bin/sh
 #
 # bin/deploy
-# Uploading website to server.
+# Uploading website from CVS to server.
 #
 # Copyright (c) 2004 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: deploy,v 1.6 2004-11-26 11:42:18 francis Exp $
+# $Id: deploy,v 1.7 2004-11-26 15:13:21 francis Exp $
 #
 
 set -e
@@ -15,10 +15,12 @@ set -e
 FYR_VHOST=/data/vhost/notfinished.faxyourrepresentative.com
 FYR_NAME="WriteToThem.com"
 FYR_UNAME=fyr
+FYR_DEPLOYSPACE=$FYR_VHOST/deployspace
 
 # Web services (Ratty, DaDem, MaPit etc.)
 SERVICES_VHOST=/data/vhost/services.mysociety.org
 SERVICES_UNAME=mysociety
+SERVICES_DEPLOYSPACE=$SERVICES_VHOST/deployspace
 
 # Server this script checks it is being run upon
 EXPECTED_HOST=very.unfortu.net
@@ -35,33 +37,43 @@ main () {
 
     cat << END
     This will update services.mysociety and notfinished.faxyourrepresentative.com
-    from CVS and gracefully restart Apache.  It will not update any database
-    schemas which need updating, or add entries to any config files.
+    from CVS and gracefully restart Apache.  It will warn you first if
+    any database schemas need upgrading, or config files fixing.  These
+    get fixed in the deploy space, i.e. the place where the "cvs export"
+    happens to, before copying over to the live server.
 
     Press RETURN to continue.
 END
     read DUMMY
 
-    down_notice $FYR_VHOST $FYR_NAME
-    daemon_stop fyrqd
+    echo "Exporting from CVS..."
+    cvs_export $FYR_UNAME $FYR_VHOST $FYR_DEPLOYSPACE
+    cvs_export $SERVICES_UNAME $SERVICES_VHOST $SERVICES_DEPLOYSPACE
 
-    cvs_update $FYR_UNAME $FYR_VHOST
-    cvs_update $SERVICES_UNAME $SERVICES_VHOST
-
+    echo "Checking config files..."
     check_config_files $FYR_VHOST/mysociety/fyr/conf
     check_config_files $SERVICES_VHOST/mysociety/services/conf
 
+    echo "Checking database schemas..."
     read_conf $FYR_VHOST/mysociety/fyr/conf/general
     check_pgsql_schema $FYR_VHOST/mysociety/fyr/db/schema.sql $OPTION_FYR_QUEUE_DB_NAME $OPTION_FYR_QUEUE_DB_USER $OPTION_FYR_QUEUE_DB_PASS
 
     read_conf $SERVICES_VHOST/mysociety/services/conf/general
-    check_sqlite_schema $SERVICES_VHOST/mysociety/services/mapit-dadem-loading/mapit-schema.sql $OPTION_MAPIT_SQLITE_DB
-    check_sqlite_schema $SERVICES_VHOST/mysociety/services/mapit-dadem-loading/dadem-schema.sql $OPTION_DADEM_SQLITE_DB
+    #check_sqlite_schema $SERVICES_VHOST/mysociety/services/mapit-dadem-loading/mapit-schema.sql $OPTION_MAPIT_SQLITE_DB
+    #check_sqlite_schema $SERVICES_VHOST/mysociety/services/mapit-dadem-loading/dadem-schema.sql $OPTION_DADEM_SQLITE_DB
     check_pgsql_schema $SERVICES_VHOST/mysociety/services/Ratty/schema.sql $OPTION_RATTY_DB_NAME $OPTION_RATTY_DB_USER $OPTION_RATTY_DB_PASS
 
+    echo "Stopping services..."
+    down_notice $FYR_VHOST $FYR_NAME
+    daemon_stop fyrqd
+
+    echo "Rsyncing new data files..."
+    rsync_across $FYR_DEPLOYSPACE $FYR_VHOST
+    rsync_across $SERVICES_DEPLOYSPACE $SERVICES_VHOST
+
+    echo "Starting services..."
     daemon_start fyrqd
     apachectl graceful
-
     up_notice $FYR_VHOST
 }
 
@@ -86,12 +98,29 @@ check_who_where () {
     fi
 }
 
-# Updates CVS checkout for a vhost.
+# Exports from CVS into the deploy space, erasing whatever was there
+# already.  Copies current config files from the vhost. 
 # $1 - user name to su to 
-# $2 - path to vhost
-cvs_update () {
-    cd $2/mysociety
-    su $1 -c "cvs -Q update -dP"
+# $2 - path to vhost, where live server is
+# $3 - path to deploy space, GETS ERASED FIRST
+cvs_export () {
+    cd $3
+    rm -fr mysociety
+    export CVSROOT=/usr/local/cvs
+    su $1 -c "cvs -Q export -r HEAD -d mysociety mysociety"
+
+    cd $2
+    for X in mysociety/*/conf/general 
+    do
+        cp $X $3/$X
+    done
+}
+
+# Copies from the deploy space to the live space using rsync.
+# $1 - path to deploy space
+# $2 - path to vhost, where live server is, GETS OVERWRITTEN BY DEPLOY SPACE
+rsync_across () {
+    rsync -a $1/mysociety/ $2/mysociety
 }
 
 # Marks a vhost as being down for maintenance.
