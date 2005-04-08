@@ -14,7 +14,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: hassleblog,v 1.6 2005-03-22 17:04:01 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: hassleblog,v 1.7 2005-04-08 09:48:44 chris Exp $';
 
 use strict;
 
@@ -88,7 +88,7 @@ Options:
     --force     Always send a notification, even if it's out-of-hours or the
                 random-number-generator doesn't decide we should do
 
-$Id: hassleblog,v 1.6 2005-03-22 17:04:01 chris Exp $
+$Id: hassleblog,v 1.7 2005-04-08 09:48:44 chris Exp $
 Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
 Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 EOF
@@ -154,6 +154,9 @@ someone else to do so.
 
 Remember: YOUR PUBLIC NEEDS YOU
 
+To write your post, visit
+    http://www.mysociety.org/wp-admin/post.php
+
 -- 
 $rcsid
 EOF
@@ -195,6 +198,7 @@ if (!open(IRC, "$ENV{HOME}/.hassleblog-irc")) {
                 $conn->join('#ms') or die "Net::IRC::Connection->join: $!";
                 debug("done\nsending message to %s... ", $person->[2]);
                 $conn->privmsg('#ms', "$person->[2]: it's time for you to write a blog post on www.mysociety.org. Get to it!");
+                $conn->privmsg('#ms', "$person->[2]: http://www.mysociety.org/wp-admin/post.php");
                 debug("done\n");
                 $foad = 1;
             }
