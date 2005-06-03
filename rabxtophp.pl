@@ -5,7 +5,7 @@
 # PHP include file for talking to that RABX interface.
 #
 
-my $rcsid = ''; $rcsid .= '$Id: rabxtophp.pl,v 1.2 2005-03-30 18:12:05 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: rabxtophp.pl,v 1.3 2005-06-03 16:04:03 francis Exp $';
 
 use strict;
 
@@ -15,7 +15,8 @@ use Pod::POM::View::Text;
 
 use mySociety::StringUtils qw(trim);
 
-my $perl_source = "../services/EvEl/perllib/EvEl.pm";
+my $perl_source = $ARGV[0];
+die "Give source .pm file as first parameter" unless defined($perl_source);
 
 my $parser = Pod::POM->new( { warn => 1} );
 my $view = 'Pod::POM::View::Text';
