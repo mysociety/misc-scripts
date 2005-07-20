@@ -13,7 +13,6 @@ cat <<END >../phplib/dadem.php
 <?
 # this part from rabxtophp-all.sh 
 
-require_once('error.php');
 require_once('utility.php');
 require_once('votingarea.php');
 
