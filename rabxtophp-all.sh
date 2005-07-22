@@ -41,3 +41,7 @@ define('MAPIT_AREA_NOT_FOUND', 2003);      /* not a valid voting area id */
 ?>
 END
 ./rabxtophp.pl ../services/MaPit/MaPit.pm >>../phplib/mapit.php
+
+echo "Gaze..."
+./rabxtophp.pl ../services/Gaze/perllib/Gaze.pm >../phplib/gaze.php
+

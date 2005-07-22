@@ -5,7 +5,7 @@
 # PHP include file for talking to that RABX interface.
 #
 
-my $rcsid = ''; $rcsid .= '$Id: rabxtophp.pl,v 1.3 2005-06-03 16:04:03 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: rabxtophp.pl,v 1.4 2005-07-22 12:39:49 francis Exp $';
 
 use strict;
 
@@ -85,6 +85,8 @@ foreach my $head1 ($pom->head1()) {
         $conf_name = uc $rabx_namespace;
     }
 }
+die "Need DESCRIPTION section in perldoc" if !$description;
+die "Need NAME section in perldoc" if !$rabx_namespace;
 
 # Print header
 print <<END;
