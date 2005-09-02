@@ -1,0 +1,86 @@
+#!/usr/local/bin/php -q
+<?php
+/* 
+ * languages-by-country
+ * Creates PHP array of languages spoken, by country
+ *
+ * Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
+ * Email: matthew@mysociety.org. WWW: http://www.mysociety.org/
+ *
+ * $Id: languages-by-country,v 1.1 2005-09-02 13:56:06 matthew Exp $
+ *
+ */
+
+include_once '../phplib/countries.php';
+include_once '../phplib/languages.php';
+$f = file_get_contents('http://en.wikipedia.org/wiki/Special:Export/List_of_official_languages_by_country');
+preg_match('#<text xml:space="preserve">(.*?)</text>#s', $f, $m);
+$content = explode("\n", $m[1]);
+$country = null;
+foreach ($content as $line) {
+    if (preg_match('#^\*\[\[(.*?)\]\]#', $line, $m)) {
+        $country = country_lookup($m[1]);
+    }
+    if (preg_match('#^\*\*\[\[(.*?)\]\]#', $line, $m)) {
+        $languages[$country][] = language_lookup($m[1]);
+    }
+}
+
+print "<?\n\n\$countries_code_to_languages = array(\n";
+foreach ($languages as $country => $array) {
+    if (strstr($country, '|')) {
+        $found = false;
+        foreach (explode('|', $country) as $v) {
+            if (array_key_exists($v, $countries_name_to_code)) {
+                $found = true;
+                output_langs($v, $array);
+            }
+        }
+        if (!$found) {
+            $err[] = $country;
+        }
+    } elseif (array_key_exists($country, $countries_name_to_code)) {
+        output_langs($country, $array);
+    } else {
+        $err[] = $country;
+    }
+}
+print ");\n\n";
+print "\$countries_code_to_language_errors = '" . join(', ', $err) . "';\n";
+print "\n?>";
+
+function output_langs($country, $langs) {
+    global $countries_name_to_code, $languages_name_to_code;
+    print "'$countries_name_to_code[$country]' => array(\"";
+    $outlang = array();
+    foreach ($langs as $lang) {
+        if (array_key_exists($lang, $languages_name_to_code))
+            $outlang[] = $languages_name_to_code[$lang];
+        else
+            $outlang[] = $lang;
+    }
+    print join('", "', $outlang);
+    print "\"),\n";
+}
+
+function country_lookup($c) {
+    $lookup = array(
+        "People's Republic of China|China, People's Republic of" => 'China',
+        "People's Republic of China" => 'China',
+        "Republic of the Congo|Congo, Republic of the" => 'Congo',
+        "Guinea Bissau" => 'Guinea-Bissau',
+        "Republic of Ireland|Ireland, Republic of" => 'Ireland',
+        "State of Palestine|Palestine" => 'Palestinian Territories',
+        "Republic of China|Taiwan (Republic of China)" => 'Taiwan',
+    );
+
+    if (array_key_exists($c, $lookup))
+        return $lookup[$c];
+    return $c;
+}
+
+function language_lookup($l) {
+    $l = preg_replace('#^.*\|#', '', $l);
+    return $l;
+}
+?>
