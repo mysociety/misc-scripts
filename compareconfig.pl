@@ -7,7 +7,10 @@
 # which are present in one but not the other. Exits successfully if there are
 # no differences.
 #
-# $Id: compareconfig.pl,v 1.5 2004-12-14 17:31:33 francis Exp $
+# Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
+# Email: francis@mysociety.org; WWW: http://www.mysociety.org/
+#
+# $Id: compareconfig.pl,v 1.6 2005-09-14 18:05:46 francis Exp $
 #
 
 use strict;

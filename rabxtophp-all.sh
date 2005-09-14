@@ -4,6 +4,11 @@
 
 # Includes some extra stuff specific to some of thet types.  TODO remove need
 # for this by removing need for include files, and handling error codes better.
+#
+# Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
+# Email: francis@mysociety.org; WWW: http://www.mysociety.org/
+#
+# $Id: rabxtophp-all.sh,v 1.4 2005-09-14 18:05:46 francis Exp $
 
 echo "EvEl..."
 ./rabxtophp.pl ../services/EvEl/perllib/EvEl.pm > ../phplib/evel.php

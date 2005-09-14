@@ -2,9 +2,11 @@
 #
 # rabx:
 # Calls RABX functions from command line.  Run with no parameters for help.
-#
+# 
+# Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
+# Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 
-my $rcsid = ''; $rcsid .= '$Id: rabx,v 1.1 2005-08-09 15:55:41 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: rabx,v 1.2 2005-09-14 18:05:46 francis Exp $';
 
 use strict;
 use RABX;
