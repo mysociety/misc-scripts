@@ -8,10 +8,10 @@
 # Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: rabxtophp-all.sh,v 1.4 2005-09-14 18:05:46 francis Exp $
+# $Id: rabxtophp-all.sh,v 1.5 2005-10-07 10:08:49 francis Exp $
 
 echo "EvEl..."
-./rabxtophp.pl ../services/EvEl/perllib/EvEl.pm > ../phplib/evel.php
+./rabxtophp.pl ../services/EvEl/perllib/EvEl.pm "" > ../phplib/evel.php
 
 echo "DaDem..."
 cat <<END >../phplib/dadem.php
@@ -30,7 +30,7 @@ define('DADEM_CONTACT_FAX', 101);
 define('DADEM_CONTACT_EMAIL', 102);
 ?>
 END
-./rabxtophp.pl ../services/DaDem/DaDem.pm >>../phplib/dadem.php
+./rabxtophp.pl ../services/DaDem/DaDem.pm "" >>../phplib/dadem.php
 
 echo "MaPit..."
 cat <<END >../phplib/mapit.php
@@ -45,8 +45,24 @@ define('MAPIT_POSTCODE_NOT_FOUND', 2002);  /* postcode not found */
 define('MAPIT_AREA_NOT_FOUND', 2003);      /* not a valid voting area id */
 ?>
 END
-./rabxtophp.pl ../services/MaPit/MaPit.pm >>../phplib/mapit.php
+./rabxtophp.pl ../services/MaPit/MaPit.pm "" >>../phplib/mapit.php
 
 echo "Gaze..."
-./rabxtophp.pl ../services/Gaze/perllib/Gaze.pm >../phplib/gaze.php
+./rabxtophp.pl ../services/Gaze/perllib/Gaze.pm "" >../phplib/gaze.php
+
+echo "FYR Queue..."
+cat <<END >../fyr/phplib/queue.php
+<?
+# this part from rabxtophp-all.sh 
+
+/* Error codes */
+define('FYR_QUEUE_MESSAGE_ALREADY_QUEUED', 4001);
+define('FYR_QUEUE_MESSAGE_ALREADY_CONFIRMED', 4002);
+define('FYR_QUEUE_MESSAGE_BAD_ADDRESS_DATA', 4003);
+define('FYR_QUEUE_MESSAGE_SHAME', 4004); /* Representative does not want to be contacted */
+
+?>
+END
+./rabxtophp.pl ../fyr/perllib/FYR/Queue.pm "../../phplib/" >>../fyr/phplib/queue.php
+
 

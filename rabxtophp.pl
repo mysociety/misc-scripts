@@ -5,7 +5,7 @@
 # PHP include file for talking to that RABX interface.
 #
 
-my $rcsid = ''; $rcsid .= '$Id: rabxtophp.pl,v 1.4 2005-07-22 12:39:49 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: rabxtophp.pl,v 1.5 2005-10-07 10:08:49 francis Exp $';
 
 use strict;
 
@@ -17,6 +17,8 @@ use mySociety::StringUtils qw(trim);
 
 my $perl_source = $ARGV[0];
 die "Give source .pm file as first parameter" unless defined($perl_source);
+my $main_include_path = $ARGV[1];
+die "Give relative path to mysociety/phplib" unless defined($main_include_path);
 
 my $parser = Pod::POM->new( { warn => 1} );
 my $view = 'Pod::POM::View::Text';
@@ -81,8 +83,13 @@ foreach my $head1 ($pom->head1()) {
     }
     if ($head1->title() eq "NAME") {
         $rabx_namespace = trim($view->view_text($head1));
-        $php_namespace = lc $rabx_namespace;
-        $conf_name = uc $rabx_namespace;
+        if ($rabx_namespace eq 'FYR.Queue') {
+            $php_namespace = 'msg';
+            $conf_name = 'FYR_QUEUE';
+        } else {
+            $php_namespace = lc $rabx_namespace;
+            $conf_name = uc $rabx_namespace;
+        }
     }
 }
 die "Need DESCRIPTION section in perldoc" if !$description;
@@ -104,7 +111,7 @@ print <<END;
  *
  */
 
-require_once('rabx.php');
+require_once('${main_include_path}rabx.php');
 
 /* ${php_namespace}_get_error R
  * Return FALSE if R indicates success, or an error string otherwise. */
