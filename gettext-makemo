@@ -1,0 +1,20 @@
+#!/bin/bash
+#
+# bin/gettext-makemo
+# Convert all .po files of translations into .mo files
+#
+# Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
+# Email: francis@mysociety.org; WWW: http://www.mysociety.org/
+#
+# $Id: gettext-makemo,v 1.1 2005-10-25 18:40:03 francis Exp $
+
+for X in ../locale/*.*
+do
+    if [ -d $X ]
+    then
+        cd $X/LC_MESSAGES
+        msgfmt -o PledgeBank.mo PledgeBank.po
+        cd -
+    fi
+done
+
