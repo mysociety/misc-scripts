@@ -8,7 +8,7 @@
 # Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: gettext-extract,v 1.4 2005-10-31 08:39:11 francis Exp $
+# $Id: gettext-extract,v 1.5 2005-11-04 23:04:59 francis Exp $
 
 if [ ! -e ../mysociety ]
 then
@@ -34,6 +34,9 @@ cat $TEMP | sed "
         s/Report-Msgid-Bugs-To: /Report-Msgid-Bugs-To: matthew@mysociety.org/;
         s/LL@li.org/team@pledgebank.com/;
 " >> $PO
+xgettext --omit-header --language=Python --from-code=utf-8 -o $TEMP pb/web/poster.cgi
+echo >> $PO
+cat $TEMP >> $PO
 
 # Extract email templates
 function plain_gettext_escape() {
