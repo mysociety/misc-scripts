@@ -8,7 +8,7 @@
 # Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: gettext-extract,v 1.5 2005-11-04 23:04:59 francis Exp $
+# $Id: gettext-extract,v 1.6 2005-11-09 13:57:40 francis Exp $
 
 if [ ! -e ../mysociety ]
 then
@@ -19,7 +19,30 @@ fi
 
 # File to write to, clear it to start with
 PO=../mysociety/locale/PledgeBank.po 
-rm $PO
+rm -f $PO
+
+# Useful functions
+
+# Take chunk of text and escape each line in it for putting in catalogue
+function plain_gettext_escape() {
+    while read LINE
+    do
+        LINE=${LINE//\"/\\\"}
+        echo \"$LINE\\n\"
+    done
+}
+# Write each line input as separate gettext message
+# $1 - string to put in comment
+function write_each_line_as_msg() {
+    while read LINE
+    do
+        LINE=${LINE//\"/\\\"}
+        echo >> $PO
+        echo "#: $1" >> $PO
+        echo msgid \"$LINE\" >> $PO
+        echo msgstr \"\" >> $PO
+    done
+}
 
 # Extract from PHP
 TEMP=`tempfile`
@@ -39,13 +62,6 @@ echo >> $PO
 cat $TEMP >> $PO
 
 # Extract email templates
-function plain_gettext_escape() {
-    while read LINE
-    do
-        LINE=${LINE//\"/\\\"}
-        echo \"$LINE\\n\"
-    done
-}
 for X in pb/templates/emails/*
 do
     if [ "$X" != "pb/templates/emails/CVS" -a "$X" != "pb/templates/emails/README" ]
@@ -57,5 +73,9 @@ do
         echo msgstr \"\" >> $PO
     fi
 done
+
+# PledgeBank categories
+cat pb/db/ican-categories.sql | grep NULL | perl -p -e "/'(.*)'/; \$_=\$1.\"\n\";" | write_each_line_as_msg pb/db/ican-categories.sql
+
 
 
