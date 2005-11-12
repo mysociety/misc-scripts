@@ -1,0 +1,141 @@
+#!/usr/bin/perl -w
+#
+# mugly:
+# Macro preprocessor for configuration files.
+#
+# !!(*=             introduces a perl expression to be evaluated
+# !!(*              introduces perl code to be executed
+# *)!!              finishes perl code
+# any other text    passed straight through
+#
+# Semantics of !!(* ... *)!!: the extent between one *)!! and the next !!(*
+# may consist of any number of statements, each at the same level of nesting.
+#
+# Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
+# Email: chris@mysociety.org; WWW: http://www.mysociety.org/
+#
+
+my $rcsid = ''; $rcsid .= '$Id: mugly,v 1.1 2005-11-12 20:40:36 chris Exp $';
+
+use strict;
+
+use IO::Handle;
+use IO::File;
+
+use constant TEXT => 0;
+use constant CODE => 1;
+use constant EXPR => 2;
+my @statename = qw(text code expression);
+
+sub process_file ($$) {
+    my ($name, $f) = @_;
+
+    my @data;
+    my $state = TEXT;
+    my $code = 'sub ($) { my @__mugly_data__ = @{$_[0]}; ';
+
+    my $n = 1;
+    while (defined(my $line = $f->getline())) {
+again:
+        if ($state == TEXT) {
+            if ($line =~ /(.*?)!!\(\*=(.*)/s) {
+                push(@data, $1);
+                $code .= "STDOUT->print(\$__mugly_data__[$#data]); STDOUT->print(";
+                $line = $2;
+                $state = EXPR;
+                goto again;
+            } elsif ($line =~ /(.*?)!!\(\*(.*)/s) {
+                push(@data, $1);
+                $code .= "STDOUT->print(\$__mugly_data__[$#data]); ";
+                $line = $2;
+                $state = CODE;
+                goto again;
+            } else {
+                push(@data, $line);
+                $code .= "STDOUT->print(\$__mugly_data__[$#data]);";
+            }
+        } elsif ($state == CODE || $state == EXPR) {
+            if ($line =~ /(.*?)\*\)!!(.*)/s) {
+                $code .= $1;
+                if ($state == EXPR) {
+                    $code .= '); ';
+                } else {
+                    $code .= ' ';
+                }
+                $line = $2;
+                $state = TEXT;
+                goto again;
+            } elsif ($line =~ /!!\(\*/) {
+                print STDERR "$name:$n: '!!(*' found inside $statename[$state] block\n";
+                return 0;
+            } else {
+                $code .= $line;
+            }
+        }
+
+        # Each line of input text becomes one line of perl code, so that line
+        # numbers in errors in the output correspond exactly to line numbers in
+        # the input.
+        $code .= "\n";
+        ++$n;
+    }
+    
+    if ($f->error()) {
+        print STDERR "$name:$n: $!\n";
+        return 0;
+    }
+
+    $code .= "}\n";
+    
+    my @warnings;
+    my $F;
+    {
+        local $SIG{__WARN__} = sub ($) { push(@warnings, @_); };
+        if ($F = eval $code) {
+            eval '&$F(\@data)';
+        }
+    }
+
+    if ($@) {
+        # Expect a string like "... at (eval ...) line ...".
+        my $msg = $@;
+        chomp($msg);
+        if ($msg =~ /^(.*) at \(eval \d+\) line (\d+)/) {
+            print STDERR "$name:$2: $1\n";
+            return 0;
+        } else {
+            print STDERR "$name: $msg\n";
+            return 0;
+        }
+    } else {
+        foreach my $msg (@warnings) {
+            chomp($msg);
+            if ($msg =~ /^(.*) at \(eval \d+\) line (\d+)/) {
+                print STDERR "$name:$2: (warning) $1\n";
+                return 0;
+            } else {
+                print STDERR "$name: (warning) $msg\n";
+            }
+        }
+    }
+
+    return 1;
+}
+
+# XXX want to process some options here -- -o FILE for starters, and probably
+# something to preload options into the namespace in which the code executes.
+
+if (@ARGV == 0) {
+    process_file("(standard input)", \*STDIN);
+} else {
+    foreach my $file (@ARGV) {
+        my $f = new IO::File($file, O_RDONLY);
+        if (!$f) {
+            print STDERR "$file: $!\n";
+            exit(1);
+        } else {
+            process_file($file, $f) || exit(1);
+            $f->close();
+        }
+    }
+}
