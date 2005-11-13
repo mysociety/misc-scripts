@@ -42,25 +42,25 @@ for (<locale/*.*/LC_MESSAGES/PledgeBank.po>) {
                 ($msgstr) = $next =~ /^msgstr "(.*)"/;
             }
         }
-        $out .= "\"$msgid\":\"$msgstr\"\n";
+        $out .= "\"$msgid\":\"$msgstr\",\n";
     }
     close FP;
+    $out = substr($out, 0, -2);
     open (FP, ">pb/web/js/pb.$langs{$lang}.js") or die $!;
     print FP <<EOF;
 /*
  * pb.$langs{$lang}.js
  * Translation of JS strings
+ * Auto-generated from .po files by gettext-makejs
  *
  * Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
  * Email: matthew AT mysociety.org. WWW: http://www.mysociety.org/
- *
- * \$Id: gettext-makejs,v 1.1 2005-11-13 12:24:24 matthew Exp $
  *
  */
 
 var translation = {
 EOF
     print FP $out;
-    print FP "}\n";
+    print FP "\n}\n";
     close FP;
 }
