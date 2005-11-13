@@ -8,7 +8,7 @@
 # Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: gettext-extract,v 1.6 2005-11-09 13:57:40 francis Exp $
+# $Id: gettext-extract,v 1.7 2005-11-13 11:33:18 matthew Exp $
 
 if [ ! -e ../mysociety ]
 then
@@ -57,13 +57,14 @@ cat $TEMP | sed "
         s/Report-Msgid-Bugs-To: /Report-Msgid-Bugs-To: matthew@mysociety.org/;
         s/LL@li.org/team@pledgebank.com/;
 " >> $PO
-xgettext --omit-header --language=Python --from-code=utf-8 -o $TEMP pb/web/poster.cgi
-echo >> $PO
-cat $TEMP >> $PO
+
+# Extract from Python and JS (which seems to work if I tell it it's Python)
+xgettext --language=Python --from-code=utf-8 --join-existing -o $PO pb/web/poster.cgi pb/web/pb.js
 
 # Extract email templates
 for X in pb/templates/emails/*
 do
+    # TODO: Should check for "*~" type filenames too
     if [ "$X" != "pb/templates/emails/CVS" -a "$X" != "pb/templates/emails/README" ]
     then
         echo >> $PO
@@ -76,6 +77,3 @@ done
 
 # PledgeBank categories
 cat pb/db/ican-categories.sql | grep NULL | perl -p -e "/'(.*)'/; \$_=\$1.\"\n\";" | write_each_line_as_msg pb/db/ican-categories.sql
-
-
-
