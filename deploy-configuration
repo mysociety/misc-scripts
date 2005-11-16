@@ -11,7 +11,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.4 2005-11-16 17:27:28 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.5 2005-11-16 17:48:48 chris Exp $';
 
 use strict;
 require 5.8.0;
@@ -137,6 +137,7 @@ sub process_directory ($$$) {
             if (exists($havefile{$name}));
         my $s = lstat("$indir/$name");
         my $mode = $s->mode() & 07777;
+        my $is_symlink = 0;
         if (S_ISDIR($s->mode())) {
             # This is a directory. Create it in the output, and add it to the
             # list of subdirectories into which to recurse.
@@ -157,15 +158,20 @@ sub process_directory ($$$) {
                 die "$indir/$name: already created $name, from $havefile{$name}"
                     if (exists($havefile{$name}));
                 $target =~ s#\n$##s;
-                die "$indir/$name: specified symlink target contains illegal characters" if ($target =~ /[\0\n]/);
-                print STDERR "$indir/$name: warning: symlink target is absolute\n" if ($target =~ m#^/#);
+                die "$indir/$name.symlink: symlink file syntax is 'To: TARGET\\n'" if ($target !~ /^To:/);
+                $target =~ s#^To:\s*##;
+                die "$indir/$name.symlink: specified symlink target contains illegal characters" if ($target =~ /[\0\n]/);
+                print STDERR "$indir/$name.symlink: warning: symlink target is absolute\n" if ($target =~ m#^/#);
                 verbose(sprintf("ln -s %s %s\n", $target, "$outdir/$name"));
+                symlink($target, "$outdir/$name") or die "$outdir/$name: symlink: $!";
                 $havefile{$name} = "$name.symlink";
+                $is_symlink = 1;
             } elsif ($name =~ /.\.ugly$/) {
                 # File specifies macro source.
-                $name =~ s/\.mugly$//;
+                $name =~ s/\.ugly$//;
                 die "$indir/$name: already created $name, from $havefile{$name}"
                     if (exists($havefile{$name}));
+                verbose(sprintf("mugly -O %s -p %s %s\n", "$outdir/$name", $settings, "$indir/$name.ugly"));
                 system($mugly_bin, '-O', "$outdir/$name", "-p", $settings, "$indir/$name.ugly");
                 if ($? == -1) {
                     die "$mugly_bin: exec: $!";
@@ -202,10 +208,22 @@ sub process_directory ($$$) {
             ($uid, $gid) = @{$perm->{$name}};
             $mode = $perm->{$name}->[2];
         }
-        chown($uid, $gid, "$outdir/$name")
-            or die "$outdir/$name: chown: $!";
-        chmod($mode, "$outdir/$name")
-            or die "$outdir/$name: chmod: $!";
+        if ($is_symlink) {
+            # perl lacks lchown
+            system("chown", "-h", "$uid:$gid", "$outdir/$name");
+            if ($? == -1) {
+                die "chown -h: exec: $!";
+            } elsif ($? & 127) {
+                die "chown -h $uid:$gid $outdir/$name: killed by signal " . ($? & 127);
+            } elsif ($? >> 8) {
+                die "chown -h $uid:$gid $outdir/$name: exited with nonzero status " . ($? >> 8);
+            }
+        } else {
+            chown($uid, $gid, "$outdir/$name")
+                or die "$outdir/$name: chown: $!";
+            chmod($mode, "$outdir/$name")
+                or die "$outdir/$name: chmod: $!";
+        }
     }
     closedir(D);
 
