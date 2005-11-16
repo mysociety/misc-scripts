@@ -11,7 +11,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.2 2005-11-16 17:19:13 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.3 2005-11-16 17:22:39 chris Exp $';
 
 use strict;
 require 5.8.0;
@@ -45,7 +45,7 @@ sub verbose (@) {
 # to a hash of FILENAME => [UID, GID, MODE]. Dies on error.
 sub read_perms ($) {
     my $indir = shift;
-    $indir =~ s#(?<!^)/##;
+    $indir =~ s#(?<!^)/$##;
     my $f = new IO::File("$indir/_perm");
     if (!$f) {
         if ($!{ENOENT}) {
@@ -121,8 +121,8 @@ sub read_perms ($) {
 sub process_directory ($$$);
 sub process_directory ($$$) {
     my ($indir, $outdir, $settings) = @_;
-    $indir =~ s#(?<!^)/##;
-    $outdir =~ s#(?<!^)/##;
+    $indir =~ s#(?<!^)/$##;
+    $outdir =~ s#(?<!^)/$##;
 
     verbose("processing $indir -> $outdir\n");
     my $perm = read_perms($indir);
