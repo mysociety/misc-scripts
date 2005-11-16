@@ -22,22 +22,77 @@
 #
 # Semantics of !!(*= EXPR *)!!: exactly equivalent to !!(* print EXPR *)!!.
 #
+# Variable names beginning __mugly__, and any symbols in the package __mugly__,
+# are reserved.
+#
 # Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-
-my $rcsid = ''; $rcsid .= '$Id: mugly,v 1.2 2005-11-12 23:04:20 chris Exp $';
+# $Id: mugly,v 1.3 2005-11-16 12:48:04 chris Exp $
+#
 
 use strict;
 
+package __mugly__;
+
+use Errno;
 use IO::Handle;
 use IO::File;
+
+sub quit (;@);
+
+# process_perl_file FILE HANDLE
+# Process the given FILE, which is open on the passed HANDLE, as pure perl.
+# Returns true on success or false on failure.
+sub process_perl_file ($$) {
+    my ($name, $f) = @_;
+    my $code = join('', $f->getlines());
+    if ($f->error()) {
+        print STDERR "$name: $!\n";
+        return 0;
+    }
+
+    my @warnings;
+    {
+        local $SIG{__WARN__} = sub ($) { push(@warnings, @_); };
+        package main;
+        eval $code;
+    }
+
+    if ($@) {
+        # Expect a string like "... at (eval ...) line ...".
+        my $msg = $@;
+        chomp($msg);
+        if ($msg =~ /^(.*) at \(eval \d+\) line (\d+)/) {
+            print STDERR "mugly: $name:$2: $1\n";
+            return 0;
+        } else {
+            print STDERR "mugly: $name: $msg\n";
+            return 0;
+        }
+    } else {
+        foreach my $msg (@warnings) {
+            chomp($msg);
+            if ($msg =~ /^(.*) at \(eval \d+\) line (\d+)/) {
+                print STDERR "mugly: $name:$2: (warning) $1\n";
+                return 0;
+            } else {
+                print STDERR "mugly: $name: (warning) $msg\n";
+            }
+        }
+    }
+
+    return 1;
+}
 
 use constant TEXT => 0;
 use constant CODE => 1;
 use constant EXPR => 2;
 my @statename = qw(text code expression);
 
+# process_file FILE HANDLE
+# Process the given FILE, which is open on the passed HANDLE, as a mugly macro
+# file. Returns true on success or false on failure.
 sub process_file ($$) {
     my ($name, $f) = @_;
 
@@ -45,8 +100,14 @@ sub process_file ($$) {
     my $state = TEXT;
     my $code = 'sub ($) { my @__mugly_data__ = @{$_[0]}; do { 1; ';
 
-    my $n = 1;
+    my $n = 0;
     while (defined(my $line = $f->getline())) {
+        # Each line of input text becomes one line of perl code, so that line
+        # numbers in errors in the output correspond exactly to line numbers in
+        # the input.
+        ++$n;
+        $code .= "\n" if ($n > 1);
+
 again:
         if ($state == TEXT) {
             if ($line =~ /(.*?)!!\(\*=(.*)/s) {
@@ -77,32 +138,26 @@ again:
                 $state = TEXT;
                 goto again;
             } elsif ($line =~ /!!\(\*/) {
-                print STDERR "$name:$n: '!!(*' found inside $statename[$state] block\n";
+                print STDERR "mugly: $name:$n: '!!(*' found inside $statename[$state] block\n";
                 return 0;
             } else {
                 $code .= $line;
             }
         }
-
-        # Each line of input text becomes one line of perl code, so that line
-        # numbers in errors in the output correspond exactly to line numbers in
-        # the input.
-        $code .= "\n";
-        ++$n;
     }
     
     if ($f->error()) {
-        print STDERR "$name:$n: $!\n";
+        print STDERR "mugly: $name:$n: $!\n";
         return 0;
     }
 
     $code .= "} while (0); }\n";
     
     my @warnings;
-    my $F;
     {
         local $SIG{__WARN__} = sub ($) { push(@warnings, @_); };
-        if ($F = eval $code) {
+        package main;
+        if (my $F = eval $code) {
             eval '&$F(\@data)';
         }
     }
@@ -112,20 +167,20 @@ again:
         my $msg = $@;
         chomp($msg);
         if ($msg =~ /^(.*) at \(eval \d+\) line (\d+)/) {
-            print STDERR "$name:$2: $1\n";
+            print STDERR "mugly: $name:$2: $1\n";
             return 0;
         } else {
-            print STDERR "$name: $msg\n";
+            print STDERR "mugly: $name: $msg\n";
             return 0;
         }
     } else {
         foreach my $msg (@warnings) {
             chomp($msg);
             if ($msg =~ /^(.*) at \(eval \d+\) line (\d+)/) {
-                print STDERR "$name:$2: (warning) $1\n";
+                print STDERR "mugly: $name:$2: (warning) $1\n";
                 return 0;
             } else {
-                print STDERR "$name: (warning) $msg\n";
+                print STDERR "mugly: $name: (warning) $msg\n";
             }
         }
     }
@@ -133,20 +188,96 @@ again:
     return 1;
 }
 
+my ($outputfile, $tempoutputfile);
+
+sub quit (;@) {
+    print STDERR "mugly: ", @_, "\n" if (@_);
+    unlink($tempoutputfile) if ($tempoutputfile);
+    exit(1);
+}
+
+sub main () {
+    # We need to process a possible -O option.
+    my @args;
+    
+    while (my $a = shift(@ARGV)) {
+        if ($a eq '-O') {
+            if ($outputfile) {
+                quit("cannot repeat -O");
+            }
+            $a = shift(@ARGV);
+            if (!$a) {
+                quit("-O must be followed by a filename");
+                exit(1);
+            } else {
+                $outputfile = $a;
+            }
+        } else {
+            push(@args, $a);
+        }
+    }
+
+    if ($outputfile) {
+        quit("$outputfile: is a directory") if (-d $outputfile);
+        my $h;
+        do {
+            $h = new IO::File($tempoutputfile = sprintf('%s.%x.%x', $outputfile, int(rand(0xffffffff)), int(rand(0xffffffff))), O_WRONLY | O_CREAT | O_EXCL, 0666);
+            quit("$tempoutputfile: $!") if (!$h && !$!{EEXIST});
+        } while (!$h);
+        close(STDOUT);
+        open(STDOUT, ">&" . $h->fileno()) or quit("$tempoutputfile: $!");
+        $h->close();
+    }
+
+    if (@args == 0) {
+        process_file("(standard input)", \*STDIN);
+    } else {
+        my $stdin = 0;
+        while (my $file = shift(@args)) {
+            my $as_perl = 0;
+            # -p introduces a file to process as pure perl
+            if ($file eq '-p') {
+                $file = shift(@args);
+                if (!$file) {
+                    quit("-p must be followed by a filename");
+                } else {
+                    $as_perl = 1;
+                }
+            }
+
+            my $f;
+            if ($file eq '-') {
+                quit("can't process standard input ('-') more than once") if ($stdin);
+                ++$stdin;
+                $file = '(standard input)';
+                $f = \*STDIN;
+            } else {
+                $f = new IO::File($file, O_RDONLY) || quit("$file: $!");
+            }
+            
+            if ($as_perl) {
+                process_perl_file($file, $f) || quit();
+            } else {
+                process_file($file, $f) || quit();
+            }
+            $f->close(); # XXX will close stdin, but we don't care
+        }
+    }
+
+    if ($outputfile) {
+        close(STDOUT);
+        quit("$outputfile: rename: $!") if (!rename($tempoutputfile, $outputfile));
+    }
+
+    exit(0);
+}
+
 # XXX want to process some options here -- -o FILE for starters, and probably
 # something to preload options into the namespace in which the code executes.
 
-if (@ARGV == 0) {
-    process_file("(standard input)", \*STDIN);
-} else {
-    foreach my $file (@ARGV) {
-        my $f = new IO::File($file, O_RDONLY);
-        if (!$f) {
-            print STDERR "$file: $!\n";
-            exit(1);
-        } else {
-            process_file($file, $f) || exit(1);
-            $f->close();
-        }
-    }
-}
+package main;
+
+use constant DONOTEDIT => "Do not edit! This file is automatically generated.";
+__mugly__::main();
+
+
