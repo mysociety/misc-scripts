@@ -11,15 +11,18 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.1 2005-11-16 17:12:52 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.2 2005-11-16 17:19:13 chris Exp $';
 
 use strict;
+require 5.8.0;
+
+use FindBin;
+use lib "$FindBin::Bin/../perllib";
 
 use Errno;
-use Fcntl qw(:mode);
+#use Fcntl qw(:mode);
 use File::Find;
 use File::stat;
-use FindBin;
 use IO::File;
 use POSIX;
 
@@ -98,7 +101,7 @@ sub read_perms ($) {
             if ($st) {
                 $perm = $st->mode() & 07777;
             } else {
-                $perm = $default_file_perm;
+                $perm = $default_file_mode;
             }
         }
 
@@ -108,11 +111,14 @@ sub read_perms ($) {
     }
 
     $f->close();
-    die "$indir/$name:$n: $!" if ($f->error());
+    die "$indir/_perm:$n: $!" if ($f->error());
 
     return $h;
 }
 
+# process_directory INDIR OUTDIR SETTINGS
+#
+sub process_directory ($$$);
 sub process_directory ($$$) {
     my ($indir, $outdir, $settings) = @_;
     $indir =~ s#(?<!^)/##;
@@ -154,7 +160,7 @@ sub process_directory ($$$) {
                 print STDERR "$indir/$name: warning: symlink target is absolute\n" if ($target =~ m#^/#);
                 verbose(sprintf("ln -s %s %s\n", $target, "$outdir/$name"));
                 $havefile{$name} = "$name.symlink";
-            } elsif ($name =~ /.\.ugly$/ {
+            } elsif ($name =~ /.\.ugly$/) {
                 # File specifies macro source.
                 $name =~ s/\.mugly$//;
                 die "$indir/$name: already created $name, from $havefile{$name}"
@@ -176,8 +182,9 @@ sub process_directory ($$$) {
                 my $g = new IO::File("$outdir/$name", O_WRONLY | O_CREAT | O_EXCL, $m)
                             || die "$outdir/$name: open: $!";
                 my $buf = '';
+                my $n;
                 do {
-                    my $n = $f->read($buf, 65536);
+                    $n = $f->read($buf, 65536);
                     die "$indir/$name: read: $!" if (!defined($n));
                     $g->print($buf) || die "$outdir/$name: write: $!";
                 } while ($n > 0);
