@@ -1,0 +1,223 @@
+#!/usr/bin/perl -w
+#
+# deploy-configuration:
+# Deploy the configuration of a server, using a tree of configuration files
+# (presumably under revision control) and a file of definitions.
+#
+# We construct a temporary tree of configuration files by applying mugly to
+# files in the input tree.
+#
+# Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
+# Email: chris@mysociety.org; WWW: http://www.mysociety.org/
+#
+
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.1 2005-11-16 17:12:52 chris Exp $';
+
+use strict;
+
+use Errno;
+use Fcntl qw(:mode);
+use File::Find;
+use File::stat;
+use FindBin;
+use IO::File;
+use POSIX;
+
+use mySociety::Util;
+
+my $default_uid = 0;
+my $default_gid = 0;
+my $default_file_mode = 0640;
+my $default_dir_mode = 0750;
+
+my $mugly_bin = "$FindBin::Bin/mugly";
+
+sub verbose (@) {
+    print STDERR @_;
+}
+
+# read_perms DIRECTORY
+# If there is in DIRECTORY a _perm file indicating ownership and permissions
+# for files in that directory, read its contents and return them as a reference
+# to a hash of FILENAME => [UID, GID, MODE]. Dies on error.
+sub read_perms ($) {
+    my $indir = shift;
+    $indir =~ s#(?<!^)/##;
+    my $f = new IO::File("$indir/_perm");
+    if (!$f) {
+        if ($!{ENOENT}) {
+            return { };
+        } else {
+            die "$indir/_perm: $!";
+        }
+    }
+
+    my $h = { };
+    my $n = 0;
+    while (defined(my $line = $f->getline())) {
+        ++$n;
+        chomp($line);
+        # Skip lines which are blank or begin #.
+        next if ($line =~ /^#/ || $line =~ /^\s*$/);
+
+        $line =~ s/^\s+//;
+        $line =~ s/\s+$//;
+
+        my ($name, $owner, $mode) = split(/\s+/, $line);
+
+        my ($uid, $gid, $perm);
+
+        # Ownership.
+        if ($owner =~ /([^:]+):([^:]+)/) {
+            ($uid, $gid) = ($1, $2);
+            if ($uid !~ /^(0|[1-9][0-9]*)$/) {
+                $uid = getpwnam($uid)
+                    || die "$indir/_perm:$n: '$1' is not a valid UID or username";
+            }
+            if ($gid !~ /^(0|[1-9][0-9]*)$/) {
+                $gid = getgrnam($gid)
+                    || die "$indir/_perm:$n: '$2' is not a valid GID or groupname";
+            }
+        } elsif ($owner ne '-') {
+            die "$indir/_perm:$n: '$owner' is not a valid owner string (should be U:G)";
+        }
+
+        # Permissions.
+        if ($mode eq '-') {
+            ;
+        } elsif ($mode =~ /^0?[0-7]+$/) {
+            $perm = oct($mode);
+        } elsif (!defined($perm = mySociety::Util::symbolic_permissions(0, $mode))) {
+            die "$indir/_perm:$n: '$mode' is neither a valid octal nor a symbolic mode";
+        }
+
+        $uid = $default_uid if (!defined($uid));
+        $gid = $default_gid if (!defined($uid));
+        if (!defined($perm)) {
+            my $st = stat("$indir/$name");
+            if ($st) {
+                $perm = $st->mode() & 07777;
+            } else {
+                $perm = $default_file_perm;
+            }
+        }
+
+        verbose(sprintf("%s/%s: chown %d:%d; chmod 0%o\n", $indir, $name, $uid, $gid, $perm));
+
+        $h->{name} = [$uid, $gid, $perm];
+    }
+
+    $f->close();
+    die "$indir/$name:$n: $!" if ($f->error());
+
+    return $h;
+}
+
+sub process_directory ($$$) {
+    my ($indir, $outdir, $settings) = @_;
+    $indir =~ s#(?<!^)/##;
+    $outdir =~ s#(?<!^)/##;
+
+    verbose("processing $indir -> $outdir\n");
+    my $perm = read_perms($indir);
+
+    my %havefile;
+    my @subdirs = ( );
+    opendir(D, $indir) or die "$indir: opendir: $!";
+    while (my $name = <D>) {
+        next if ($name eq '_perm');
+        die "$indir/$name: already created $name, from $havefile{$name}"
+            if (exists($havefile{$name}));
+        my $s = lstat("$indir/$name");
+        my $mode = $s->mode() & 07777;
+        if (S_ISDIR($s->mode())) {
+            # This is a directory. Create it in the output, and add it to the
+            # list of subdirectories into which to recurse.
+            my $m = exists($perm->{$name}) ? $perm->{$name} : $mode;
+            verbose(sprintf("mkdir -m 0%o %s\n", $m, "$outdir/$name"));
+            mkdir("$outdir/$name", $m) or die "$outdir/$name: mkdir: $!";
+            $havefile{$name} = $name;
+            push(@subdirs, $name);
+        } elsif (S_ISREG($s->mode())) {
+            if ($name =~ /.\.symlink$/) {
+                # File specifies a symlink which should be created.
+                my $f = new IO::File("$indir/$name")
+                    or die "$indir/$name: open: $!";
+                my $target = join('', $f->getlines());
+                die "$indir/$name: read: $!" if ($f->error());
+                $f->close();
+                $name =~ s/\.symlink$//;
+                die "$indir/$name: already created $name, from $havefile{$name}"
+                    if (exists($havefile{$name}));
+                $target =~ s#\n$##s;
+                die "$indir/$name: specified symlink target contains illegal characters" if ($target =~ /[\0\n]/);
+                print STDERR "$indir/$name: warning: symlink target is absolute\n" if ($target =~ m#^/#);
+                verbose(sprintf("ln -s %s %s\n", $target, "$outdir/$name"));
+                $havefile{$name} = "$name.symlink";
+            } elsif ($name =~ /.\.ugly$/ {
+                # File specifies macro source.
+                $name =~ s/\.mugly$//;
+                die "$indir/$name: already created $name, from $havefile{$name}"
+                    if (exists($havefile{$name}));
+                system($mugly_bin, '-O', "$outdir/$name", "-p", $settings, "$indir/$name.ugly");
+                if ($? == -1) {
+                    die "$mugly_bin: exec: $!";
+                } elsif ($? & 127) {
+                    die "$mugly_bin ... $indir/$name.ugly: killed by signal " . ($? & 127);
+                } elsif ($? >> 8) {
+                    die "$mugly_bin ... $indir/$name.ugly: exited with nonzero status " . ($? >> 8);
+                }
+                $havefile{$name} = "$name.ugly";
+            } else {
+                verbose(sprintf("cp %s %s\n", "$indir/$name", "$outdir/$name"));
+                my $m = exists($perm->{$name}) ? $perm->{$name} : $mode;
+                my $f = new IO::File("$indir/$name", O_RDONLY)
+                            || die "$indir/$name: open: $!";
+                my $g = new IO::File("$outdir/$name", O_WRONLY | O_CREAT | O_EXCL, $m)
+                            || die "$outdir/$name: open: $!";
+                my $buf = '';
+                do {
+                    my $n = $f->read($buf, 65536);
+                    die "$indir/$name: read: $!" if (!defined($n));
+                    $g->print($buf) || die "$outdir/$name: write: $!";
+                } while ($n > 0);
+                $f->close();
+                $g->close() or die "$outdir/$name: close: $!";
+                $havefile{$name} = $name;
+            }
+        } else {
+            die "$indir/$name: not a regular file or a directory";
+        }
+
+        my ($uid, $gid) = ($default_uid, $default_gid);
+        if (exists($perm->{$name})) {
+            ($uid, $gid) = @{$perm->{$name}};
+            $mode = $perm->{$name}->[2];
+        }
+        chown($uid, $gid, "$outdir/$name")
+            or die "$outdir/$name: chown: $!";
+        chmod($mode, "$outdir/$name")
+            or die "$outdir/$name: chmod: $!";
+    }
+    closedir(D);
+
+    foreach my $dir (@subdirs) {
+        process_directory("$indir/$dir", "$outdir/$dir", $settings);
+    }
+}
+
+die "must be run as root" if (getuid() != 0);
+
+die "two arguments must be template configuration tree and settings file" if (@ARGV != 2);
+my ($tree, $settings) = @ARGV;
+
+die "first argument must be a directory" if (!-d $tree);
+die "second argument must be a file" if (!-f $settings);
+
+my $tempdir = mySociety::Util::tempdir();
+
+verbose("temporary directory is $tempdir\n");
+
+process_directory($tree, $tempdir, $settings);
+
+mySociety::Util::tempdir_cleanup($tempdir);
