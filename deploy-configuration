@@ -20,12 +20,14 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.9 2005-11-18 18:58:01 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.10 2005-11-18 19:57:15 chris Exp $';
 
 package Oops;
 
 use strict;
 @Oops::ISA = qw(Error::Simple);
+
+package main;
 
 use strict;
 require 5.8.0;
@@ -41,7 +43,9 @@ use Fcntl qw(:mode);
 use File::Find;
 use File::Spec;
 use File::stat;
+use Getopt::Long;
 use IO::File;
+use Pod::Usage;
 use POSIX qw(getuid);
 
 use mySociety::Util;
@@ -52,6 +56,8 @@ my $default_file_mode = 0640;
 my $default_dir_mode = 0750;
 
 my $mugly_bin = "$FindBin::Bin/mugly";
+
+my $save_file = "/var/lib/deploy-configuration.tar";
 
 my $be_verbose = 0;
 sub verbose (@) {
@@ -371,6 +377,25 @@ sub file_type_tar ($) {
     }
 }
 
+# file_type_from_tar TYPE
+# Give the tar file TYPE of a file, return a description of its type.
+sub file_type_from_tar ($) {
+    my $t = shift;
+    if ($t == Archive::Tar::Constant::DIR) {
+        return "directory";
+    } elsif ($t == Archive::Tar::Constant::FILE) {
+        return "regular file";
+    } elsif ($t == Archive::Tar::Constant::SYMLINK) {
+        return "symbolic link";
+    } elsif ($t == Archive::Tar::Constant::FIFO) {
+        return "named pipe";
+    } elsif ($t == Archive::Tar::Constant::CHARDEV) {
+        return "character device";
+    } elsif ($t == Archive::Tar::Constant::BLOCKDEV) {
+        return "block device";
+    }
+}
+
 # install_files TAR INDIR [OUTDIR]
 # Install files from INDIR (presumably, the OUTDIR previously passed to
 # process_files) onto the real system to OUTDIR, or, if it is not specified, /.
@@ -444,17 +469,18 @@ sub install_files ($$;$) {
 # Compare the files installed on the machine (under DIR) with those archived in
 # TAR. Discrepancies are reported to H, and the total number of discrepancies
 # returned.
-sub compare_installed_files ($$) {
+sub compare_installed_files ($$$) {
     my ($h, $tar, $dir) = @_;
     my $n = 0;
-    foreach my $f ($tar->list_files([qw(name size uid gid mode linkname)])) {
-        my $st = lstat("$dir/$f->{name}");
+    foreach my $f ($tar->list_files([qw(prefix name type uid gid mode linkname)])) {
+        my $name = "$f->{prefix}/$f->{name}";
+        my $st = lstat("$dir/$name");
         my @what;
         if (!$st) {
             if ($!{ENOENT}) {
                 push(@what, "removed");
             } else {
-                throw Oops("$dir/$f->{name}: lstat: $!");
+                throw Oops("$dir/$name: lstat: $!");
             }
         } else {
             # Metadata.
@@ -465,20 +491,20 @@ sub compare_installed_files ($$) {
             push(@what, sprintf('permissions changed: were %04o; now %04o', S_IMODE($f->{mode}), S_IMODE($st->mode())))
                 if (S_IMODE($f->{mode}) != S_IMODE($st->mode()));
             push(@what, sprintf('file type changed: was %s; now %s', file_type($f->{mode}), file_type($st->mode())))
-                if (S_IFMT($f->{mode}) != S_IFMT($st->mode()));
-            if (S_ISLNK($f->{mode}) && S_ISLNK($st->mode())) {
-                my $target = readlink("$dir/$f->{name}")
-                                || throw Oops("$dir/$f->{name}: readlink: $!");
+                if ($f->{type} != file_type_tar($st->mode()));
+            if ($f->{type} == Archive::Tar::Constant::SYMLINK && $f->{type} == file_type_tar($st->mode())) {
+                my $target = readlink("$dir/$name")
+                                || throw Oops("$dir/$name: readlink: $!");
                 push(@what, sprintf('target of symbolic link changed: was %s; now %s', $f->{linkname}, $target))
                     if ($f->{linkname} ne $target);
-            } elsif (S_ISREG($f->{mode}) && S_ISREG($st->mode())) {
+            } elsif ($f->{type} == Archive::Tar::Constant::FILE && $f->{type} == file_type_tar($st->mode())) {
                 # Compare the two files.
                 my ($tmph, $tmpn) = mySociety::Util::named_tempfile();
-                $tmph->print($tar->get_content($f->{name}))
+                $tmph->print($tar->get_content($name))
                     || throw Oops("$tmpn: write: $!");
                 $tmph->close();
                 my $p = new IO::Pipe() || throw Oops("pipe: $!");
-                $p->reader("diff", "-u", $tmpn, "$dir/$f->{name}");
+                $p->reader("diff", "-u", $tmpn, "$dir/$name");
                 my @diff;
                 while (defined(my $line = $p->getline())) {
                     chomp($line);
@@ -491,42 +517,196 @@ sub compare_installed_files ($$) {
                 } elsif ($? >> 8) {
                     push(@what,
                         'contents of file changed; diff follows:',
-                        '--- as last installed',
-                        '+++ at present',
-                        @diff[2 .. $#diff]);
+                        map { "> $_" } 
+                            '--- as last installed',
+                            '+++ at present',
+                            @diff[2 .. $#diff]);
                 }
             }
         }
 
         if (@what) {
-            $h->print("$f->{name}\n", map { "  $_\n" } @what);
+            ++$n;
+            my $path = File::Spec->canonpath("$dir/$name");
+            $h->print("$path\n", map { "  $_\n" } @what);
         }
     }
+
+    return $n;
 }
 
 my $retval = 0;
 my $tempdir;
 try {
-    throw Oops("can't find executable mugly (tried $mugly_bin)") unless (-x $mugly_bin);
-    throw Oops("must be run as root") if (getuid() != 0);
+    my $help;
+    my $only_check_existing = 0;
+    my $no_check_existing = 0;
+    my $only_check_new = 0;
+    if (!GetOptions(
+            'help' =>               \$help,
+            'verbose' =>            \$be_verbose,
+            'check-existing' =>     \$only_check_existing,
+            'no-check-existing' =>  \$no_check_existing,
+            'check-new' =>          \$only_check_new,
+            'save-file=s' =>        \$save_file,
+            'mugly-path=s' =>       \$mugly_bin
+        )) {
+        throw Oops("bad options; try --help for help");
+    }
 
-    throw Oops("two arguments must be template configuration tree and settings file") if (@ARGV != 2);
-    my ($tree, $settings) = @ARGV;
+    if ($help) {
+        pod2usage(-exitval => 0, -verbose => 2);
+        exit(0);
+    }
 
-    throw Oops("first argument must be a directory") if (!-d $tree);
-    throw Oops("second argument must be a file") if (!-f $settings);
+    throw Oops("--no-check-existing does not make sense with --check-existing")
+        if ($only_check_existing && $no_check_existing);
 
-    $tempdir = mySociety::Util::tempdir();
+    throw Oops("--check-new does not make sense with --check-existing")
+        if ($only_check_existing && $only_check_new);
 
-    verbose("temporary directory is $tempdir\n");
+    throw Oops("can't find executable mugly (tried $mugly_bin)")
+        unless ($only_check_existing || -x $mugly_bin);
+    throw Oops("must be run as root")
+        if (getuid() != 0);
 
-    process_directory($tree, $tempdir, $settings);
-    my $tar = new Archive::Tar();
-    install_files($tar, $tempdir);
-    $tar->write("test.tar") or throw Oops("test.tar: $!");
+    my ($tree, $settings);
+
+    if (!$only_check_existing) {
+        throw Oops("two arguments must be template configuration tree and settings file")
+            if (@ARGV != 2);
+
+        my ($tree, $settings) = @ARGV;
+
+        throw Oops("first argument must be a directory")
+            if (!-d $tree);
+        # Not -f in case user wants to specify /dev/null
+        throw Oops("can't read settings file")
+            if (!-e $settings || !-r $settings);
+    }
+
+    # Compare existing files to those in a named archive.
+    if (!$no_check_existing) {
+        verbose("reading previous configuration from $save_file\n");
+        my $tar = new Archive::Tar();
+        my $h = new IO::File($save_file, O_RDONLY)
+                    || throw Oops("$save_file: $!");
+        # Archive::Tar doesn't have what you'd really call error *handling*, so
+        # just handle any exception that gets thrown.
+        try {
+            $tar->read($h);
+        } catch Error with {
+            throw Oops("$save_file: not a valid tar file");
+        } finally {
+            $h->close();
+        };
+        $retval = compare_installed_files(\*STDOUT, $tar, '/');
+
+        throw Oops("$retval files differ between installed and new")
+            if (!$only_check_existing);
+    }
+
+    # Build the tree of new configuration files.
+    if ($retval == 0 && !$only_check_existing) {
+        verbose("building tree of new configuration files...\n");
+        $tempdir = mySociety::Util::tempdir();
+        verbose("temporary directory is $tempdir\n");
+        process_directory($tree, $tempdir, $settings);
+
+        if (!$only_check_new) {
+            my $tar = new Archive::Tar();
+            verbose("installing new configuration files...\n");
+            install_files($tar, $tempdir);
+
+            verbose("saving current configuration in $save_file\n");
+            my $f;
+            my $t;
+            while (1) {
+                $t = sprintf('%s.%08x', $save_file, int(rand(0xffffffff)));
+                $f = new IO::File($t, O_WRONLY | O_CREAT | O_EXCL, 0600);
+                if ($f) {
+                    last;
+                } elsif (!$!{EEXIST}) {
+                    throw Oops("$t: open: $!");
+                }
+            }
+            try {
+                $tar->write($f);
+            } catch Error with {
+                unlink($t);
+                throw Oops("$t: write: $!");
+            };
+            $f->close() || throw Oops("$t: close: $!");
+            if (!rename($t, $save_file)) {
+                unlink($t);
+                throw Oops("$t: rename: $!");
+            }
+        }
+    }
 } catch Oops with {
     my $E = shift;
     print STDERR "deploy-configuration: ", $E->text(), "\n";
+    $retval = 1;
 } finally {
     mySociety::Util::tempdir_cleanup($tempdir) if ($tempdir);
 };
+
+exit($retval);
+
+__END__
+
+=head1 NAME
+
+deploy-configuration
+
+=head1 SYNOPSIS
+
+deploy-configuration --help | [OPTIONS] [TREE SETTINGS]
+
+=head1 DESCRIPTION
+
+Check and deploy machine configurations from a TREE of files under version
+control, applying further configuration information from a SETTINGS file.
+
+=head1 OPTIONS
+
+=over 4
+
+=item --help
+
+Display this help message.
+
+=item --verbose
+
+Print lots of verbose debugging information on standard error.
+
+=item --check-existing
+
+Only check that the existing configuration files match those last installed by
+this program; do not generate or install any new configuration files. If this
+argument is specified, you need not specify TREE or SETTINGS.
+
+=item --no-check-existing
+
+Do not check that the existing configuration files match those last installed
+by this program. Use with caution.
+
+=item --check-new
+
+Only check that the new configuration files can be generated from TREE and
+SETTINGS; do not check the existing files or install the new ones.
+
+=item --save-file TARFILE
+
+Save the newly-installed configuration files in TARFILE, rather than the
+default location (/var/lib/deploy-configuration.tar); also read the previous
+files from that location.
+
+=item --mugly-path PATH
+
+Set the PATH to the mugly macro-processor (or a compatible program with the
+same invocation semantics).
+
+=back
+
+=cut
