@@ -11,7 +11,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.6 2005-11-18 13:04:32 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.7 2005-11-18 16:16:34 chris Exp $';
 
 use strict;
 require 5.8.0;
@@ -19,8 +19,8 @@ require 5.8.0;
 use FindBin;
 use lib "$FindBin::Bin/../perllib";
 
+use Archive::Tar;
 use Errno;
-#use Fcntl qw(:mode);
 use File::Find;
 use File::stat;
 use IO::File;
@@ -39,11 +39,13 @@ sub verbose (@) {
     print STDERR @_;
 }
 
-# install_file SOURCE DESTINATION KEY VALUE ...
+# install_file SOURCE DESTINATION DATA KEY VALUE ...
 # Install the file at SOURCE to DESTINATION. Optionally set the uid, gid and
-# mode of the installed file using appropriate KEYs and VALUEs.
+# mode of the installed file using appropriate KEYs and VALUEs. If DATA is
+# defined, it should be a reference to a scalar into which the contents of the
+# file will be stored.
 sub install_file ($$%) {
-    my ($source, $dest, %options) = @_;
+    my ($source, $dest, $data, %options) = @_;
 
     my $st = stat($source) || die "$source: stat: $!";
     
@@ -72,6 +74,7 @@ sub install_file ($$%) {
             unlink($tempname);
             die "$source: read: $!";
         }
+        $$data .= $buf if ($data);
         if (!$g->print($buf)) {
             unlink($tempname);
             die "$dest: write: $!";
@@ -130,6 +133,8 @@ sub install_symlink ($$%) {
         unlink($tempname);
         die "$tempname: rename: $!";
     }
+
+    return $target;
 }
 
 # read_perms DIRECTORY
@@ -308,7 +313,7 @@ sub process_directory ($$$) {
             chmod($mode, "$outdir/$name")
                 or die "$outdir/$name: chmod: $!";
         }
-    }
+    } 
     closedir(D);
 
     foreach my $dir (@subdirs) {
@@ -316,11 +321,13 @@ sub process_directory ($$$) {
     }
 }
 
-# install_files INDIR [OUTDIR]
+# install_files TAR INDIR [OUTDIR]
 # Install files from INDIR (presumably, the OUTDIR previously passed to
 # process_files) onto the real system to OUTDIR, or, if it is not specified, /.
-sub install_files ($) {
-    my ($indir, $outdir) = @_;
+# Record the files saved in TAR so that they can be compared against those on
+# the real system later.
+sub install_files ($$;$) {
+    my ($tar, $indir, $outdir) = @_;
     $indir =~ s#(?<!^)/$##;
     $outdir ||= '/';
 
@@ -330,23 +337,114 @@ sub install_files ($) {
         my $outname = $outdir eq '/' ? "$outdir$name" : "$outdir/$name";
         my $s = lstat("$indir/$name") || die "$dir/$name: lstat: $!";
 
+        my %taropts = (
+                uid => $st->uid(),
+                gid => $st->gid(),
+                mode => $st->mode(),
+            );
         if (S_ISDIR("$indir/$name")) {
             mkdir($outname, $st->mode() & 07777)
                 || die "$outname: mkdir: $!";
             chown($st->uid(), $st->gid(), $outname)
                 || die "$outname: chown: $!";
             push(@subdirs, $name);
+            $tar->add_data(".$outname", "", \%taropts);
         } elsif (S_ISREG("$indir/$name")) {
-            install_file("$indir/$name", $outdir);
+            my $filedata;
+            install_file("$indir/$name", $outdir, \$filedata);
+            $tar->add_data(".$outname", $filedata, \%taropts);
         } elsif (S_ISLNK("$indir/$name")) {
-            install_symlink("$indir/$name", $outdir);
+            my $target = install_symlink("$indir/$name", $outdir);
+            $tar->add_data(".$outname", "", { %taropts, linkname => $target });
         }
     }
     closedir(D);
     
     foreach my $dir (@subdirs) {
         my $outname = $outdir eq '/' ? "$outdir$dir" : "$outdir/$dir";
-        install_files("$indir/$dir", $outname);
+        install_files($tar, "$indir/$dir", $outname);
+    }
+}
+
+# file_type MODE
+# Return a description of the type of the file with the given MODE bits.
+sub file_type ($) {
+    my $m = shift;
+    if (S_ISDIR($m)) {
+        return "directory";
+    } elsif (S_ISREG($m)) {
+        return "regular file";
+    } elsif (S_ISLNK($m)) {
+        return "symbolic link";
+    } elsif (S_ISFIFO($m)) {
+        return "named pipe";
+    } elsif (S_ISCHR($m)) {
+        return "character device";
+    } elsif (S_ISBLK($m)) {
+        return "block device";
+    }
+}
+
+# compare_installed_files H TAR DIR
+# Compare the files installed on the machine (under DIR) with those archived in
+# TAR. Discrepancies are reported to H, and the total number of discrepancies
+# returned.
+sub compare_installed_files ($$) {
+    my ($h, $tar, $dir) = @_;
+    my $n = 0;
+    foreach my $f ($tar->list_files([qw(name size uid gid mode linkname)]) {
+        my $st = lstat("$dir/$f->{name}");
+        my @what;
+        if (!$st) {
+            if ($!{ENOENT}) {
+                push(@what, "removed");
+            } else {
+                die "$dir/$f->{name}: lstat: $!";
+            }
+        } else {
+            # Metadata.
+            push(@what, sprintf('UID changed: was %d; now %d', $f->{uid}, $st->uid()))
+                if ($st->uid() != $f->{uid});
+            push(@what, sprintf('GID changed: was %d; now %d', $f->{gid}, $st->gid()))
+                if ($st->uid() != $f->{gid});
+            push(@what, sprintf('permissions changed: were %04o; now %04o', S_IMODE($f->{mode}), S_IMODE($st->mode())))
+                if (S_IMODE($f->{mode}) != S_IMODE($st->mode()));
+            push(@what, sprintf('file type changed: was %s; now %s', file_type($f->{mode}), file_type($st->mode())))
+                if (S_IFMT($f->{mode}) != S_IFMT($st->mode());
+            if (S_ISLNK($f->{mode}) && S_ISLNK($st->mode())) {
+                my $target = readlink("$dir/$f->{name}")
+                                || die "$dir/$f->{name}: readlink: $!";
+                push(@what, sprintf('target of symbolic link changed: was %s; now %s', $f->{linkname}, $target))
+                    if ($f->{linkname} ne $target);
+            } elsif (S_ISREG($f->{mode}) && S_ISREG($st->mode())) {
+                # Compare the two files.
+                my ($tmph, $tmpn) = mySociety::Util::named_tempfile();
+                $tmph->print($tar->get_content($f->{name})) || die "$tmpn: write: $!";
+                $tmph->close();
+                my $p = new IO::Pipe() || die "pipe: $!";
+                $p->reader("diff", "-u", $tmpn, "$dir/$f->{name}");
+                my @diff;
+                while (defined(my $line = $p->getline())) {
+                    chomp($line);
+                    push(@diff, $line);
+                }
+                die "read from diff: $!" if ($p->error());
+                wait();
+                if ($? & 127) {
+                    die "diff: died with signal " . ($? & 127);
+                } elsif ($? >> 8) {
+                    push(@what,
+                        'contents of file changed; diff follows:',
+                        '--- as last installed',
+                        '+++ at present',
+                        @diff[2:$#diff]);
+                }
+            }
+        }
+
+        if (@what) {
+            $h->print("$f->{name}\n", map { "  $_\n" } @what);
+        }
     }
 }
 
