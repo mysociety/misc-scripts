@@ -11,7 +11,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.5 2005-11-16 17:48:48 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.6 2005-11-18 13:04:32 chris Exp $';
 
 use strict;
 require 5.8.0;
@@ -37,6 +37,99 @@ my $mugly_bin = "$FindBin::Bin/mugly";
 
 sub verbose (@) {
     print STDERR @_;
+}
+
+# install_file SOURCE DESTINATION KEY VALUE ...
+# Install the file at SOURCE to DESTINATION. Optionally set the uid, gid and
+# mode of the installed file using appropriate KEYs and VALUEs.
+sub install_file ($$%) {
+    my ($source, $dest, %options) = @_;
+
+    my $st = stat($source) || die "$source: stat: $!";
+    
+    $options{uid} ||= $st->uid();
+    $options{gid} ||= $st->gid();
+    $options{mode} ||= $st->mode() & 07777;
+
+    my $f = new IO::File($source, O_RDONLY)
+                || die "$source: open: $!";
+    my $g;
+    my $tmpname;
+    while (1) {
+        $tempname = sprintf('%s.%08x', $dest, int(rand(0xffffffff)))
+        $g = new IO::File($tempname, O_WRONLY | O_CREAT | O_EXCL, $options->{mode});
+        if ($g) {
+            last;
+        } elsif (!$!{EEXIST}) {
+            die "$tempname: open: $!";
+        }
+    }
+    my $buf = '';
+    my $n;
+    do {
+        $n = $f->read($buf, 65536);
+        if (!defined($n)) {
+            unlink($tempname);
+            die "$source: read: $!";
+        }
+        if (!$g->print($buf)) {
+            unlink($tempname);
+            die "$dest: write: $!";
+        }
+    } while ($n > 0);
+    $f->close();
+    if (!$g->close()) {
+        unlink($tempname);
+        die "$tempname: close: $!";
+    }
+    if (!chown($options->{uid}, $options->{gid}, $tempname)) {
+        unlink($tempname);
+        die "$tempname: chown: $!";
+    }
+    if (!rename($tempname, $dest)) {
+        unlink($tempname);
+        die "$tempname: rename: $!";
+    }
+}
+
+# install_symlink SOURCE DESTINATION KEY VALUE
+# Install the symlink at SOURCE to DESTINATION. Optionally set the uid and gid
+# of the symlink using appropriate KEYs and VALUEs.
+sub install_symlink ($$%) {
+    my ($source, $dest, %options) = @_;
+
+    my $st = lstat($source) || die "$source: lstat: $!";
+    my $target = readlink($source) || die "$source: readlink: $!";
+
+    $options{uid} ||= $st->uid();
+    $options{gid} ||= $st->gid();
+
+    my $tempname;
+    while (1) {
+        $tempname = sprintf('%s.%08x', $dest, int(rand(0xffffffff)));
+        if (symlink($target, $tempname)) {
+            last;
+        } elsif (!$!{EEXIST}) {
+            die "$tempname: symlink: $!";
+        }
+    }
+
+    system('chown', '-h', "$options{uid}:$options{gid}", $tempname);
+    if ($? == -1) {
+        unlink($tempname);
+        die "chown -h: exec: $!";
+    } elsif ($? & 127) {
+        unlink($tempname);
+        die "chown -h $uid:$gid $tempname: killed by signal " . ($? & 127);
+    } elsif ($? >> 8) {
+        unlink($tempname);
+        die "chown -h $uid:$gid $tempname: exited with nonzero status " . ($? >> 8);
+    }
+
+    if (!rename($tempname, $dest)) {
+        unlink($tempname);
+        die "$tempname: rename: $!";
+    }
 }
 
 # read_perms DIRECTORY
@@ -117,7 +210,10 @@ sub read_perms ($) {
 }
 
 # process_directory INDIR OUTDIR SETTINGS
-#
+# Process the contents of INDIR (configuration file templates under version
+# control), writing it into OUTDIR, and using the given SETTINGS file (which is
+# passed by the -p option to mugly). Operates recursively, processing files
+# before subdirectories. Dies on error.
 sub process_directory ($$$);
 sub process_directory ($$$) {
     my ($indir, $outdir, $settings) = @_;
@@ -183,20 +279,8 @@ sub process_directory ($$$) {
                 $havefile{$name} = "$name.ugly";
             } else {
                 verbose(sprintf("cp %s %s\n", "$indir/$name", "$outdir/$name"));
-                my $m = exists($perm->{$name}) ? $perm->{$name} : $mode;
-                my $f = new IO::File("$indir/$name", O_RDONLY)
-                            || die "$indir/$name: open: $!";
-                my $g = new IO::File("$outdir/$name", O_WRONLY | O_CREAT | O_EXCL, $m)
-                            || die "$outdir/$name: open: $!";
-                my $buf = '';
-                my $n;
-                do {
-                    $n = $f->read($buf, 65536);
-                    die "$indir/$name: read: $!" if (!defined($n));
-                    $g->print($buf) || die "$outdir/$name: write: $!";
-                } while ($n > 0);
-                $f->close();
-                $g->close() or die "$outdir/$name: close: $!";
+                install_file("$indir/$name", "$outdir/$name",
+                              mode => exists($perm->{$name}) ? $perm->{$name} : $mode);
                 $havefile{$name} = $name;
             }
         } else {
@@ -210,7 +294,7 @@ sub process_directory ($$$) {
         }
         if ($is_symlink) {
             # perl lacks lchown
-            system("chown", "-h", "$uid:$gid", "$outdir/$name");
+            system('chown', '-h', "$uid:$gid", "$outdir/$name");
             if ($? == -1) {
                 die "chown -h: exec: $!";
             } elsif ($? & 127) {
@@ -229,6 +313,40 @@ sub process_directory ($$$) {
 
     foreach my $dir (@subdirs) {
         process_directory("$indir/$dir", "$outdir/$dir", $settings);
+    }
+}
+
+# install_files INDIR [OUTDIR]
+# Install files from INDIR (presumably, the OUTDIR previously passed to
+# process_files) onto the real system to OUTDIR, or, if it is not specified, /.
+sub install_files ($) {
+    my ($indir, $outdir) = @_;
+    $indir =~ s#(?<!^)/$##;
+    $outdir ||= '/';
+
+    my @subdirs = ( );
+    opendir(D, $indir) or die "$indir: opendir: $!";
+    while (defined(my $name = readdir(D))) {
+        my $outname = $outdir eq '/' ? "$outdir$name" : "$outdir/$name";
+        my $s = lstat("$indir/$name") || die "$dir/$name: lstat: $!";
+
+        if (S_ISDIR("$indir/$name")) {
+            mkdir($outname, $st->mode() & 07777)
+                || die "$outname: mkdir: $!";
+            chown($st->uid(), $st->gid(), $outname)
+                || die "$outname: chown: $!";
+            push(@subdirs, $name);
+        } elsif (S_ISREG("$indir/$name")) {
+            install_file("$indir/$name", $outdir);
+        } elsif (S_ISLNK("$indir/$name")) {
+            install_symlink("$indir/$name", $outdir);
+        }
+    }
+    closedir(D);
+    
+    foreach my $dir (@subdirs) {
+        my $outname = $outdir eq '/' ? "$outdir$dir" : "$outdir/$dir";
+        install_files("$indir/$dir", $outname);
     }
 }
 
