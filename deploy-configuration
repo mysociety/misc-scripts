@@ -20,7 +20,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.11 2005-11-18 20:01:27 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.12 2005-11-18 20:10:52 chris Exp $';
 
 package Oops;
 
@@ -511,6 +511,8 @@ sub compare_installed_files ($$$) {
                     push(@diff, $line);
                 }
                 throw Oops("read from diff: $!") if ($p->error());
+                $p->close();
+                unlink($tmpn);
                 wait();
                 if ($? & 127) {
                     throw Oops("diff: died with signal " . ($? & 127));
