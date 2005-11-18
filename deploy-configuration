@@ -20,7 +20,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.10 2005-11-18 19:57:15 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.11 2005-11-18 20:01:27 chris Exp $';
 
 package Oops;
 
@@ -576,7 +576,7 @@ try {
         throw Oops("two arguments must be template configuration tree and settings file")
             if (@ARGV != 2);
 
-        my ($tree, $settings) = @ARGV;
+        ($tree, $settings) = @ARGV;
 
         throw Oops("first argument must be a directory")
             if (!-d $tree);
@@ -601,13 +601,15 @@ try {
             $h->close();
         };
         $retval = compare_installed_files(\*STDOUT, $tar, '/');
+        verbose("differences in $retval files");
 
         throw Oops("$retval files differ between installed and new")
-            if (!$only_check_existing);
+            if ($retval && !$only_check_existing);
     }
 
     # Build the tree of new configuration files.
     if ($retval == 0 && !$only_check_existing) {
+        verbose("installing files from $tree with settings from $settings\n");
         verbose("building tree of new configuration files...\n");
         $tempdir = mySociety::Util::tempdir();
         verbose("temporary directory is $tempdir\n");
@@ -646,7 +648,7 @@ try {
 } catch Oops with {
     my $E = shift;
     print STDERR "deploy-configuration: ", $E->text(), "\n";
-    $retval = 1;
+    $retval ||= 1;
 } finally {
     mySociety::Util::tempdir_cleanup($tempdir) if ($tempdir);
 };
