@@ -20,7 +20,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.12 2005-11-18 20:10:52 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.13 2005-11-19 01:27:13 chris Exp $';
 
 package Oops;
 
@@ -500,30 +500,32 @@ sub compare_installed_files ($$$) {
             } elsif ($f->{type} == Archive::Tar::Constant::FILE && $f->{type} == file_type_tar($st->mode())) {
                 # Compare the two files.
                 my ($tmph, $tmpn) = mySociety::Util::named_tempfile();
-                $tmph->print($tar->get_content($name))
-                    || throw Oops("$tmpn: write: $!");
-                $tmph->close();
-                my $p = new IO::Pipe() || throw Oops("pipe: $!");
-                $p->reader("diff", "-u", $tmpn, "$dir/$name");
-                my @diff;
-                while (defined(my $line = $p->getline())) {
-                    chomp($line);
-                    push(@diff, $line);
-                }
-                throw Oops("read from diff: $!") if ($p->error());
-                $p->close();
-                unlink($tmpn);
-                wait();
-                if ($? & 127) {
-                    throw Oops("diff: died with signal " . ($? & 127));
-                } elsif ($? >> 8) {
-                    push(@what,
-                        'contents of file changed; diff follows:',
-                        map { "> $_" } 
-                            '--- as last installed',
-                            '+++ at present',
-                            @diff[2 .. $#diff]);
-                }
+                try {
+                    $tmph->print($tar->get_content($name))
+                        || throw Oops("$tmpn: write: $!");
+                    $tmph->close();
+                    my $p = new IO::Pipe() || throw Oops("pipe: $!");
+                    $p->reader("diff", "-au", $tmpn, "$dir/$name");
+                    my @diff;
+                    while (defined(my $line = $p->getline())) {
+                        chomp($line);
+                        push(@diff, $line);
+                    }
+                    throw Oops("read from diff: $!") if ($p->error());
+                    $p->close(); # calls wait
+                    if ($? & 127) {
+                        throw Oops("diff: died with signal " . ($? & 127));
+                    } elsif ($? >> 8) {
+                        push(@what,
+                            'contents of file changed; diff follows:',
+                            map { "> $_" } 
+                                '--- as last installed',
+                                '+++ at present',
+                                @diff[2 .. $#diff]);
+                    }
+                } finally {
+                    unlink($tmpn);
+                };
             }
         }
 
@@ -588,7 +590,7 @@ try {
     }
 
     # Compare existing files to those in a named archive.
-    if (!$no_check_existing) {
+    if (!$no_check_existing && !$only_check_new) {
         verbose("reading previous configuration from $save_file\n");
         my $tar = new Archive::Tar();
         my $h = new IO::File($save_file, O_RDONLY)
@@ -603,7 +605,7 @@ try {
             $h->close();
         };
         $retval = compare_installed_files(\*STDOUT, $tar, '/');
-        verbose("differences in $retval files");
+        verbose("differences in $retval files\n");
 
         throw Oops("$retval files differ between installed and new")
             if ($retval && !$only_check_existing);
