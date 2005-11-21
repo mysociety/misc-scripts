@@ -20,7 +20,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.13 2005-11-19 01:27:13 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.14 2005-11-21 11:09:13 chris Exp $';
 
 package Oops;
 
@@ -673,6 +673,39 @@ deploy-configuration --help | [OPTIONS] [TREE SETTINGS]
 
 Check and deploy machine configurations from a TREE of files under version
 control, applying further configuration information from a SETTINGS file.
+
+Certain files within TREE are treated specially by this program. These are:
+
+=over 4
+
+=item *.ugly
+
+These files are run through with the mugly macro processor to produce an
+output file without the ".ugly" suffix. mugly is invoked with "-p SETTINGS"
+preceding the named file, so that variable assignments etc. made in that file
+are available.
+
+=item *.symlink
+
+The contents of the file, which should be a single line reading "To: TARGET",
+are read, and a correspondingly named symbolic link to the given TARGET are
+created.
+
+=item _perm
+
+The contents of _perm are used to set the permissions and ownership of other
+files in the same directory as the _perm file. Each line in _perm should be
+blank, or start with a "#", or give the name, ownership and permissions of a
+single file. Ownership is specified as USER:GROUP, where each part may be
+either a UID/GID or a named user or group. Permissions may be specified as an
+octal bitmask, or as a chmod(1)-style symbolic mode. Permissions in any _perm
+file override those on corresponding files in TREE.
+
+=back
+
+deploy-configuration copies and processes files from TREE into a temporary
+directory, and then installs files from that directory into the root
+directory.
 
 =head1 OPTIONS
 
