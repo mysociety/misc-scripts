@@ -2,21 +2,8 @@
 # firewall:
 # Template iptables firewall script.
 #
-# On the Debian machines, edit the below as appropriate, then run it and save
-# the results by typing,
-#   /etc/init.d/iptables save active
-# Having done that, make sure that the iptables scripts are enabled, by typing
-#   dpkg-reconfigure iptables
-# and enabling the rcS.d script.
+# $Id: firewall,v 1.2 2005-12-01 12:07:59 chris Exp $
 #
-# The default configuration of this script is sensible for cyclops and the UML
-# hosts.
-#
-# $Id: firewall,v 1.1 2005-12-01 12:02:58 chris Exp $
-#
-
-echo "EDIT THIS SCRIPT BEFORE RUNNING IT!" 1>&2
-exit 1
 
 # Services we allow
 tcp_allowed_services="ssh smtp http"
@@ -27,7 +14,7 @@ udp_allowed_services="snmp"
 disallow=REJECT
 
 # Interface and address to which we apply the rules.
-public_interface=br0
+public_interface=eth0
 
 # Get into a known state by flushing all the chains.
 iptables -F INPUT
@@ -56,9 +43,6 @@ done
 awk '/^nameserver / { print $2 }' /etc/resolv.conf | while read host ; do
     iptables -A INPUT -p udp -i $public_interface --source-port domain --source $host -j ACCEPT
 done
-
-# And SNMP on the local network
-iptables -A INPUT -p udp -i $public_interface --source 212.69.37.0/26 --source-port snmp -j ACCEPT
 
 iptables -A INPUT -p udp -i $public_interface -j $disallow
 
