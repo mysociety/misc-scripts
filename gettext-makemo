@@ -6,15 +6,22 @@
 # Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: gettext-makemo,v 1.2 2005-11-28 23:28:21 matthew Exp $
+# $Id: gettext-makemo,v 1.3 2005-12-01 13:36:54 francis Exp $
+
+if [ ! -d locale ]
+then
+    echo "Run in root mysociety directory with locale directory just below"!
+    exit
+fi
 
 for X in locale/*.*
 do
     if [ -d $X ]
     then
         cd $X/LC_MESSAGES
-        msgfmt -o PledgeBank.mo PledgeBank.po
-        cd -
+        echo -n "$X: "
+        msgfmt -v -o PledgeBank.mo PledgeBank.po
+        cd ../../../
     fi
 done
 
