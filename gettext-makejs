@@ -16,8 +16,11 @@ for (<locale/*.*/LC_MESSAGES/PledgeBank.po>) {
     open(FP, $_) or die $!;
     my $out = '';
     while (<FP>) {
-        next unless /^#:.*?pb.js/;
-        my $next = <FP>;
+        next unless /^#:.*?pb\.js/;
+        my $next;
+        do {
+            $next = <FP>;
+        } while $next =~ /^#:.*?pb\.js/;
         my $fuzzy = 0;
         $fuzzy = 1 if $next =~ /fuzzy/;
         $next = <FP> if $next =~ /^#,/;
