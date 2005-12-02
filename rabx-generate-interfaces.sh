@@ -1,11 +1,12 @@
 #!/bin/bash
 
+# rabx-generate-interfaces:
 # Update all PHP and Perl interfaces to RABX.
 
 # Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: rabx-all.sh,v 1.1 2005-11-25 16:27:12 francis Exp $
+# $Id: rabx-generate-interfaces.sh,v 1.1 2005-12-02 18:36:30 francis Exp $
 
 echo "EvEl..."
 ./rabxtopl.pl ../services/EvEl/perllib/EvEl.pm "" > ../perllib/mySociety/EvEl.pm
