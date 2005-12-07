@@ -28,7 +28,7 @@
 # Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: mugly,v 1.5 2005-11-21 11:32:18 chris Exp $
+# $Id: mugly,v 1.6 2005-12-07 17:06:41 chris Exp $
 #
 
 use strict;
@@ -111,6 +111,9 @@ sub process_file ($$) {
 
 again:
         if ($state == TEXT) {
+# XXX make these call a __mugly__print__ function which tests for definedness
+# of its argument -- IO::Handle::print reports an error as from within
+# IO::Handle, which is useless.
             if ($line =~ /(.*?)!!\(\*=(.*)/s) {
                 push(@data, $1);
                 $code .= "STDOUT->print(\$__mugly_data__[$#data]); STDOUT->print(";
