@@ -10,7 +10,7 @@
 # Email: chris@ex-parrot.com; WWW: http://www.ex-parrot.com/~chris/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: usersync,v 1.1 2005-12-09 19:21:34 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: usersync,v 1.2 2005-12-09 19:24:21 francis Exp $';
 my $VERSION = "0.1";
 
 use strict;
@@ -141,7 +141,8 @@ usersync: synchronise user accounts and passwords between hosts
 Synopsis: usersync [OPTIONS] HOST
 
 Synchronise the local password, shadow password and group files between this
-machine and HOST.
+machine and HOST. Assumes Linux password file format (do NOT user with
+FreeBSD machines).
 
 Options:
   --help        Display this message
