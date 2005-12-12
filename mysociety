@@ -14,7 +14,7 @@ END
 
 if [ "$1" = "config" ]
 then
-	[ "$1" != "" ] && show_help
+	[ "$2" != "" ] && show_help
 	HOST=`hostname`
 	/data/mysociety/bin/deploy-configuration /data/servers/$HOST /data/servers/$HOST.pl
 else

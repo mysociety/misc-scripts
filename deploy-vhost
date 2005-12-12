@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.1 2005-12-09 19:10:11 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.2 2005-12-12 23:28:10 maint Exp $';
 
 package main;
 
@@ -16,11 +16,15 @@ require 5.8.0;
 
 use FindBin;
 use lib "$FindBin::Bin/../perllib";
+my $mysociety_bin = $FindBin::Bin;
+my $servers_dir = "$FindBin::Bin/../../servers";
+my $mysociety_dir = "$FindBin::Bin/../../mysociety";
 
 use POSIX qw(getuid);
 use Data::Dumper;
 
 use mySociety::Util;
+use mySociety::Config;
 
 #####################################################################
 # General functions
@@ -40,12 +44,16 @@ sub make_symlink {
     }
 }
 
+sub shell {
+	system(@_) == 0 || die "system call failed: " . join(" ", @_);
+}
+
 #####################################################################
 # Main code
 
 # Read in configuration file
 our ($vhosts, $sites);
-require "$FindBin::Bin/../../servers/vhosts.pl";
+require "$servers_dir/vhosts.pl";
 
 # Check command line parameters, look up in config file
 die "Specify virtual host name as only parameter" if scalar(@ARGV) != 1;
@@ -62,10 +70,11 @@ my $vhost_dir = "/data/vhost/$vhost";
 my $conf;
 foreach my $key ( keys %$site_conf ) { $conf->{$key} = $site_conf->{$key}; }
 foreach my $key ( keys %$vhost_conf ) { $conf->{$key} = $vhost_conf->{$key}; }
-print Dumper($conf);
 
 # Look up some values
 my ($user_login, $user_pass, $user_uid, $user_gid) = getpwnam($conf->{'user'});
+die "Unknown user '".$conf->{'user'}."'" if !$user_uid;
+die "Unknown group for user '".$conf->{'user'}."'" if !$user_gid;
 
 # Create directories and symlink to docs
 make_dir("/data");
@@ -75,16 +84,58 @@ chown($user_uid, $user_gid, "$vhost_dir");
 make_dir("$vhost_dir/logs");
 chown($user_uid, $user_gid, "$vhost_dir/logs");
 make_symlink("mysociety/".$conf->{'web_dir'}, "$vhost_dir/docs");
-system("chown", "$user_uid:$user_gid", "$vhost_dir/docs"); # perl's chown doesn't do symlinks
+shell("chown", "-h", "$user_uid:$user_gid", "$vhost_dir/docs"); # perl's chown doesn't do symlinks
 
-# Create checkout
-chdir($vhost_dir);
-my $cvsroot = $conf->{'cvs_user'} . "\@cvs.mysociety.org:/user/local/cvs";
-foreach my $cvs_dir (@{$conf->{'cvs_dirs'}}) {
-    print $cvs_dir . "\n";
-    system("su", $conf->{'user'}, "cvs -Q -d \"$cvsroot\" co mysociety/$cvs_dir");
+# Check all entries in conf files, and see which contains postgresql conf for each database
+my $psql_conf_dir;
+foreach my $conf_dir (@{$conf->{'conf_dirs'}}) {
+	chdir $mysociety_dir;
+	shell("cvs", "-Q", "update", "$conf_dir/general-example");
+	chdir $mysociety_bin;
+	shell("$mysociety_bin/compareconfig.pl", "$vhost_dir/mysociety/$conf_dir/general", "$mysociety_dir/$conf_dir/general-example");
+	# Look for which has database in
+	mySociety::Config::set_file($vhost_dir.'/mysociety/'.$conf_dir.'/general');	
+	foreach my $psql_conf_prefix (keys %{$conf->{'psql_schema'}}) {
+		if (mySociety::Config::get($psql_conf_prefix.'_DB_NAME', undef)) {
+			die "database $psql_conf_prefix configured in two conf files" if $psql_conf_dir->{$psql_conf_prefix};
+			$psql_conf_dir->{$psql_conf_prefix} = $conf_dir;
+		}
+	}
 }
 
+# Check pgsql databases are up to date
+foreach my $psql_conf_prefix (keys %{$conf->{'psql_schema'}}) {
+	my $psql_schema = $conf->{'psql_schema'}->{$psql_conf_prefix};
+	die "Database $psql_conf_prefix not configured in any of the conf files" if !$psql_conf_dir->{$psql_conf_prefix};
 
+	mySociety::Config::set_file($vhost_dir.'/mysociety/'.$psql_conf_dir->{$psql_conf_prefix}.'/general');
+	my $psql_host = mySociety::Config::get($psql_conf_prefix.'_DB_HOST', 'localhost');
+	my $psql_port = mySociety::Config::get($psql_conf_prefix.'_DB_PORT', 5432);
+	my $psql_name = mySociety::Config::get($psql_conf_prefix.'_DB_NAME');
+	my $psql_user = mySociety::Config::get($psql_conf_prefix.'_DB_USER');
+	my $psql_pass = mySociety::Config::get($psql_conf_prefix.'_DB_PASS');
+	
+	chdir $mysociety_dir;
+	shell("cvs", "-Q", "update", "$psql_schema");
+	chdir $mysociety_bin;
+	shell("./psql-schema-compare", $mysociety_dir.'/'.$psql_schema, $conf->{'user'}, $psql_name, $psql_user, $psql_pass);
+}
+
+# Checkout latest version of files
+my $cvsroot = ($conf->{'cvs_user'} eq 'anon' ?
+	':pserver:anonymous@cvs.mysociety.org:/repos' :
+	$conf->{'cvs_user'} . "\@cvs.mysociety.org:/user/local/cvs");
+foreach my $cvs_dir (@{$conf->{'cvs_dirs'}}) {
+	if (-d "$vhost_dir/mysociety/$cvs_dir/CVS") {
+		print "update $cvs_dir\n";
+		print("$vhost_dir/mysociety/$cvs_dir\n");
+		chdir("$vhost_dir/mysociety/$cvs_dir");
+		shell("su", $conf->{'user'}, "cvs -Q update -dP");
+	} else {
+		print "checkout $cvs_dir\n";
+		chdir($vhost_dir);
+		shell("su", $conf->{'user'}, "cvs -Q -d \"$cvsroot\" co mysociety/$cvs_dir");
+	}
+}
 
 

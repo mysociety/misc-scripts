@@ -20,7 +20,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.14 2005-11-21 11:09:13 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.15 2005-12-12 23:28:10 maint Exp $';
 
 package Oops;
 
@@ -49,6 +49,8 @@ use Pod::Usage;
 use POSIX qw(getuid);
 
 use mySociety::Util;
+
+umask(0000);
 
 my $default_uid = 0;
 my $default_gid = 0;
