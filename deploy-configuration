@@ -20,7 +20,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.15 2005-12-12 23:28:10 maint Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.16 2005-12-14 11:58:45 maint Exp $';
 
 package Oops;
 
@@ -42,6 +42,7 @@ use Error qw(:try);
 use Fcntl qw(:mode);
 use File::Find;
 use File::Spec;
+use File::Copy;
 use File::stat;
 use Getopt::Long;
 use IO::File;
@@ -649,6 +650,9 @@ try {
                 unlink($t);
                 throw Oops("$t: rename: $!");
             }
+
+            verbose("copying settings file to /etc/mysociety\n");
+            copy($settings, "/etc/mysociety/config-settings.pl") or throw Ooops("Failed to copy '$settings' to /etc/mysociety"); 
         }
     }
 } catch Oops with {
