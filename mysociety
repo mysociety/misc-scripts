@@ -8,6 +8,7 @@ Usage: mysociety COMMAND
 
 COMMAND is any of:
   config - deploy new config for current server
+  vhost VHOST - deploy latest version of VHOST, e.g. www.pledgebank.com
 END
 	exit
 }
@@ -17,6 +18,11 @@ then
 	[ "$2" != "" ] && show_help
 	HOST=`hostname`
 	/data/mysociety/bin/deploy-configuration /data/servers/$HOST /data/servers/$HOST.pl
+elif [ "$1" = "vhost" ]
+then
+	[ "$2" = "" ] && show_help
+	[ "$3" != "" ] && show_help
+	/data/mysociety/bin/deploy-vhost $2
 else
 	show_help
 fi
