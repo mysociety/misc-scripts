@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.2 2005-12-12 23:28:10 maint Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.3 2005-12-15 11:39:42 maint Exp $';
 
 package main;
 
@@ -22,6 +22,8 @@ my $mysociety_dir = "$FindBin::Bin/../../mysociety";
 
 use POSIX qw(getuid);
 use Data::Dumper;
+use File::Slurp;
+use File::Copy;
 
 use mySociety::Util;
 use mySociety::Config;
@@ -86,16 +88,86 @@ chown($user_uid, $user_gid, "$vhost_dir/logs");
 make_symlink("mysociety/".$conf->{'web_dir'}, "$vhost_dir/docs");
 shell("chown", "-h", "$user_uid:$user_gid", "$vhost_dir/docs"); # perl's chown doesn't do symlinks
 
-# Check all entries in conf files, and see which contains postgresql conf for each database
-my $psql_conf_dir;
+# Initial checkout, for CVS directories which don't exist
+my $cvsroot = ($conf->{'cvs_user'} eq 'anon' ?
+	':pserver:anonymous@cvs.mysociety.org:/repos' :
+	$conf->{'cvs_user'} . "\@cvs.mysociety.org:/user/local/cvs");
+foreach my $cvs_dir (@{$conf->{'cvs_dirs'}}) {
+	if (! -d "$vhost_dir/mysociety/$cvs_dir/CVS") {
+		chdir($vhost_dir);
+		shell("su", $conf->{'user'}, "cvs -Q -d \"$cvsroot\" co mysociety/$cvs_dir");
+	}
+}
+
+# Make cache directories
+# TODO: Somewhere at the end we can clear the cache directories automatically
+foreach my $cache_dir (@{$conf->{'cache_dirs'}}) {
+    make_dir("$vhost_dir/$cache_dir");
+    chown($user_uid, $user_gid, "$vhost_dir/$cache_dir");
+}
+
+# Generate conf/general files from their template files
 foreach my $conf_dir (@{$conf->{'conf_dirs'}}) {
+    # Destination file
+    my $conf_file = "$vhost_dir/mysociety/$conf_dir/general";
+    # Find source template (.ugly) file
+    my $conf_ugly_part = $conf_dir . "/general";
+    $conf_ugly_part =~ s#/#_#g;
+    my $conf_ugly_file = "$servers_dir/vhosts/$conf_ugly_part.ugly";
+    # Make some settings
+    $vhost =~ m/^([^.]+)\.(.*)$/;
+    my $vhost_first = $1;
+    my $vhost_rest = $2;
+    # Create settings file
+    my $settings_file_namepart = "settings-autogen.pl";
+    my $settings_file = "$vhost_dir/mysociety/$conf_dir/$settings_file_namepart";
+    my $global_settings_file = "/etc/mysociety/config-settings.pl";
+    my $global_settings = read_file($global_settings_file) or die "failed to read /etc/mysociety/config-settings.pl, which is made by deploy-configuration";
+    open(FH, "> $settings_file") or die "failed to open $global_settings_file";
+    print FH <<END;
+#
+# $settings_file_namepart
+#
+
+\$vhost = '$vhost';
+\$staging = '$conf->{'staging'}';
+\$vhost_first = '$vhost_first';
+\$vhost_rest = '$vhost_rest';
+
+# ---------------------------------------------------------
+# Settings from here on are copied from:
+# $global_settings_file
+
+$global_settings
+END
+    chown($user_uid, $user_gid, $settings_file);
+    
+    if (-e $conf_file) {
+       system("diff", "-u", "$conf_file.deployed", "$conf_file") == 0 || die "$conf_file was changed directly since last deployed, so cannot update from template";
+    }
+    
+    shell("$mysociety_bin/mugly", "-O", "$conf_file.tmp", "-p", "$settings_file", "$conf_ugly_file");
+
+    # test contents of new configuration file before copying it over
 	chdir $mysociety_dir;
 	shell("cvs", "-Q", "update", "$conf_dir/general-example");
 	chdir $mysociety_bin;
-	shell("$mysociety_bin/compareconfig.pl", "$vhost_dir/mysociety/$conf_dir/general", "$mysociety_dir/$conf_dir/general-example");
+	shell("$mysociety_bin/compareconfig.pl", "$conf_file.tmp", "$mysociety_dir/$conf_dir/general-example");
+
+    # copy into place
+    copy("$conf_file.tmp", "$conf_file.deployed");
+    chown($user_uid, $user_gid, "$conf_file.deployed");
+    copy("$conf_file.tmp", "$conf_file");
+    chown($user_uid, $user_gid, "$conf_file");
+    unlink("$conf_file.tmp") or die "couldn't unlink $conf_file.tmp";
+}
+
+# See which conf file contains postgresql conf for each database
+my $psql_conf_dir;
+foreach my $conf_dir (@{$conf->{'conf_dirs'}}) {
 	# Look for which has database in
 	mySociety::Config::set_file($vhost_dir.'/mysociety/'.$conf_dir.'/general');	
-	foreach my $psql_conf_prefix (keys %{$conf->{'psql_schema'}}) {
+	foreach my $psql_conf_prefix (keys %{$conf->{'psql_schemas'}}) {
 		if (mySociety::Config::get($psql_conf_prefix.'_DB_NAME', undef)) {
 			die "database $psql_conf_prefix configured in two conf files" if $psql_conf_dir->{$psql_conf_prefix};
 			$psql_conf_dir->{$psql_conf_prefix} = $conf_dir;
@@ -104,8 +176,8 @@ foreach my $conf_dir (@{$conf->{'conf_dirs'}}) {
 }
 
 # Check pgsql databases are up to date
-foreach my $psql_conf_prefix (keys %{$conf->{'psql_schema'}}) {
-	my $psql_schema = $conf->{'psql_schema'}->{$psql_conf_prefix};
+foreach my $psql_conf_prefix (keys %{$conf->{'psql_schemas'}}) {
+	my $psql_schema = $conf->{'psql_schemas'}->{$psql_conf_prefix};
 	die "Database $psql_conf_prefix not configured in any of the conf files" if !$psql_conf_dir->{$psql_conf_prefix};
 
 	mySociety::Config::set_file($vhost_dir.'/mysociety/'.$psql_conf_dir->{$psql_conf_prefix}.'/general');
@@ -121,21 +193,17 @@ foreach my $psql_conf_prefix (keys %{$conf->{'psql_schema'}}) {
 	shell("./psql-schema-compare", $mysociety_dir.'/'.$psql_schema, $conf->{'user'}, $psql_name, $psql_user, $psql_pass);
 }
 
-# Checkout latest version of files
-my $cvsroot = ($conf->{'cvs_user'} eq 'anon' ?
-	':pserver:anonymous@cvs.mysociety.org:/repos' :
-	$conf->{'cvs_user'} . "\@cvs.mysociety.org:/user/local/cvs");
+# Update from CVS
 foreach my $cvs_dir (@{$conf->{'cvs_dirs'}}) {
-	if (-d "$vhost_dir/mysociety/$cvs_dir/CVS") {
-		print "update $cvs_dir\n";
-		print("$vhost_dir/mysociety/$cvs_dir\n");
-		chdir("$vhost_dir/mysociety/$cvs_dir");
-		shell("su", $conf->{'user'}, "cvs -Q update -dP");
-	} else {
-		print "checkout $cvs_dir\n";
-		chdir($vhost_dir);
-		shell("su", $conf->{'user'}, "cvs -Q -d \"$cvsroot\" co mysociety/$cvs_dir");
-	}
+	die "unexpectedly missing cvs directory in update stage" if (! -d "$vhost_dir/mysociety/$cvs_dir/CVS");
+    chdir("$vhost_dir/mysociety/$cvs_dir");
+    shell("su", $conf->{'user'}, "cvs -Q update -dP");
+}
+
+# Run any extra executables
+foreach my $exec_extra (@{$conf->{'exec_extras'}}) {
+    chdir("$vhost_dir/mysociety");
+    shell("su", $conf->{'user'}, "$exec_extra");
 }
 
 
