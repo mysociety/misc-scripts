@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.3 2005-12-15 11:39:42 maint Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.4 2005-12-15 17:53:12 maint Exp $';
 
 package main;
 
@@ -77,6 +77,8 @@ foreach my $key ( keys %$vhost_conf ) { $conf->{$key} = $vhost_conf->{$key}; }
 my ($user_login, $user_pass, $user_uid, $user_gid) = getpwnam($conf->{'user'});
 die "Unknown user '".$conf->{'user'}."'" if !$user_uid;
 die "Unknown group for user '".$conf->{'user'}."'" if !$user_gid;
+my $user = $conf->{'user'};
+my $group = getgrgid($user_gid);
 
 # Create directories and symlink to docs
 make_dir("/data");
@@ -106,25 +108,17 @@ foreach my $cache_dir (@{$conf->{'cache_dirs'}}) {
     chown($user_uid, $user_gid, "$vhost_dir/$cache_dir");
 }
 
-# Generate conf/general files from their template files
-foreach my $conf_dir (@{$conf->{'conf_dirs'}}) {
-    # Destination file
-    my $conf_file = "$vhost_dir/mysociety/$conf_dir/general";
-    # Find source template (.ugly) file
-    my $conf_ugly_part = $conf_dir . "/general";
-    $conf_ugly_part =~ s#/#_#g;
-    my $conf_ugly_file = "$servers_dir/vhosts/$conf_ugly_part.ugly";
-    # Make some settings
-    $vhost =~ m/^([^.]+)\.(.*)$/;
-    my $vhost_first = $1;
-    my $vhost_rest = $2;
-    # Create settings file
-    my $settings_file_namepart = "settings-autogen.pl";
-    my $settings_file = "$vhost_dir/mysociety/$conf_dir/$settings_file_namepart";
-    my $global_settings_file = "/etc/mysociety/config-settings.pl";
-    my $global_settings = read_file($global_settings_file) or die "failed to read /etc/mysociety/config-settings.pl, which is made by deploy-configuration";
-    open(FH, "> $settings_file") or die "failed to open $global_settings_file";
-    print FH <<END;
+# Make some settings
+$vhost =~ m/^([^.]+)\.(.*)$/;
+my $vhost_first = $1;
+my $vhost_rest = $2;
+# Create settings file
+my $settings_file_namepart = "settings-autogen.pl";
+my $settings_file = "$vhost_dir/$settings_file_namepart";
+my $global_settings_file = "/etc/mysociety/config-settings.pl";
+my $global_settings = read_file($global_settings_file) or die "failed to read /etc/mysociety/config-settings.pl, which is made by deploy-configuration";
+open(FH, "> $settings_file") or die "failed to open $global_settings_file";
+print FH <<END;
 #
 # $settings_file_namepart
 #
@@ -133,57 +127,54 @@ foreach my $conf_dir (@{$conf->{'conf_dirs'}}) {
 \$staging = '$conf->{'staging'}';
 \$vhost_first = '$vhost_first';
 \$vhost_rest = '$vhost_rest';
-
+\$user = '$user';
+\$group = '$group';
+\$conf_dir = '$conf->{'conf_dir'}';
+\$wildcard_vhost = '$conf->{'wildcard_vhost'}';
+END
+print FH Dumper($conf->{'cache_dirs'});
+print FH "\$cache_dirs = \$VAR1;\n";
+print FH <<END;
 # ---------------------------------------------------------
 # Settings from here on are copied from:
 # $global_settings_file
 
 $global_settings
 END
-    chown($user_uid, $user_gid, $settings_file);
-    
-    if (-e $conf_file) {
-       system("diff", "-u", "$conf_file.deployed", "$conf_file") == 0 || die "$conf_file was changed directly since last deployed, so cannot update from template";
-    }
-    
-    shell("$mysociety_bin/mugly", "-O", "$conf_file.tmp", "-p", "$settings_file", "$conf_ugly_file");
+chown($user_uid, $user_gid, $settings_file);
 
-    # test contents of new configuration file before copying it over
-	chdir $mysociety_dir;
-	shell("cvs", "-Q", "update", "$conf_dir/general-example");
-	chdir $mysociety_bin;
-	shell("$mysociety_bin/compareconfig.pl", "$conf_file.tmp", "$mysociety_dir/$conf_dir/general-example");
-
-    # copy into place
-    copy("$conf_file.tmp", "$conf_file.deployed");
-    chown($user_uid, $user_gid, "$conf_file.deployed");
-    copy("$conf_file.tmp", "$conf_file");
-    chown($user_uid, $user_gid, "$conf_file");
-    unlink("$conf_file.tmp") or die "couldn't unlink $conf_file.tmp";
+# Generate conf/general file from its template file
+my $conf_dir = $conf->{'conf_dir'};
+my $conf_file = "$vhost_dir/mysociety/$conf_dir/general"; # destination file
+# Find source template (.ugly) file
+my $conf_ugly_part = $conf_dir . "/general";
+$conf_ugly_part =~ s#/#_#g;
+my $conf_ugly_file = "$servers_dir/vhosts/$conf_ugly_part.ugly";
+if (-e $conf_file) {
+   system("diff", "-u", "$conf_file.deployed", "$conf_file") == 0 || die "$conf_file was changed directly since last deployed, so cannot update from template";
 }
-
-# See which conf file contains postgresql conf for each database
-my $psql_conf_dir;
-foreach my $conf_dir (@{$conf->{'conf_dirs'}}) {
-	# Look for which has database in
-	mySociety::Config::set_file($vhost_dir.'/mysociety/'.$conf_dir.'/general');	
-	foreach my $psql_conf_prefix (keys %{$conf->{'psql_schemas'}}) {
-		if (mySociety::Config::get($psql_conf_prefix.'_DB_NAME', undef)) {
-			die "database $psql_conf_prefix configured in two conf files" if $psql_conf_dir->{$psql_conf_prefix};
-			$psql_conf_dir->{$psql_conf_prefix} = $conf_dir;
-		}
-	}
-}
+shell("$mysociety_bin/mugly", "-O", "$conf_file.tmp", "-p", "$settings_file", "$conf_ugly_file");
+# test contents of new configuration file before copying it over
+chdir $mysociety_dir;
+shell("cvs", "-Q", "update", "$conf_dir/general-example");
+chdir $mysociety_bin;
+shell("$mysociety_bin/compareconfig.pl", "$conf_file.tmp", "$mysociety_dir/$conf_dir/general-example");
+# copy into place
+copy("$conf_file.tmp", "$conf_file.deployed");
+chown($user_uid, $user_gid, "$conf_file.deployed");
+copy("$conf_file.tmp", "$conf_file");
+chown($user_uid, $user_gid, "$conf_file");
+unlink("$conf_file.tmp") or die "couldn't unlink $conf_file.tmp";
+mySociety::Config::set_file($conf_file);
 
 # Check pgsql databases are up to date
 foreach my $psql_conf_prefix (keys %{$conf->{'psql_schemas'}}) {
 	my $psql_schema = $conf->{'psql_schemas'}->{$psql_conf_prefix};
-	die "Database $psql_conf_prefix not configured in any of the conf files" if !$psql_conf_dir->{$psql_conf_prefix};
 
-	mySociety::Config::set_file($vhost_dir.'/mysociety/'.$psql_conf_dir->{$psql_conf_prefix}.'/general');
 	my $psql_host = mySociety::Config::get($psql_conf_prefix.'_DB_HOST', 'localhost');
 	my $psql_port = mySociety::Config::get($psql_conf_prefix.'_DB_PORT', 5432);
 	my $psql_name = mySociety::Config::get($psql_conf_prefix.'_DB_NAME');
+    die "$psql_conf_prefix not configured in conf/general file" if !$psql_name;
 	my $psql_user = mySociety::Config::get($psql_conf_prefix.'_DB_USER');
 	my $psql_pass = mySociety::Config::get($psql_conf_prefix.'_DB_PASS');
 	
@@ -206,4 +197,9 @@ foreach my $exec_extra (@{$conf->{'exec_extras'}}) {
     shell("su", $conf->{'user'}, "$exec_extra");
 }
 
+# Create httpd configuration stanza
+shell("$mysociety_bin/mugly", "-O", "/etc/apache/virtualhosts.d/$vhost.conf", "-p", "$settings_file", "$servers_dir/vhosts/single-vhost.conf.ugly");
+
+# Prompt apache to reread files
+#shell("apachectl", "graceful");
 
