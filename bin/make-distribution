@@ -16,9 +16,12 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: make-distribution,v 1.1 2005-12-16 14:53:12 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: make-distribution,v 1.2 2005-12-16 15:06:33 chris Exp $';
 
 use strict;
+
+use FindBin;
+use lib "$FindBin::Bin/../../perllib";
 
 use Cwd;
 
@@ -40,6 +43,7 @@ if (!-d $skeleton) {
 }
 
 my $d = mySociety::Util::tempdir();
+$SIG{__DIE__} = sub { system("rm", "-rf", $d); die(@_); };
 
 # Now we need to copy things into the temporary directory, with various
 # exceptions.
@@ -48,10 +52,17 @@ System('rsync', '-r', '-C', '--exclude=doit', "$skeleton/.", "$d/.");
 # Run the doit script.
 System("$skeleton/doit", $d, "$skeleton/../..");
 
+
 my $cwd = getcwd();
-cd($tempdir) || die "chdir: $tempdir: $!";
+chdir($d) || die "chdir: $d: $!";
+
+# ugh
+System("touch MANIFEST && find . -type f | sed 's#^\\\./##' > MANIFEST");
+System("cat", "MANIFEST");
+
 System("perl", "Makefile.PL");
 System("make", "test");
+System("make", "distdir");
 System("make", "tardist");
 
 my @dd = glob("*[0-9].tar.gz");
@@ -61,8 +72,8 @@ if (@dd == 0) {
     die "more than one .tar.gz file in temporary directory";
 }
 
-cd($cwd) || die "chdir: $cwd: $!";
+chdir($cwd) || die "chdir: $cwd: $!";
 System("cp", "$d/$dd[0]", ".");
-System("rm", "-rf", $tempdir);
+System("rm", "-rf", $d);
 
 exit(0);
