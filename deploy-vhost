@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.5 2005-12-15 22:16:55 maint Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.6 2005-12-16 12:51:42 maint Exp $';
 
 package main;
 
@@ -20,13 +20,14 @@ my $mysociety_bin = $FindBin::Bin;
 my $servers_dir = "$FindBin::Bin/../../servers";
 my $mysociety_dir = "$FindBin::Bin/../../mysociety";
 
+use mySociety::Util;
+use mySociety::Config;
+
 use POSIX qw(getuid);
 use Data::Dumper;
 use File::Slurp;
 use File::Copy;
-
-use mySociety::Util;
-use mySociety::Config;
+use File::Temp qw(tempfile);
 
 #####################################################################
 # General functions
@@ -80,6 +81,9 @@ die "Unknown group for user '".$conf->{'user'}."'" if !$user_gid;
 my $user = $conf->{'user'};
 my $group = getgrgid($user_gid);
 
+#####################################################################
+# Make directories and conf files, check database and conf files
+
 # Create directories and symlink to docs
 make_dir("/data");
 make_dir("/data/vhost");
@@ -108,9 +112,9 @@ foreach my $cvs_dir (@{$conf->{'cvs_dirs'}}) {
 
 # Make cache directories
 # TODO: Somewhere at the end we can clear the cache directories automatically
-foreach my $cache_dir (@{$conf->{'cache_dirs'}}) {
-    make_dir("$vhost_dir/$cache_dir");
-    chown($user_uid, $user_gid, "$vhost_dir/$cache_dir");
+foreach my $public_cache_dir (@{$conf->{'public_cache_dirs'}}) {
+    make_dir("$vhost_dir/$public_cache_dir");
+    chown($user_uid, $user_gid, "$vhost_dir/$public_cache_dir");
 }
 
 # Make some settings
@@ -122,7 +126,7 @@ my $settings_file_namepart = "settings-autogen.pl";
 my $settings_file = "$vhost_dir/$settings_file_namepart";
 my $global_settings_file = "/etc/mysociety/config-settings.pl";
 my $global_settings = read_file($global_settings_file) or die "failed to read /etc/mysociety/config-settings.pl, which is made by deploy-configuration";
-open(FH, "> $settings_file") or die "failed to open $global_settings_file";
+open(FH, "> $settings_file") or die "failed to open $settings_file for write";
 print FH <<END;
 #
 # $settings_file_namepart
@@ -137,8 +141,8 @@ print FH <<END;
 \$conf_dir = '$conf->{'conf_dir'}';
 \$wildcard_vhost = '$conf->{'wildcard_vhost'}';
 END
-print FH Dumper($conf->{'cache_dirs'});
-print FH "\$cache_dirs = \$VAR1;\n";
+print FH Dumper($conf->{'public_cache_dirs'});
+print FH "\$public_cache_dirs = \$VAR1;\n";
 print FH <<END;
 # ---------------------------------------------------------
 # Settings from here on are copied from:
@@ -146,7 +150,20 @@ print FH <<END;
 
 $global_settings
 END
+close FH;
 chown($user_uid, $user_gid, $settings_file);
+
+# Generate daemon init scripts from templates
+foreach my $daemon (keys %{$conf->{'daemons'}}) {
+    my $daemon_mugly = $mysociety_dir.'/'.$conf->{'conf_dir'}.'/'.$conf->{'daemons'}->{$daemon};
+    my ($fh, $filename) = tempfile();
+    open(FH, ">$filename") or die "failed to open $filename for write";
+    print FH "\$daemon_name = '$daemon';\n";
+    close FH;
+    shell("$mysociety_bin/mugly", "-O", "/etc/init.d/$daemon", "-p", "$settings_file", "-p", "$filename", "$daemon_mugly");
+    chmod 0755, "/etc/init.d/$daemon";
+    system("update-rc.d $daemon defaults | grep -v \"System startup links for .* already exist\"");
+}
 
 # Generate conf/general file from its template file
 my $conf_dir = $conf->{'conf_dir'};
@@ -189,6 +206,41 @@ foreach my $psql_conf_prefix (keys %{$conf->{'psql_schemas'}}) {
 	shell("./psql-schema-compare", $mysociety_dir.'/'.$psql_schema, $conf->{'user'}, $psql_name, $psql_user, $psql_pass);
 }
 
+# Create httpd configuration stanza
+shell("$mysociety_bin/mugly", "-O", "/etc/apache/virtualhosts.d/$vhost.conf", "-p", "$settings_file", "$servers_dir/vhosts/single-vhost.conf.ugly");
+
+
+#####################################################################
+# Shut down services, update, start services
+
+# Stop daemons
+foreach my $daemon (keys %{$conf->{'daemons'}}) {
+    shell("/etc/init.d/$daemon", "stop");
+}
+
+# Down notice
+open(FH, "> $vhost_dir/docs/.down.html.new") or die "failed to open .down.html.new";
+print FH <<END;
+<html>
+<head>
+<title>$vhost - Down for Maintenance</title>
+</head>
+<body>
+<p>Sorry, but $vhost is currently not available.  We're doing a spot of
+maintenance.  Check back in a few minutes, and everything should be
+restored to order.  Thanks for your patience!
+<p> &mdash; the <a href="http://www.mysociety.org/">mySociety</a> developers
+</body>
+</html> 
+END
+close FH;
+unlink("$vhost_dir/docs/down.html");
+rename("$vhost_dir/docs/.down.html.new", "$vhost_dir/docs/down.html") or die "failed to rename to down.html";
+chown($user_uid, $user_gid, "$vhost_dir/docs/down.html");
+
+# Pause for debugging
+#system("read >/dev/null");
+
 # Update from CVS
 foreach my $cvs_dir (@{$conf->{'cvs_dirs'}}) {
 	die "unexpectedly missing cvs directory in update stage" if (! -d "$vhost_dir/mysociety/$cvs_dir/CVS");
@@ -202,9 +254,15 @@ foreach my $exec_extra (@{$conf->{'exec_extras'}}) {
     shell("su", $conf->{'user'}, "$exec_extra");
 }
 
-# Create httpd configuration stanza
-shell("$mysociety_bin/mugly", "-O", "/etc/apache/virtualhosts.d/$vhost.conf", "-p", "$settings_file", "$servers_dir/vhosts/single-vhost.conf.ugly");
-
 # Prompt apache to reread files
 shell("apachectl", "graceful");
+
+# Up notice
+unlink("$vhost_dir/docs/down.html") or die "couldn't unlink down.html";
+
+# Start daemons
+foreach my $daemon (keys %{$conf->{'daemons'}}) {
+    shell("/etc/init.d/$daemon", "start");
+}
+
 
