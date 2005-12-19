@@ -1,0 +1,66 @@
+#!/usr/bin/perl -w
+#
+# create-homedirs:
+# For each user with UID about 1000 who exists in /etc/passwd but has no home
+# directory, create a new home directory from the contents of /etc/skel
+#
+# Copyright (c) 2005 Chris Lightfoot. All rights reserved.
+# Email: chris@ex-parrot.com; WWW: http://www.ex-parrot.com/~chris/
+#
+
+my $rcsid = ''; $rcsid .= '$Id: create-homedirs,v 1.1 2005-12-19 16:24:02 maint Exp $';
+
+use strict;
+require 5.8.0;
+
+my ($minuid, $maxuid) = (1000, 10000);
+
+use Errno;
+use User::pwent;
+
+umask(0);
+
+sub stderr (@_) {
+    print STDERR "create-homedirs: ";
+    print STDERR @_;
+}
+
+while (my $p = User::pwent::getpwent()) {
+    next if ($p->uid() < $minuid || $p->uid() > $maxuid || -d $p->dir());
+    if (-e $p->dir()) {
+        stderr($p->dir(), " exists but is not a directory\n");
+        next;
+    } else {
+        if (!defined(mkdir($p->dir(), 0755))) {
+            stderr($p->dir(), ": mkdir: $!\n");
+            next;
+        } elsif (!defined(chown($p->uid(), $p->gid(), $p->dir()))) {
+            stderr($p->dir(), ": chown: $!\n");
+            rmdir($p->dir());
+            next;
+        }
+        my $pid = fork();
+        if (!defined($pid)) {
+            stderr("fork: $!\n");
+            rmdir($p->dir());
+            next;
+        } elsif ($pid == 0) {
+            # setgid, setuid, then copy the contents of /etc/skel over
+            $) = $( = $p->gid();
+            $> = $< = $p->uid();
+            chdir($p->dir());
+            { exec("/bin/sh", "-c", "tar -C /etc/skel cf - . | tar xf -"); }
+            exit(1);
+        } else {
+            wait();
+            if ($? & 127) {
+                stderr("subprocess killed by signal ", ($? & 127), "\n");
+                rmdir($p->dir());
+                next;
+            } else if ($? >> 8) {
+                stderr("subprocess failed with status ", ($? >> 8), "\n");
+                rmdir($p->dir());
+            } # else success
+        }
+    }
+}
