@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.8 2005-12-19 11:32:35 maint Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.9 2005-12-19 17:17:38 maint Exp $';
 
 package main;
 
@@ -73,6 +73,7 @@ my $vhost_dir = "/data/vhost/$vhost";
 my $conf;
 foreach my $key ( keys %$site_conf ) { $conf->{$key} = $site_conf->{$key}; }
 foreach my $key ( keys %$vhost_conf ) { $conf->{$key} = $vhost_conf->{$key}; }
+die "must specify 'staging' in vhost config" if (!exists($conf->{staging}));
 
 # Look up some values
 my ($user_login, $user_pass, $user_uid, $user_gid) = getpwnam($conf->{'user'});
@@ -226,7 +227,6 @@ foreach my $psql_conf_prefix (keys %{$conf->{'psql_schemas'}}) {
 # Create httpd configuration stanza
 shell("$mysociety_bin/mugly", "-O", "/etc/apache/virtualhosts.d/$vhost.conf", "-p", "$settings_file", "$servers_dir/vhosts/single-vhost.conf.ugly");
 
-
 #####################################################################
 # Shut down services, update, start services
 
@@ -255,9 +255,6 @@ unlink("$vhost_dir/docs/down.html");
 rename("$vhost_dir/docs/.down.html.new", "$vhost_dir/docs/down.html") or die "failed to rename to down.html";
 chown($user_uid, $user_gid, "$vhost_dir/docs/down.html");
 
-# Pause for debugging
-#system("read >/dev/null");
-
 # Update from CVS
 foreach my $cvs_dir (@{$conf->{'cvs_dirs'}}) {
 	die "unexpectedly missing cvs directory in update stage" if (! -d "$vhost_dir/mysociety/$cvs_dir/CVS");
@@ -281,5 +278,12 @@ unlink("$vhost_dir/docs/down.html") or die "couldn't unlink down.html";
 foreach my $daemon (keys %{$conf->{'daemons'}}) {
     shell("/etc/init.d/$daemon", "start");
 }
+
+# Make crontab
+chdir $mysociety_dir;
+shell("cvs", "-Q", "update", "$conf_dir/crontab.ugly");
+my $cron_name = "vhost-$vhost";
+$cron_name =~ s/\./-/g;
+shell("$mysociety_bin/mugly", "-O", "/etc/cron.d/$cron_name", "-p", "$settings_file", "$mysociety_dir/$conf_dir/crontab.ugly");
 
 
