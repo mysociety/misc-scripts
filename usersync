@@ -10,7 +10,7 @@
 # Email: chris@ex-parrot.com; WWW: http://www.ex-parrot.com/~chris/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: usersync,v 1.3 2005-12-19 15:58:20 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: usersync,v 1.4 2005-12-19 16:05:11 maint Exp $';
 my $VERSION = "0.1";
 
 use strict;
@@ -30,6 +30,7 @@ use Errno;
 use Error qw(:try);
 use File::stat;
 
+sub lock_file ($);
 sub lock_file ($) {
     my $file = shift;
     main::debug("trying to lock $file...");
@@ -38,6 +39,20 @@ sub lock_file ($) {
         if (!$!{EEXIST}) {
             throw UserSync::Error("Unable to lock ${file}: $!");
         } else {
+            # Is the lockfile stale?
+            if (($f = new IO::File("$file.lock", O_RDONLY))) {
+                my $oldpid = $f->getline();
+                $f->close();
+                if ($oldpid) {
+                    chomp($oldpid);
+                    if (!kill(0, $oldpid)) {
+                        main::debug("lock file exists but is stale (PID $oldpid)");
+                        unlink("$file.lock");
+                            # XXX there's a race condition here, obviously.
+                        return lock_file($file);
+                    }
+                }
+            }
             throw UserSync::Error("${file}: already locked; aborting");
         }
     } elsif (!($f->print("$$\n"))) {
