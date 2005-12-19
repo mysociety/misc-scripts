@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.6 2005-12-16 12:51:42 maint Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.7 2005-12-19 10:42:06 maint Exp $';
 
 package main;
 
@@ -144,6 +144,15 @@ END
 print FH Dumper($conf->{'public_cache_dirs'});
 print FH "\$public_cache_dirs = \$VAR1;\n";
 print FH <<END;
+
+sub pgpw {
+    \$_ = shift;
+    \$_ = `$mysociety_bin/pgpw \$_`;
+    s/\\s+\$//;
+    return \$_;
+}
+
+
 # ---------------------------------------------------------
 # Settings from here on are copied from:
 # $global_settings_file
@@ -161,6 +170,7 @@ foreach my $daemon (keys %{$conf->{'daemons'}}) {
     print FH "\$daemon_name = '$daemon';\n";
     close FH;
     shell("$mysociety_bin/mugly", "-O", "/etc/init.d/$daemon", "-p", "$settings_file", "-p", "$filename", "$daemon_mugly");
+    unlink($filename);
     chmod 0755, "/etc/init.d/$daemon";
     system("update-rc.d $daemon defaults | grep -v \"System startup links for .* already exist\"");
 }
@@ -168,13 +178,16 @@ foreach my $daemon (keys %{$conf->{'daemons'}}) {
 # Generate conf/general file from its template file
 my $conf_dir = $conf->{'conf_dir'};
 my $conf_file = "$vhost_dir/mysociety/$conf_dir/general"; # destination file
-# Find source template (.ugly) file
+my $old_umask = umask(0077);
+# find source template (.ugly) file
 my $conf_ugly_part = $conf_dir . "/general";
 $conf_ugly_part =~ s#/#_#g;
 my $conf_ugly_file = "$servers_dir/vhosts/$conf_ugly_part.ugly";
+# check destination file hasn't been separately modified
 if (-e $conf_file) {
    system("diff", "-u", "$conf_file.deployed", "$conf_file") == 0 || die "$conf_file was changed directly since last deployed, so cannot update from template";
 }
+# call mugly to generate from template
 shell("$mysociety_bin/mugly", "-O", "$conf_file.tmp", "-p", "$settings_file", "$conf_ugly_file");
 # test contents of new configuration file before copying it over
 chdir $mysociety_dir;
@@ -187,7 +200,9 @@ chown($user_uid, $user_gid, "$conf_file.deployed");
 copy("$conf_file.tmp", "$conf_file");
 chown($user_uid, $user_gid, "$conf_file");
 unlink("$conf_file.tmp") or die "couldn't unlink $conf_file.tmp";
+# now we use this configuration
 mySociety::Config::set_file($conf_file);
+umask($old_umask);
 
 # Check pgsql databases are up to date
 foreach my $psql_conf_prefix (keys %{$conf->{'psql_schemas'}}) {
