@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.7 2005-12-19 10:42:06 maint Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.8 2005-12-19 11:32:35 maint Exp $';
 
 package main;
 
@@ -143,6 +143,8 @@ print FH <<END;
 END
 print FH Dumper($conf->{'public_cache_dirs'});
 print FH "\$public_cache_dirs = \$VAR1;\n";
+print FH Dumper($conf->{'aliases'});
+print FH "\$aliases = \$VAR1;\n";
 print FH <<END;
 
 sub pgpw {
