@@ -1,0 +1,41 @@
+#!/usr/bin/perl -w
+#
+# randomly:
+# Execute another program with some probability.
+#
+# Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
+# Email: chris@mysociety.org; WWW: http://www.mysociety.org/
+#
+
+my $rcsid = ''; $rcsid .= '$Id: randomly,v 1.1 2005-12-19 12:43:28 chris Exp $';
+
+use strict;
+
+if (@ARGV == 1 && $ARGV[0] =~ /^(-h|--help)$/) {
+    print <<EOF;
+randomly -h | [-p PROBABILITY] PROGRAM [ARG ...]
+
+Execute PROGRAM with the given PROBABILITY (0.5 if not specified).
+EOF
+    exit(0);
+}
+
+my $probability = 0.5;
+if ($ARGV[0] =~ /^-p(.*)$/) {
+    shift(@ARGV);
+    if ($1 ne '') {
+        $probability = $1;
+    } else {
+        $probability = shift(@ARGV);
+    }
+}
+
+if ($probability !~ /^(1(\.0*|)|0?\.\d*|0)$/) {
+    print STDERR "randomly: \"$probability\" is not a valid probability\n";
+    exit(1);
+}
+
+exit(0) if (rand(1) > $probability);
+
+{ exec(@ARGV); }
+exit(1);
