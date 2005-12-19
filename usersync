@@ -10,7 +10,7 @@
 # Email: chris@ex-parrot.com; WWW: http://www.ex-parrot.com/~chris/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: usersync,v 1.2 2005-12-09 19:24:21 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: usersync,v 1.3 2005-12-19 15:58:20 chris Exp $';
 my $VERSION = "0.1";
 
 use strict;
@@ -148,7 +148,7 @@ Options:
   --help        Display this message
 
   --minuid MIN  Synchronise information only for users having UIDs of MIN or
-                greater. Default: 5000.
+                greater. Default: 1000.
 
   --rsh PROGRAM, --ssh PROGRAM
                 Set the PROGRAM to be used to connect to the remote HOST.
@@ -162,7 +162,7 @@ Options:
 
   --slave       Internal use only.
 
-Copyright (c) 2004 Chris Lightfoot All Rights Reserved.
+Copyright (c) 2004 Chris Lightfoot. All Rights Reserved.
 usersync version $VERSION; $rcsid
 EOF
 }
@@ -611,7 +611,7 @@ try {
     my $rsh_path = 'ssh';
     my $usersync_path = $0;
     my $slave = 0;
-    my $minuid = 5000;
+    my $minuid = 1000;
     my $host;
 
     {
