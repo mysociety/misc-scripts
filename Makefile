@@ -5,10 +5,10 @@
 # Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Makefile,v 1.1 2005-11-18 10:07:21 chris Exp $
+# $Id: Makefile,v 1.2 2006-01-06 09:59:17 maint Exp $
 #
 
-SENDMAIL_BIN = /usr/libexec/sendmail
+SENDMAIL_BIN = /usr/sbin/sendmail
 
 CFLAGS = -Wall -g -I/usr/include/pcre '-DSENDMAIL_BIN="$(SENDMAIL_BIN)"'
 LDFLAGS =
