@@ -7,7 +7,7 @@
  *
  */
 
-static const char rcsid[] = "$Id: rotatelogs.c,v 1.1 2005-11-18 10:07:21 chris Exp $";
+static const char rcsid[] = "$Id: rotatelogs.c,v 1.2 2006-01-06 10:05:49 chris Exp $";
 
 #include <sys/types.h>
 
@@ -100,9 +100,11 @@ void usage(FILE *fp) {
 "If -e is specified, then log lines will be emailed to the specified ADDRESS.\n"
 "If -r is specified, it should give the name of a file of RULES which will be\n"
 "used to filter log lines to be written to the log and/or emailed. Each line\n"
-"in the file should be blank, a comment introduced by '#', or consist of a\n"
-"keyword followed by whitespace and a regular expression in the format of\n"
-"PCRE. Valid keywords are,\n"
+"in the file should be blank, a comment introduced by '#', the word 'include'\n"
+"followed by whitespace and the name of another file of rules to be processed\n"
+"as if they were inserted into the current file at the include statement, or\n"
+"consist of one of the following keywords, followed by whitespace and a\n"
+"regular expression in the format of PCRE:\n"
 "\n"
 "    pass    Pass the log line through to the output file, and to any email\n"
 "            contact.\n"
@@ -179,6 +181,29 @@ struct rule *rules_read(const char *filename) {
         if (!line[strspn(line, " \t")] || *line == '#') continue;
 
         keyword = line + strspn(line, " \t");
+
+        /* Process an include file. */
+        if (0 == strncmp(keyword, "include", 7) && strchr(" \t", keyword[7])) {
+            char *f;
+            struct rule *r2, *p;
+            f = keyword + 7;
+            f += strspn(f, " \t");
+            if (!*filename) {
+                our_error("%s:%d: missing filename after include", filename, n);
+                continue;
+            }
+            r2 = rules_read(f);
+            if (!r2) {
+                our_error("%s:%d: error reading included %s", filename, n, f);
+                continue;
+            }
+            /* Find end of new rules. */
+            for (p = r2; p->r_next; p = p->r_next);
+            p->r_next = r;
+            r = r2;
+            continue;
+        }
+        
         for (R.r_action = 0; R.r_action < act_max; ++R.r_action) {
             size_t n;
             n = strlen(straction[R.r_action]);
