@@ -7,7 +7,7 @@
  *
  */
 
-static const char rcsid[] = "$Id: rotatelogs.c,v 1.2 2006-01-06 10:05:49 chris Exp $";
+static const char rcsid[] = "$Id: rotatelogs.c,v 1.3 2006-01-06 10:53:37 chris Exp $";
 
 #include <sys/types.h>
 
@@ -189,12 +189,12 @@ struct rule *rules_read(const char *filename) {
             f = keyword + 7;
             f += strspn(f, " \t");
             if (!*filename) {
-                our_error("%s:%d: missing filename after include", filename, n);
+                our_error("%s:%d: missing filename after include", filename, linenum);
                 continue;
             }
             r2 = rules_read(f);
             if (!r2) {
-                our_error("%s:%d: error reading included %s", filename, n, f);
+                our_error("%s:%d: error reading included %s", filename, linenum, f);
                 continue;
             }
             /* Find end of new rules. */
@@ -328,7 +328,11 @@ time_t parse_interval(const char *s) {
 }
 
 /* reopen_logfile FD INTERVAL NAME FORMAT TIME SYMLINK
- * */
+ * If the logfile open on FD should now be reopened under a new name because
+ * INTERVAL has passed, do so, using FORMAT as an argument to strftime to
+ * obtain a suffix added to NAME. If SYMLINK is true, create a symlink from
+ * NAME itself to the new file. Returns a file descriptor open on the new
+ * logfile, FD if no new logfile is needed, or -1 on error. */
 int reopen_logfile(int fd, const time_t interval, const char *name, const char *format, time_t *t, const int make_symlink) {
     time_t now;
     struct tm T;
@@ -384,7 +388,9 @@ again:
 }
 
 /* reread_rules RULES FILENAME ST
- * */
+ * Stat FILENAME and compare its attributes to those in ST. If it is unchanged,
+ * then returl RULES; otherwise, free RULES and read a new set of rules from
+ * FILENAME. */
 struct rule *reread_rules(struct rule *rules, const char *filename, struct stat *st) {
     struct stat st2;
     struct rule *r;
@@ -635,6 +641,8 @@ int main(int argc, char *argv[]) {
             }
         }
     }
+
+    rules_free(r); /* keep valgrind happy */
 
     return 0;
 }
