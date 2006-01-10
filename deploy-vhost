@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.12 2006-01-10 10:39:18 maint Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.13 2006-01-10 12:59:42 maint Exp $';
 
 package main;
 
@@ -143,6 +143,7 @@ print FH <<END;
 \$wildcard_vhost = '$conf->{'wildcard_vhost'}';
 END
 print FH "\$admin_dir = '$conf->{'admin_dir'}';\n" if $conf->{'admin_dir'};
+print FH "\$admin_group = '$conf->{'admin_group'}';\n" if $conf->{'admin_group'};
 print FH Dumper($conf->{'public_cache_dirs'});
 print FH "\$public_cache_dirs = \$VAR1;\n";
 print FH Dumper($conf->{'redirects'});
