@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.13 2006-01-10 12:59:42 maint Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.14 2006-01-11 11:25:49 maint Exp $';
 
 package main;
 
@@ -81,6 +81,7 @@ die "Unknown user '".$conf->{'user'}."'" if !$user_uid;
 die "Unknown group for user '".$conf->{'user'}."'" if !$user_gid;
 my $user = $conf->{'user'};
 my $group = getgrgid($user_gid);
+$conf->{'wildcard_vhost'} = 0 if (!exists($conf->{'wildcard_vhost'}));
 
 #####################################################################
 # Make directories and conf files, check database and conf files
@@ -96,9 +97,14 @@ make_symlink("mysociety/".$conf->{'web_dir'}, "$vhost_dir/docs");
 shell("chown", "-h", "$user_uid:$user_gid", "$vhost_dir/docs"); # perl's chown doesn't do symlinks
 
 # Initial checkout, for CVS directories which don't exist
-my $cvsroot = ($conf->{'cvs_user'} eq 'anon' ?
-	':pserver:anonymous@cvs.mysociety.org:/repos' :
-	$conf->{'cvs_user'} . "\@cvs.mysociety.org:/user/local/cvs");
+my $cvsroot;
+if ($conf->{'cvs_user'} eq "") {
+    $cvsroot = "cvs.mysociety.org:/usr/local/cvs";
+} else {
+    $cvsroot = ($conf->{'cvs_user'} eq 'anon' ?
+        ':pserver:anonymous@cvs.mysociety.org:/repos' :
+        $conf->{'cvs_user'} . "\@cvs.mysociety.org:/usr/local/cvs");
+}
 foreach my $cvs_dir (@{$conf->{'cvs_dirs'}}) {
     my $d = "$vhost_dir/mysociety/$cvs_dir/CVS";
 	if (! -d $d) {
@@ -283,11 +289,16 @@ foreach my $daemon (keys %{$conf->{'daemons'}}) {
     shell("/etc/init.d/$daemon", "start");
 }
 
-# Make crontab
-chdir $mysociety_dir;
-shell("cvs", "-Q", "update", "$conf_dir/crontab.ugly");
+# Make or remove crontab
 my $cron_name = "vhost-$vhost";
 $cron_name =~ s/\./-/g;
-shell("$mysociety_bin/mugly", "-O", "/etc/cron.d/$cron_name", "-p", "$settings_file", "$mysociety_dir/$conf_dir/crontab.ugly");
+$cron_name = "/etc/cron.d/$cron_name";
+if ($conf->{'crontab'}) {
+    chdir $mysociety_dir;
+    shell("cvs", "-Q", "update", "$conf_dir/crontab.ugly");
+    shell("$mysociety_bin/mugly", "-O", $cron_name, "-p", "$settings_file", "$mysociety_dir/$conf_dir/crontab.ugly");
+} else {
+    unlink($cron_name);
+}
 
 
