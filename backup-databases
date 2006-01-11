@@ -2,37 +2,33 @@
 
 # Backup script for important database tables
 
-TMPDUMP=~/backups/temp
-PG_DUMP=/usr/local/bin/pg_dump
-MYSQL_DUMP=/usr/local/bin/mysqldump
+BACKUPDIR=/data/backups/dailydb
+TMPDUMP=$BACKUPDIR/temp
+PG_DUMP=/usr/bin/pg_dump
+MYSQL_DUMP=/usr/bin/mysqldump
+mkdir -p $BACKUPDIR
+rm -f $TMPDUMP $TMPDUMP.bz2
 
-$PG_DUMP -d dadem >$TMPDUMP
-mv $TMPDUMP ~/backups/dadem.sql
-
-$PG_DUMP -d ratty >$TMPDUMP
-mv $TMPDUMP ~/backups/ratty.sql
-
-$PG_DUMP -d pb >$TMPDUMP
-mv $TMPDUMP ~/backups/pb.sql
-
-$PG_DUMP -d ycml >$TMPDUMP
-mv $TMPDUMP ~/backups/ycml.sql
-
-echo >$TMPDUMP
-for X in area area_name generation 
+# PostgreSQL
+for X in dadem ratty pb ycml
 do
-	$PG_DUMP -d mapit -t $X >>$TMPDUMP
+    $PG_DUMP -d $X | bzip2 >$TMPDUMP
+    mv $TMPDUMP $BACKUPDIR/$X.sql.bz2
 done
-mv $TMPDUMP ~/backups/mapit.sql
 
-$MYSQL_DUMP --databases notapathetic >$TMPDUMP
-mv $TMPDUMP ~/backups/notapathetic.sql
+# Partial mapit database
+echo >$TMPDUMP
+for Y in area area_name generation 
+do
+	$PG_DUMP -d mapit -t $Y >>$TMPDUMP
+done
+bzip2 $TMPDUMP
+mv $TMPDUMP.bz2 $BACKUPDIR/mapit.sql.bz2
 
-$MYSQL_DUMP --databases mysocietywordpress >$TMPDUMP
-mv $TMPDUMP ~/backups/mysocietywordpress.sql
-
-# No longer on this machine
-#$MYSQL_DUMP --databases fawkes | bzip2 >$TMPDUMP
-#mv $TMPDUMP ~/largebackups/fawkes.sql.bz2
-
+# MySQL
+for X in notapathetic mysocietywordpress
+do
+    $MYSQL_DUMP --databases $X >$TMPDUMP
+    mv $TMPDUMP ~/backups/$X.sql.bz2
+done
 
