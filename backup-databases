@@ -1,0 +1,38 @@
+#!/bin/bash
+
+# Backup script for important database tables
+
+TMPDUMP=~/backups/temp
+PG_DUMP=/usr/local/bin/pg_dump
+MYSQL_DUMP=/usr/local/bin/mysqldump
+
+$PG_DUMP -d dadem >$TMPDUMP
+mv $TMPDUMP ~/backups/dadem.sql
+
+$PG_DUMP -d ratty >$TMPDUMP
+mv $TMPDUMP ~/backups/ratty.sql
+
+$PG_DUMP -d pb >$TMPDUMP
+mv $TMPDUMP ~/backups/pb.sql
+
+$PG_DUMP -d ycml >$TMPDUMP
+mv $TMPDUMP ~/backups/ycml.sql
+
+echo >$TMPDUMP
+for X in area area_name generation 
+do
+	$PG_DUMP -d mapit -t $X >>$TMPDUMP
+done
+mv $TMPDUMP ~/backups/mapit.sql
+
+$MYSQL_DUMP --databases notapathetic >$TMPDUMP
+mv $TMPDUMP ~/backups/notapathetic.sql
+
+$MYSQL_DUMP --databases mysocietywordpress >$TMPDUMP
+mv $TMPDUMP ~/backups/mysocietywordpress.sql
+
+# No longer on this machine
+#$MYSQL_DUMP --databases fawkes | bzip2 >$TMPDUMP
+#mv $TMPDUMP ~/largebackups/fawkes.sql.bz2
+
+
