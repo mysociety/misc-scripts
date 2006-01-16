@@ -20,7 +20,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.16 2005-12-14 11:58:45 maint Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.17 2006-01-16 13:37:44 maint Exp $';
 
 package Oops;
 
@@ -652,7 +652,7 @@ try {
             }
 
             verbose("copying settings file to /etc/mysociety\n");
-            copy($settings, "/etc/mysociety/config-settings.pl") or throw Ooops("Failed to copy '$settings' to /etc/mysociety"); 
+            copy($settings, "/etc/mysociety/config-settings.pl") or throw Oops("Failed to copy '$settings' to /etc/mysociety"); 
         }
     }
 } catch Oops with {
@@ -694,7 +694,7 @@ are available.
 =item *.symlink
 
 The contents of the file, which should be a single line reading "To: TARGET",
-are read, and a correspondingly named symbolic link to the given TARGET are
+are read, and a correspondingly named symbolic link to the given TARGET is
 created.
 
 =item _perm
