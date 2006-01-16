@@ -2,7 +2,12 @@
 # Shorter interface to deploy scripts on servers.
 set -e
 
-function show_help {
+die () {
+    echo "mysociety:" "$@" 1>&2
+    exit 1
+}
+
+show_help () {
 	cat <<END
 Usage: mysociety COMMAND
 
@@ -20,12 +25,19 @@ shift
 if [ "$COMMAND" = "config" ]
 then
 	HOST=`hostname`
-        if [ $HOST = "bitter" -o $HOST = "tea" ] ; then
-            ARCHETYPE=bitter
-        else
-            echo "mysociety: don't know how to configure this host ($HOST)" 1>&2
-            exit 1
+        if [ x$HOST = x ] ; then
+            die "can't establish hostname"
         fi
+
+        case $HOST in
+            tea|bitter)
+                ARCHETYPE=bitter
+                ;;
+            *)
+                die "don't know how to configure this host ($HOST)"
+                ;;
+        esac
+
 	/data/mysociety/bin/deploy-configuration /data/servers/$ARCHETYPE /data/servers/$HOST.pl "$@"
 elif [ "$COMMAND" = "vhost" ]
 then
