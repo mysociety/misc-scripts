@@ -20,7 +20,13 @@ shift
 if [ "$COMMAND" = "config" ]
 then
 	HOST=`hostname`
-	/data/mysociety/bin/deploy-configuration /data/servers/$HOST /data/servers/$HOST.pl "$@"
+        if [ $HOST = "bitter" -o $HOST = "tea" ] ; then
+            ARCHETYPE=bitter
+        else
+            echo "mysociety: don't know how to configure this host ($HOST)" 1>&2
+            exit 1
+        fi
+	/data/mysociety/bin/deploy-configuration /data/servers/$ARCHETYPE /data/servers/$HOST.pl "$@"
 elif [ "$COMMAND" = "vhost" ]
 then
     VHOST=$1
