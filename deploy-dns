@@ -1,0 +1,249 @@
+#!/usr/bin/perl -w
+#
+# deploy-dns:
+# Generate appropriate bind configuration from the zones we use.
+#
+# Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
+# Email: chris@mysociety.org; WWW: http://www.mysociety.org/
+#
+
+my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.1 2006-01-17 21:03:24 maint Exp $';
+
+use strict;
+
+package Oops;
+
+use Error;
+
+@Oops::ISA = qw(Error::Simple);
+
+package main;
+require 5.8.0;
+
+use FindBin;
+use lib "$FindBin::Bin/../perllib";
+
+use Errno;
+use Error qw(:try);
+use File::Slurp qw(read_file);
+use IO::File;
+use mySociety::Util qw(create_file_to_replace);
+# we use ::Fast not for speed, but because it works and the regular one
+# doesn't.
+use Net::DNS::ZoneFile::Fast;
+use Regexp::Common qw(dns);
+use Socket;
+
+        #ns0.ukcod.org.uk
+        #ns1.ukcod.org.uk
+my @nameservers = qw(
+        ns0.flirble.org.uk
+        ns1.flirble.org.uk
+        ns2.flirble.org.uk
+        ns3.flirble.org.uk
+        ns4.flirble.org.uk
+    );
+
+
+sub parse ($) {
+    my $text = shift;
+    my $R;
+    $@ = undef;
+    # Behaviour of Net::DNS::ZoneFile::Fast::parse on errors is not documented,
+    # but it appears to throw an error which contains a line number.
+    eval {
+        $R = Net::DNS::ZoneFile::Fast::parse($text);
+    };
+    if ($@) {
+        my $err = $@;
+        $err =~ s/\n+.*//s;
+        return $err;
+    } else {
+        return $R;
+    }
+}
+
+# test_zonefile FILE
+# Confirm that the named zone FILE (a) is syntactically valid; and (b) has a
+# later serial number than any existing version of the same zonefile, if it
+# differs. Throws an Oops on a fatal error, returns a string describing any
+# error in FILE, or undef if nothing is wrong.
+sub test_zonefile ($) {
+    my $file = shift;
+
+    my $newtext = read_file($file) || throw Oops("$file: $!");
+    my $f = new IO::File("/var/named/master/$file", O_RDONLY);
+    throw Oops("/var/named/master/$file: $!") if (!$f && !$!{ENOENT});
+    my $oldtext;
+    if ($f) {
+        $oldtext = read_file($f) || throw Oops("/var/named/master/$file: $!");
+        $f->close();
+    }
+
+    #my $rrset = Net::DNS::ZoneFile::parse(\$newtext);
+    my $rrset = parse($newtext);
+    if (!ref($rrset)) {
+        return $rrset;
+    } elsif (!@$rrset) {
+        return "no RRs in zone file";
+    } elsif ($rrset->[0]->type() ne 'SOA') {
+        return "first RR should be SOA, not " . $rrset->[0]->type();
+    }
+
+    # If there's no old file or the file hasn't changed, this is all we need to
+    # do.
+    return undef if (!$oldtext || $newtext eq $oldtext);
+
+    my $newserial = $rrset->[0]->serial();
+
+    $rrset = Net::DNS::ZoneFile::Fast::parse($oldtext);
+    if ($rrset && @$rrset && $rrset->[0]->type() eq 'SOA') {
+        my $oldserial = $rrset->[0]->serial();
+        return "new serial number, '$newserial', is not larger than old serial number, '$oldserial', but the files differ";
+    } elsif (!defined($rrset)) {
+        print STDERR "deploy-dns: WARNING: current $file is syntactically invalid\n";
+    } elsif (!@$rrset) {
+        print STDERR "deploy-dns: WARNING: current $file contains no RRs\n";
+    } else {
+        print STDERR "deploy-dns: WARNING: first RR in $file is not SOA\n";
+    }
+
+    return undef;
+}
+
+#
+# Our zonefiles are stored in CVS in servers/dns. There are both zone files and
+# .symlink files (as used by deploy-configuration) for configuring several
+# domains identically. This script is responsible for checking that each zone
+# file in the working directory at /data/servers/dns is valid, for copying them
+# into /var/named/master, writing an appropriate /etc/bind/domains.conf and
+# restarting the nameserver.
+#
+
+my @files_to_delete = ();
+my $ret = 1;
+
+try {
+    chdir("/data/servers/dns") || throw Oops("/data/servers/dns: $!");
+
+    # Get the list of files under CVS control from CVS/Entries. This is nasty, but
+    # the alternatives are worse.
+    my $f = new IO::File("CVS/Entries", O_RDONLY) || throw Oops("CVS/Entries: $!");
+
+    my %files = ();
+    while (my $line = $f->getline()) {
+        $files{$1} = 0 if ($line =~ m#^/([^/]+)/# && $1 !~ /^(?:_perm|\.cvsignore)$/);
+    }
+    die "CVS/Entries: $!" if ($f->error());
+
+    my $errors = 0;
+    my @domains = ();
+    foreach my $n (sort keys %files) {
+        my $domain = $n;
+        if ($domain =~ /^(.*)\.symlink$/) {
+            push(@domains, $1);
+            my $t = read_file($domain) || throw Oops("$domain: $!");
+            if ($t !~ /^To:\s*(.*)$/m) {
+                print STDERR "deploy-dns: $domain: not a proper .symlink file\n";
+                ++$errors;
+                next;
+            } elsif (!exists($files{$1})) {
+                print STDERR "deploy-dns: $domain: symlink to a file which does not exist: $1\n";
+                ++$errors;
+                next;
+            }
+            $domain = $1;
+        } else {
+            push(@domains, $domain);
+        }
+        if (!$files{$domain}) {
+            if (my $err = test_zonefile($domain)) {
+                print STDERR "deploy-dns: $domain: $err\n";
+                ++$errors;
+            }
+            ++$files{$domain};
+        }
+        push(@domains, $domain);
+    }
+
+    throw Oops("problems with DNS zones") if ($errors > 0);
+
+    my @nameserver_ips = map {
+            my $ip = gethostbyname($_);
+            throw Oops("$_: unable to resolve name") if (!$ip);
+            sprintf('%d.%d.%d.%d', unpack('CCCC', $ip))
+        } @nameservers;
+
+    my $nslist = join("; ", @nameserver_ips) . ";";
+
+    # In case this is the first time we've been run, create an empty
+    # domains.conf.
+    $f = new IO::File("/var/named/etc/bind/domains.conf", O_WRONLY | O_CREAT, 0644);
+    throw Oops("/var/named/etc/bind/domains.conf: $!") if (!$f);
+    $f->close();
+
+    $@ = undef;
+    my ($name, $h);
+    eval {
+        ($name, $h) = create_file_to_replace("/var/named/etc/bind/domains.conf");
+    };
+    throw Oops("unable to create file to replace /var/named/etc/bind/domains.conf: $!") if ($@);
+    push(@files_to_delete, $name);
+
+    foreach my $domain (@domains) {
+        $h->printf(<<EOF,
+zone "%s" {
+    type master;
+    file "%s";
+    allow-query { 0.0.0.0/0; };
+    allow-transfer { %s };
+    allow-notify { %s };
+};
+EOF
+            $domain, $domain, $nslist, $nslist)
+                || throw Oops("$name: $!");
+    }
+
+    $h->close() || throw Oops("$name: $!");
+
+    # Now copy the zonefiles themselves. Use deploy-configuration for that.
+    system(qw(/data/mysociety/bin/deploy-configuration
+                --no-check-existing
+                --target /var/named/master
+                /data/servers/dns
+                /dev/null));
+    if ($? != 0) {
+        if ($? & 127) {
+            throw Oops("deploy-configuration died with signal " . ($? & 127));
+        } else {
+            throw Oops("deploy-configuration failed with exit status " . ($? >> 8));
+        }
+    }
+
+    # We win.
+    rename($name, "/var/named/etc/bind/domains.conf")
+        || throw Oops("/var/named/etc/bind/domains.conf: $!");
+
+    # Try to reload the zones, but failure is not a fatal error.
+    system(qw(rndc reload));
+    if ($? != 0) {
+        if ($? & 127) {
+            print STDERR "deploy-dns: WARNING: rndc died with signal ", ($? & 127), "\n"; 
+        } else {
+            print STDERR "deploy-dns: WARNING: rndc failed with exit status ", ($? >> 8), "\n";
+        }
+    }
+
+    $ret = 0;
+
+} catch Oops with {
+    my $E = shift;
+    print STDERR "deploy-dns: ", $E->text(), "\n";
+    print STDERR "deploy-dns: aborting\n";
+} finally {
+    foreach (@files_to_delete) {
+        unlink($_);
+    }
+};
+
+exit($ret);
