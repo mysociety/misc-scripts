@@ -20,7 +20,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.17 2006-01-16 13:37:44 maint Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.18 2006-01-17 10:40:40 maint Exp $';
 
 package Oops;
 
@@ -467,7 +467,6 @@ sub install_files ($$;$) {
     }
 }
 
-
 # compare_installed_files H TAR DIR
 # Compare the files installed on the machine (under DIR) with those archived in
 # TAR. Discrepancies are reported to H, and the total number of discrepancies
@@ -493,7 +492,7 @@ sub compare_installed_files ($$$) {
                 if ($st->uid() != $f->{gid});
             push(@what, sprintf('permissions changed: were %04o; now %04o', S_IMODE($f->{mode}), S_IMODE($st->mode())))
                 if (S_IMODE($f->{mode}) != S_IMODE($st->mode()));
-            push(@what, sprintf('file type changed: was %s; now %s', file_type($f->{mode}), file_type($st->mode())))
+            push(@what, sprintf('file type changed: was %s; now %s', file_type_from_tar($f->{type}), file_type($st->mode())))
                 if ($f->{type} != file_type_tar($st->mode()));
             if ($f->{type} == Archive::Tar::Constant::SYMLINK && $f->{type} == file_type_tar($st->mode())) {
                 my $target = readlink("$dir/$name")
