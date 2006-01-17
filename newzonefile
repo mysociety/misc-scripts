@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: newzonefile,v 1.3 2006-01-17 17:41:51 maint Exp $';
+my $rcsid = ''; $rcsid .= '$Id: newzonefile,v 1.4 2006-01-17 17:43:49 maint Exp $';
 
 use strict;
 
@@ -63,7 +63,7 @@ $f->print(<<EOF);
 ; $domain:
 ; DNS records for $descr.
 ;
-; \$Id: newzonefile,v 1.3 2006-01-17 17:41:51 maint Exp $
+; \$Id: newzonefile,v 1.4 2006-01-17 17:43:49 maint Exp $
 ;
 
 @               SOA     ns0.ukcod.org.uk.   hostmaster.ukcod.org.uk. (
@@ -78,12 +78,12 @@ $f->print(<<EOF);
 EOF
 
 foreach (@nameservers) {
-    print <<EOF;
+    $f->print(<<EOF);
                 NS                   $_
 EOF
 }
 
-print <<EOF;
+$f->print(<<EOF);
 
 ; Mail records for the domain itself
                 MX      10          tea.ukcod.org.uk.
