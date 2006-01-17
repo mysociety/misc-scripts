@@ -20,7 +20,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.22 2006-01-17 21:00:08 maint Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.23 2006-01-17 21:36:27 maint Exp $';
 
 package Oops;
 
@@ -407,6 +407,7 @@ sub file_type_from_tar ($) {
 # Record the files saved in TAR so that they can be compared against those on
 # the real system later.
 sub install_files ($$;$);
+use Data::Dumper;
 sub install_files ($$;$) {
     my ($tar, $indir, $outdir) = @_;
     $indir =~ s#(?<!^)/$##;
@@ -424,9 +425,9 @@ sub install_files ($$;$) {
 
         my %taropts = (
                 uid => $st->uid(),
-                uname => getpwuid($st->uid()),
+                uname => scalar(getpwuid($st->uid())),
                 gid => $st->gid(),
-                gname => getpwuid($st->gid()),
+                gname => scalar(getgrgid($st->gid())),
                 mode => S_IMODE($st->mode()),
                 type => file_type_tar($st->mode())
             );
@@ -491,7 +492,7 @@ sub compare_installed_files ($$$) {
             push(@what, sprintf('UID changed: was %d; now %d', $f->{uid}, $st->uid()))
                 if ($st->uid() != $f->{uid});
             push(@what, sprintf('GID changed: was %d; now %d', $f->{gid}, $st->gid()))
-                if ($st->uid() != $f->{gid});
+                if ($st->gid() != $f->{gid});
             push(@what, sprintf('permissions changed: were %04o; now %04o', S_IMODE($f->{mode}), S_IMODE($st->mode())))
                 if (S_IMODE($f->{mode}) != S_IMODE($st->mode()));
             push(@what, sprintf('file type changed: was %s; now %s', file_type_from_tar($f->{type}), file_type($st->mode())))
