@@ -1,0 +1,125 @@
+#!/usr/bin/perl -w
+#
+# newzonefile:
+# Create a new template zonefile.
+#
+# Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
+# Email: chris@mysociety.org; WWW: http://www.mysociety.org/
+#
+
+my $rcsid = ''; $rcsid .= '$Id: newzonefile,v 1.1 2006-01-17 16:39:40 chris Exp $';
+
+use strict;
+
+use IO::File;
+use Regexp::Common;
+
+my @nameservers = qw(
+        ns0.ukcod.org.uk
+        ns1.ukcod.org.uk
+        ns0.flirble.org.uk
+        ns1.flirble.org.uk
+        ns2.flirble.org.uk
+        ns3.flirble.org.uk
+        ns4.flirble.org.uk
+    );
+
+if (@ARGV < 1 || $ARGV[0] =~ /^(--?help|-h)$/) {
+    print <<EOF;
+Usage: newzonefile DOMAIN [ALIAS ...]
+
+Create a new template zonefile for DOMAIN, and save it in a file with the same
+name; also create .symlink files linking any specified ALIASes to it.
+
+$rcsid
+EOF
+}
+
+if (!chdir("/data/servers/dns")) {
+    print STDERR "newzonefile: /data/servers/dns: $!\n";
+    exit(1);
+}
+
+my ($domain, @aliases) = @ARGV;
+my @bad = grep { $_ !~ /^$RE{dns}{domain}$/ } ($domain, @aliases);
+foreach (@bad) {
+    print STDERR "newzonefile: $_: invalid domain name\n";
+}
+exit(1) if (@bad);
+
+my $serial = POSIX::strftime('%Y%m%d01', localtime(time()));
+
+my $f = new IO::File($domain, O_WRONLY | O_CREAT | O_EXCL, 0644);
+if (!$f) {
+    print STDERR "newzonefile: $domain: $!\n";
+    exit(1);
+}
+
+my $descr = scalar(@aliases) ? $domain : "$domain; also " . join(', ', @aliases);
+
+$f->print(<<EOF);
+;
+; $domain:
+; DNS records for $descr.
+;
+; \$Id: newzonefile,v 1.1 2006-01-17 16:39:40 chris Exp $
+;
+
+@               SOA     ns0.ukcod.org.uk.   hostmaster.ukcod.org.uk. (
+                $serial          ; Serial
+                10800               ; Refresh
+                3600                ; Retry
+                604800              ; Expire
+                86400               ; Minimum TTL
+                )
+
+; Name servers
+EOF
+
+foreach (@nameservers) {
+    print <<EOF;
+                NS                   $_
+EOF
+}
+
+print <<EOF;
+
+; Mail records for the domain itself
+                MX      10          tea.ukcod.org.uk.
+                MX      10          bitter.ukcod.org.uk.
+
+                MX      20          prune.flirble.org.
+                MX      30          castaway.flirble.org.
+
+; Address of $domain itself.
+                IN      A           82.111.230.100      ; tea.ukcod.org.uk
+                IN      A           82.111.230.101      ; bitter.ukcod.org.uk
+
+localhost       IN      A           127.0.0.1
+
+; Physical web servers for this domain.
+web             IN      A           82.111.230.100      ; tea.ukcod.org.uk
+                IN      A           82.111.230.101      ; bitter.ukcod.org.uk
+
+www             CNAME               web
+
+; Add further web servers etc. below this point.
+
+EOF
+
+$f->close();
+my @cvsfiles = ($domain);
+
+foreach (@aliases) {
+    my $f = new IO::File("$_.symlink", O_WRONLY | O_CREAT | O_EXCL, 0644);
+    if ($f) {
+        $f->print("To: $domain\n");
+        $f->close();
+        push(@cvsfiles, $_);
+    } else {
+        print STDERR "newzonefile: $_: $!\n";
+    }
+}
+
+#system("cvs", "add", "-m", "Created new zone file for $descr", @cvsfiles);
+#system("cvs", "commit", "-m", "Created new zone file for $descr", @cvsfiles);
