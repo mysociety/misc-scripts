@@ -9,6 +9,8 @@
 # $3 - pgsql db name
 # $4 - pgsql db user
 # $5 - pgsql db pass
+# $6 - pgsql db host
+# $7 - pgsql db port
 #
 # If the schemas differ, prints a message to standard error and exits with 1.
 # If they are the same, quietly exits with code 0.
@@ -17,7 +19,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-. ../shlib/deployfns
+set -e
 
 # XXX use of mktemp here not safe; should make a temporary directory
 CVS_SCHEMA_FILE=`mktemp /tmp/ms-deploy-cvsschema.XXXXXX`
@@ -33,7 +35,7 @@ su $PSQL_SCHEMATEST_USER -c "pg_dump -s schematest" | egrep -v "^--|SET SESSION 
 
 # ... the live database dump
 export PGPASSWORD=$5
-su $2 -c "pg_dump -s -U $4 $3" | egrep -v "^--|SET SESSION AUTHORIZATION|\\connect - |GRANT ALL|REVOKE ALL" | grep -v "SET search_path = public, pg_catalog;" | sed "s/,$//;" | grep -v '^[ \t]*$' > $CURRENT_SCHEMA_FILE
+su $2 -c "pg_dump --schema-only -U $4 --host $6 --port $7 $3" | egrep -v "^--|SET SESSION AUTHORIZATION|\\connect - |GRANT ALL|REVOKE ALL" | grep -v "SET search_path = public, pg_catalog;" | sed "s/,$//;" | grep -v '^[ \t]*$' > $CURRENT_SCHEMA_FILE
 
 # Note:  Using sort here is completely evil.  It is because
 # older verions of pg_dump don't output the tables in a stable
@@ -50,7 +52,7 @@ cat $CURRENT_SCHEMA_FILE | sort > $CURRENT_SCHEMA_FILE.sorted
 if ! diff -w $CURRENT_SCHEMA_FILE.sorted $CVS_SCHEMA_FILE.sorted
 then
 	warn "Schema in CVS differs from that in pgsql database, you need to update it"
-	warn "database: $3; user: $4 schema: $1"
+	warn "host: $6 port: $7 database: $3; user: $4 schema: $1"
 	warn "CVS sorted: $CVS_SCHEMA_FILE.sorted; current sorted: $CURRENT_SCHEMA_FILE.sorted"
 	warn "CVS schema: $CVS_SCHEMA_FILE; current schema: $CURRENT_SCHEMA_FILE"
 	exit 1

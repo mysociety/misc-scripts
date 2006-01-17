@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.14 2006-01-11 11:25:49 maint Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.15 2006-01-17 00:10:29 maint Exp $';
 
 package main;
 
@@ -48,7 +48,7 @@ sub make_symlink {
 }
 
 sub shell {
-	system(@_) == 0 || die "system call failed: " . join(" ", @_);
+	system(@_) == 0 || die "external program failed: " . join(" ", @_);
 }
 
 #####################################################################
@@ -224,14 +224,14 @@ foreach my $psql_conf_prefix (keys %{$conf->{'psql_schemas'}}) {
 	my $psql_host = mySociety::Config::get($psql_conf_prefix.'_DB_HOST', 'localhost');
 	my $psql_port = mySociety::Config::get($psql_conf_prefix.'_DB_PORT', 5432);
 	my $psql_name = mySociety::Config::get($psql_conf_prefix.'_DB_NAME');
-    die "$psql_conf_prefix not configured in conf/general file" if !$psql_name;
+	die "$psql_conf_prefix not configured in conf/general file" if !$psql_name;
 	my $psql_user = mySociety::Config::get($psql_conf_prefix.'_DB_USER');
 	my $psql_pass = mySociety::Config::get($psql_conf_prefix.'_DB_PASS');
 	
 	chdir $mysociety_dir;
 	shell("cvs", "-Q", "update", "$psql_schema");
 	chdir $mysociety_bin;
-	shell("./psql-schema-compare", $mysociety_dir.'/'.$psql_schema, $conf->{'user'}, $psql_name, $psql_user, $psql_pass);
+	shell("./psql-schema-compare", $mysociety_dir.'/'.$psql_schema, $conf->{'user'}, $psql_name, $psql_user, $psql_pass, $psql_host, $psql_port);
 }
 
 # Create httpd configuration stanza
