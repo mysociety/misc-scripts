@@ -7,12 +7,12 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: newzonefile,v 1.1 2006-01-17 16:39:40 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: newzonefile,v 1.2 2006-01-17 17:41:29 maint Exp $';
 
 use strict;
 
 use IO::File;
-use Regexp::Common;
+use Regexp::Common qw(dns);
 
 my @nameservers = qw(
         ns0.ukcod.org.uk
@@ -62,7 +62,7 @@ $f->print(<<EOF);
 ; $domain:
 ; DNS records for $descr.
 ;
-; \$Id: newzonefile,v 1.1 2006-01-17 16:39:40 chris Exp $
+; \$Id: newzonefile,v 1.2 2006-01-17 17:41:29 maint Exp $
 ;
 
 @               SOA     ns0.ukcod.org.uk.   hostmaster.ukcod.org.uk. (
