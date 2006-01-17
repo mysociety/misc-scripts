@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.3 2006-01-17 21:18:51 maint Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.4 2006-01-17 21:37:27 maint Exp $';
 
 use strict;
 
@@ -250,7 +250,7 @@ EOF
         $h->printf(<<EOF,
 zone "%s" {
     type master;
-    file "%s";
+    file "master/%s";
     allow-query { 0.0.0.0/0; };
     allow-transfer { our_dns_servers; };
 };
