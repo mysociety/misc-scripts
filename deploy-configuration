@@ -20,7 +20,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.20 2006-01-17 14:28:18 maint Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.21 2006-01-17 15:38:29 chris Exp $';
 
 package Oops;
 
@@ -550,6 +550,7 @@ try {
     my $only_check_existing = 0;
     my $no_check_existing = 0;
     my $only_check_new = 0;
+    my $target = '/';
     if (!GetOptions(
             'help' =>               \$help,
             'verbose' =>            \$be_verbose,
@@ -557,7 +558,8 @@ try {
             'no-check-existing' =>  \$no_check_existing,
             'check-new' =>          \$only_check_new,
             'save-file=s' =>        \$save_file,
-            'mugly-path=s' =>       \$mugly_bin
+            'mugly-path=s' =>       \$mugly_bin,
+            'target=s' =>           \$target
         )) {
         throw Oops("bad options; try --help for help");
     }
@@ -577,6 +579,8 @@ try {
         unless ($only_check_existing || -x $mugly_bin);
     throw Oops("must be run as root")
         if (getuid() != 0);
+    throw Oops("target directory '$target' does not exist")
+        unless (-d $target);
 
     my ($tree, $settings);
 
@@ -752,6 +756,10 @@ files from that location.
 
 Set the PATH to the mugly macro-processor (or a compatible program with the
 same invocation semantics).
+
+=item --target DIRECTORY
+
+Install files into DIRECTORY and its subdirectories, rather than /.
 
 =back
 
