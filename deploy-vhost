@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.15 2006-01-17 00:10:29 maint Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.16 2006-01-17 10:53:22 maint Exp $';
 
 package main;
 
@@ -293,7 +293,19 @@ foreach my $daemon (keys %{$conf->{'daemons'}}) {
 my $cron_name = "vhost-$vhost";
 $cron_name =~ s/\./-/g;
 $cron_name = "/etc/cron.d/$cron_name";
+my $ok = 0;
 if ($conf->{'crontab'}) {
+    if ($conf->{'crontab'} eq '1') {
+        $ok = 1;
+    } else {
+        my $hostname = `hostname`;
+        chomp($hostname);
+        if ($hostname eq $conf->{'crontab'}) {
+            $ok = 1;
+        }
+    }
+}
+if ($ok) {
     chdir $mysociety_dir;
     shell("cvs", "-Q", "update", "$conf_dir/crontab.ugly");
     shell("$mysociety_bin/mugly", "-O", $cron_name, "-p", "$settings_file", "$mysociety_dir/$conf_dir/crontab.ugly");
