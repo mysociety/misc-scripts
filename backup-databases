@@ -1,6 +1,7 @@
 #!/bin/bash
 
 # Backup script for important database tables
+# TODO: Add all other databases as we migrate them
 
 BACKUPDIR=/data/backups/dailydb
 TMPDUMP=$BACKUPDIR/temp
@@ -10,25 +11,27 @@ mkdir -p $BACKUPDIR
 rm -f $TMPDUMP $TMPDUMP.bz2
 
 # PostgreSQL
-for X in dadem ratty pb ycml
+# TODO: add: dadem ratty
+for X in pb ycml
 do
-    $PG_DUMP -d $X | bzip2 >$TMPDUMP
+    #PGPASSWORD=/data/mysociety/bin/pgpw $PG_DUMP
+    su postgres -c "$PG_DUMP -d $X" | bzip2 >$TMPDUMP
     mv $TMPDUMP $BACKUPDIR/$X.sql.bz2
 done
 
 # Partial mapit database
-echo >$TMPDUMP
-for Y in area area_name generation 
-do
-	$PG_DUMP -d mapit -t $Y >>$TMPDUMP
-done
-bzip2 $TMPDUMP
-mv $TMPDUMP.bz2 $BACKUPDIR/mapit.sql.bz2
+#echo >$TMPDUMP
+#for Y in area area_name generation 
+#do
+#	$PG_DUMP -d mapit -t $Y >>$TMPDUMP
+#done
+#bzip2 $TMPDUMP
+#mv $TMPDUMP.bz2 $BACKUPDIR/mapit.sql.bz2
 
 # MySQL
-for X in notapathetic mysocietywordpress
-do
-    $MYSQL_DUMP --databases $X >$TMPDUMP
-    mv $TMPDUMP ~/backups/$X.sql.bz2
-done
+#for X in notapathetic mysocietywordpress
+#do
+#    $MYSQL_DUMP --databases $X >$TMPDUMP
+#    mv $TMPDUMP ~/backups/$X.sql.bz2
+#done
 
