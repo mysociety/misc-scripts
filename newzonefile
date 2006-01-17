@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: newzonefile,v 1.4 2006-01-17 17:43:49 maint Exp $';
+my $rcsid = ''; $rcsid .= '$Id: newzonefile,v 1.5 2006-01-17 17:44:27 maint Exp $';
 
 use strict;
 
@@ -58,12 +58,14 @@ if (!$f) {
 
 my $descr = scalar(@aliases) ? $domain : "$domain; also " . join(', ', @aliases);
 
+my $kw = '$'; $kw .= 'Id:'; $kw .= '$';
+
 $f->print(<<EOF);
 ;
 ; $domain:
 ; DNS records for $descr.
 ;
-; \$Id: newzonefile,v 1.4 2006-01-17 17:43:49 maint Exp $
+; $kw
 ;
 
 @               SOA     ns0.ukcod.org.uk.   hostmaster.ukcod.org.uk. (
