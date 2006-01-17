@@ -20,7 +20,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.19 2006-01-17 14:19:57 maint Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.20 2006-01-17 14:28:18 maint Exp $';
 
 package Oops;
 
@@ -283,7 +283,9 @@ sub process_directory ($$$) {
                 throw Oops("$indir/$name.symlink: symlink file syntax is 'To: TARGET\\n'") if ($target !~ /^To:/);
                 $target =~ s#^To:\s*##;
                 throw Oops("$indir/$name.symlink: specified symlink target contains illegal characters") if ($target =~ /[\0\n]/);
-                #print STDERR "$indir/$name.symlink: warning: symlink target is absolute\n" if ($target =~ m#^/#);
+                # absolute symlinks are bad if during disaster recovery the drive is mounted
+                # somewhere other than /
+                print STDERR "$indir/$name.symlink: warning: symlink target is absolute\n" if ($target =~ m#^/#);
                 verbose("SYMLINK $indir/$name\n");
                 symlink($target, "$outdir/$name") or throw Oops("$outdir/$name: symlink: $!");
                 $havefile{$name} = "$name.symlink";
