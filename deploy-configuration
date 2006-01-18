@@ -20,7 +20,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.23 2006-01-17 21:36:27 maint Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.24 2006-01-18 10:44:16 maint Exp $';
 
 package Oops;
 
@@ -277,7 +277,7 @@ sub process_directory ($$$) {
                 throw Oops("$indir/$name: read: $!") if ($f->error());
                 $f->close();
                 $name =~ s/\.symlink$//;
-                throw Oops("$indir/$name: already created $name, from $havefile{$name}")
+                throw Oops("$indir/$name.symlink: already created $name, from $havefile{$name}")
                     if (exists($havefile{$name}));
                 $target =~ s#\n$##s;
                 throw Oops("$indir/$name.symlink: symlink file syntax is 'To: TARGET\\n'") if ($target !~ /^To:/);
@@ -290,6 +290,40 @@ sub process_directory ($$$) {
                 symlink($target, "$outdir/$name") or throw Oops("$outdir/$name: symlink: $!");
                 $havefile{$name} = "$name.symlink";
                 $is_symlink = 1;
+            } elsif ($name =~ /.\.mknod$/) {
+                # File specifies a block or character device or a named pipe.
+                my $f = new IO::File("$indir/$name")
+                    or throw Oops("$indir/$name: open: $!");
+                my $spec = join('', $f->getlines();
+                throw Oops("$indir/$name: read: $!") if ($f->error());
+                $f->close();
+                $spec =~ s/^\s*//s;
+                $spec =~ s/\s*$//s;
+                my @mknod_args = ();
+                if ($spec eq 'p') {
+                    # Named pipe.
+                    @mknod_args = qw(p);
+                } elsif ($spec =~ m#^([bcp])\s+([1-9]\d*)\s+([1-9]\d*)$#) {
+                    # Device special file.
+                    @mknod_args = ($1, $2, $3);
+                } else {
+                    throw Oops("$indir/$name: mknod file syntax is 'p' or 'b MAJOR MINOR' or 'c MAJOR MINOR'");
+                }
+                $name =~ s/\.mknod$//;
+                throw Oops("$indir/$name.mknod: already created $name, from $havefile{$name}")
+                    if (exists($havefile{$name}));
+                verbose("MKNOD $indir/name\n");
+                # Hmm. perl seems to lack a mknod function.
+                system('mknod', "$indir/$name", @mknod_args);
+                my $c = "mknod $indir/$name " . join(' ', @mknod_args);
+                if ($? == -1) {
+                    throw Oops("$cmd: exec: $!");
+                } elsif ($? & 127) {
+                    throw Oops("$cmd: killed by signal " . ($? & 127));
+                } elsif ($? >> 8) {
+                    throw Oops("$cmd: exited with nonzero status " . ($? >> 8));
+                }
+                $havefile{$name} = "$name.mknod";
             } elsif ($name =~ /.\.ugly$/) {
                 # File specifies macro source.
                 $name =~ s/\.ugly$//;
