@@ -20,7 +20,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.28 2006-01-18 11:01:16 maint Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.29 2006-01-18 11:03:12 maint Exp $';
 
 package Oops;
 
@@ -193,12 +193,14 @@ sub read_perms ($) {
             if ($owner =~ /([^:]+):([^:]+)/) {
                 ($uid, $gid) = ($1, $2);
                 if ($uid !~ /^(0|[1-9][0-9]*)$/) {
-                    $uid = getpwnam($uid)
-                        || throw Oops("$indir/_perm:$n: '$1' is not a valid UID or username");
+                    $uid = getpwnam($uid);
+                    throw Oops("$indir/_perm:$n: '$1' is not a valid UID or username")
+                        if (!defined($uid));
                 }
                 if ($gid !~ /^(0|[1-9][0-9]*)$/) {
-                    $gid = getgrnam($gid)
-                        || throw Oops("$indir/_perm:$n: '$2' is not a valid GID or groupname");
+                    $gid = getgrnam($gid);
+                    throw Oops("$indir/_perm:$n: '$2' is not a valid GID or groupname")
+                        if (!defined($gid));
                 }
             } elsif ($owner ne '-') {
                 throw Oops("$indir/_perm:$n: '$owner' is not a valid owner string (should be U:G)");
@@ -540,8 +542,8 @@ sub compare_installed_files ($$$) {
                 # XXX from <sys/sysmacros.h>, but this will probably break with
                 # a later kernel or libc.
                 my $major = ($st->rdev() >> 8) & 0xff;
-                my $minor = ($st->rdev() & 0xff;
-                push(@what, sprintf('type of device changed: was %d %d; now %d %d', $f->{devmajor}, $f->{devminor}, $major, $minor)
+                my $minor = $st->rdev() & 0xff;
+                push(@what, sprintf('type of device changed: was %d %d; now %d %d', $f->{devmajor}, $f->{devminor}, $major, $minor))
                     if ($major != $f->{devmajor} || $minor != $f->devminor());
             } elsif ($f->{type} == Archive::Tar::Constant::FILE && $f->{type} == file_type_tar($st->mode())) {
                 # Compare the two files.
