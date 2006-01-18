@@ -1,10 +1,9 @@
 #!/bin/sh
 
 # ssh-as-sudoer:
-# Set CVS_RSH to point to this script, and use a CVSROOT with no
-# username specified. Then you will log in to CVS as the user name
-# you logged into the machine with originally, rather than as root,
-# or any other user you "su"'d to afterwards.
+# Set CVS_RSH for root to point to this script, and use a CVSROOT with no
+# username specified. Then you will log in to CVS as the user name you logged
+# into the machine with originally, rather than as root.
 #
 # Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
