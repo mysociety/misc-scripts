@@ -9,9 +9,12 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-if [ -z "$SUDO_USER" -o "`whoami`" != "root" ]
+if [ "`whoami`" != "root" ]
 then
     ssh "$@"
+elif [ -z "$SUDO_USER" ]
+then
+    ssh -l maint "$@"
 else
     SUDO_HOME=`eval "echo ~$SUDO_USER"`
     ssh -i $SUDO_HOME/.ssh/id_dsa -l $SUDO_USER "$@"
