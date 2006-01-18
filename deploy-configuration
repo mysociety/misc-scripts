@@ -20,7 +20,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.25 2006-01-18 10:45:46 maint Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.26 2006-01-18 11:00:35 maint Exp $';
 
 package Oops;
 
@@ -511,7 +511,7 @@ sub install_files ($$;$) {
 sub compare_installed_files ($$$) {
     my ($h, $tar, $dir) = @_;
     my $n = 0;
-    foreach my $f ($tar->list_files([qw(prefix name type uid gid mode linkname)])) {
+    foreach my $f ($tar->list_files([qw(prefix name type uid gid mode linkname devmajor devminor)])) {
         my $name = "$f->{prefix}/$f->{name}";
         my $st = lstat("$dir/$name");
         my @what;
@@ -536,6 +536,13 @@ sub compare_installed_files ($$$) {
                                 || throw Oops("$dir/$name: readlink: $!");
                 push(@what, sprintf('target of symbolic link changed: was %s; now %s', $f->{linkname}, $target))
                     if ($f->{linkname} ne $target);
+            } elsif ($f->{type} == Archive::Tar::Constant::BLOCKDEV || $f->{type} == Archive::Tar::Constant::CHARDEV && $f->{type} == file_type_tar($st->mode())) {
+                # XXX from <sys/sysmacros.h>, but this will probably break with
+                # a later kernel or libc.
+                my $major = ($st->rdev() >> 8) & 0xff;
+                my $minor = ($st->rdev() & 0xff;
+                push(@what, sprintf('type of device changed: was %d %d; now %d %d', $f->{devmajor}, $f->{devminor}, $major, $minor)
+                    if ($major != $f->{devmajor} || $minor != $f->devminor());
             } elsif ($f->{type} == Archive::Tar::Constant::FILE && $f->{type} == file_type_tar($st->mode())) {
                 # Compare the two files.
                 my ($tmph, $tmpn) = mySociety::Util::named_tempfile();
