@@ -20,7 +20,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.26 2006-01-18 11:00:35 maint Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.27 2006-01-18 11:00:56 maint Exp $';
 
 package Oops;
 
@@ -315,7 +315,7 @@ sub process_directory ($$$) {
                 verbose("MKNOD $indir/name\n");
                 # Hmm. perl seems to lack a mknod function.
                 system('mknod', "$indir/$name", @mknod_args);
-                my $c = "mknod $indir/$name " . join(' ', @mknod_args);
+                my $cmd = "mknod $indir/$name " . join(' ', @mknod_args);
                 if ($? == -1) {
                     throw Oops("$cmd: exec: $!");
                 } elsif ($? & 127) {
