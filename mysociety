@@ -1,6 +1,5 @@
 #!/bin/sh
 # Shorter interface to deploy scripts on servers.
-set -e
 
 die () {
     echo "mysociety:" "$@" 1>&2
@@ -9,21 +8,32 @@ die () {
 
 show_help () {
 	cat <<END
-Usage: mysociety COMMAND
+Usage: mysociety COMMAND [OPTIONS]
 
-COMMAND is any of:
-  config - deploy new config for current server
-  vhost VHOST - deploy latest version of VHOST, e.g. www.pledgebank.com
+COMMAND is one of:
+    config
+        Deploy new config for current server from /data/servers/...
 
-Extra parameters are passed through to underlying script.
+    vhost VHOST
+        Deploy latest version of VHOST, e.g. www.pledgebank.com.
+
+    dns
+        Update the DNS configuration on the current host.
+  
+Extra parameters are passed through to underlying deploy-... script.
 END
 	exit
 }
 
 COMMAND=$1
 shift
-if [ "$COMMAND" = "config" ]
-then
+
+[ x$COMMAND = x ] && die "specify a command (try --help for help)"
+
+set -e
+
+case $COMMAND in
+    config)
 	HOST=`hostname`
         if [ x$HOST = x ] ; then
             die "can't establish hostname"
@@ -38,14 +48,22 @@ then
                 ;;
         esac
 
-	/data/mysociety/bin/deploy-configuration /data/servers/$ARCHETYPE /data/servers/$HOST.pl "$@"
-elif [ "$COMMAND" = "vhost" ]
-then
-    VHOST=$1
-    shift
-	[ "$VHOST" = "" ] && show_help
-	/data/mysociety/bin/deploy-vhost $VHOST "$@"
-else
+	exec /data/mysociety/bin/deploy-configuration /data/servers/$ARCHETYPE /data/servers/$HOST.pl "$@"
+        ;;
+        
+    vhost)
+        VHOST=$1
+        shift
+        [ "$VHOST" = "" ] && die "specify a virtual host"
+        exec /data/mysociety/bin/deploy-vhost $VHOST "$@"
+        ;;
+
+    dns)
+        exec /data/mysociety/bin/deploy-dns "$@"
+        ;;
+
+    --help|-h)
 	show_help
-fi
+        ;;
+esac
 
