@@ -20,7 +20,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.27 2006-01-18 11:00:56 maint Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.28 2006-01-18 11:01:16 maint Exp $';
 
 package Oops;
 
@@ -294,7 +294,7 @@ sub process_directory ($$$) {
                 # File specifies a block or character device or a named pipe.
                 my $f = new IO::File("$indir/$name")
                     or throw Oops("$indir/$name: open: $!");
-                my $spec = join('', $f->getlines();
+                my $spec = join('', $f->getlines());
                 throw Oops("$indir/$name: read: $!") if ($f->error());
                 $f->close();
                 $spec =~ s/^\s*//s;
