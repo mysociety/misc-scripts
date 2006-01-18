@@ -9,7 +9,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-if [ -z "$SUDO_USER" ]
+if [ -z "$SUDO_USER" -o "`whoami`" != "root" ]
 then
     ssh "$@"
 else
