@@ -23,11 +23,15 @@
 
 if [ "`whoami`" != "root" ]
 then
-    ssh "$@"
+    exec ssh "$@"
 elif [ -z "$SUDO_USER" ]
 then
-    ssh -l maint "$@"
+    exec ssh -l maint "$@"
 else
     SUDO_HOME=`eval "echo ~$SUDO_USER"`
-    ssh -i $SUDO_HOME/.ssh/id_dsa -l $SUDO_USER "$@"
+    if [ -e $SUDO_HOME/.ssh/id_dsa ] ; then
+        exec ssh -i $SUDO_HOME/.ssh/id_dsa -l $SUDO_USER "$@"
+    else
+        exec ssh -l maint "$@"
+    fi
 fi
