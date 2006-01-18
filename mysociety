@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 # Shorter interface to deploy scripts on servers.
 set -e
 
