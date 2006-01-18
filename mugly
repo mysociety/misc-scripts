@@ -28,7 +28,7 @@
 # Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: mugly,v 1.6 2005-12-07 17:06:41 chris Exp $
+# $Id: mugly,v 1.7 2006-01-18 15:44:37 maint Exp $
 #
 
 use strict;
@@ -36,8 +36,10 @@ use strict;
 package __mugly__;
 
 use Errno;
+use File::stat;
 use IO::Handle;
 use IO::File;
+use Pod::Usage;
 
 sub quit (;@);
 
@@ -111,9 +113,9 @@ sub process_file ($$) {
 
 again:
         if ($state == TEXT) {
-# XXX make these call a __mugly__print__ function which tests for definedness
-# of its argument -- IO::Handle::print reports an error as from within
-# IO::Handle, which is useless.
+            # XXX make these call a __mugly__print__ function which tests for
+            # definedness of its argument -- IO::Handle::print reports an error
+            # as from within IO::Handle, which is useless.
             if ($line =~ /(.*?)!!\(\*=(.*)/s) {
                 push(@data, $1);
                 $code .= "STDOUT->print(\$__mugly_data__[$#data]); STDOUT->print(";
@@ -204,6 +206,11 @@ sub quit (;@) {
 sub main () {
     # We need to process a possible -O option.
     my @args;
+
+    if (@ARGV  == 1 && $ARGV[0] eq '-h') {
+        pod2usage(-exitval => 0, -verbose => 2);
+        exit(0);
+    }
     
     while (my $a = shift(@ARGV)) {
         if ($a eq '-O') {
@@ -225,8 +232,12 @@ sub main () {
     if ($outputfile) {
         quit("$outputfile: is a directory") if (-d $outputfile);
         my $h;
+        my $mode = 0644;
+        my $st = stat($outputfile);
+        $mode = $st->mode() & 07777 if ($st);
+        umask(0000); # want to reproduce *exact* permissions of target
         do {
-            $h = new IO::File($tempoutputfile = sprintf('%s.%x.%x', $outputfile, int(rand(0xffffffff)), int(rand(0xffffffff))), O_WRONLY | O_CREAT | O_EXCL, 0666);
+            $h = new IO::File($tempoutputfile = sprintf('%s.%x.%x', $outputfile, int(rand(0xffffffff)), int(rand(0xffffffff))), O_WRONLY | O_CREAT | O_EXCL, $mode);
             quit("$tempoutputfile: $!") if (!$h && !$!{EEXIST});
         } while (!$h);
         close(STDOUT);
@@ -290,13 +301,13 @@ mugly
 
 =head1 SYNOPSIS
 
-mugly [-O OUTPUT] [[-p] FILE] ...
+mugly -h | [-O OUTPUT] [[-p] FILE ...]
 
 =head1 DESCRIPTION
 
-An ugly, but general-purpose, macro preprocessor using the perl language.
+An ugly, but general-purpose, macro preprocessor based upon the perl language.
 Mugly reads standard input, or one or more input FILES specified on the command
-line and processes them to form output. Each such file may be written in pure
+line, and processes them to form output. Each such file may be written in pure
 perl, or in the mugly macro language, which allows text and perl to be mixed
 arbitrarily. Files are processed in the order they appear on the command-line.
 At most one FILE may be specified as "-" to indicate that mugly should read
@@ -306,9 +317,16 @@ standard input; if no FILEs are given, then standard input is read anyway.
 
 =over 4
 
+=item -h
+
+Display this help message.
+
 =item -O OUTPUT
 
-Direct output to the named OUTPUT file, rather than to standard output.
+Direct output to the named OUTPUT file, rather than to standard output. The
+OUTPUT file is replaced atomically by writing the results of the scripts to a
+new temporary file and renaming it over OUTPUT. This means that you must be
+able to create files in the directory in which OUTPUT lives.
 
 =item -p
 
@@ -355,7 +373,15 @@ perl files are interpreted in the enclosing scope. You may define variables,
 functions etc. in pure perl files, and use them in mugly files.
 
 Variable names beginning __mugly__, and names in package __mugly__, are
-reserved and may not be used in macro or pure perl code.
+reserved and may not be used in macro or pure perl code. A constant,
+DONOTEDIT, is also defined to be equal to the string, "Do not edit! This file
+is automatically generated." If you are generating a file which supports
+comments, it is convenient to put,
+
+    # !!(*= DONOTEDIT *)!!
+
+or equivalent in some prominent place as a warning to the unwary systems
+administrator.
 
 =head1 EXAMPLE
 
