@@ -20,7 +20,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.29 2006-01-18 11:03:12 maint Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.30 2006-01-18 11:36:36 maint Exp $';
 
 package Oops;
 
@@ -47,7 +47,8 @@ use File::stat;
 use Getopt::Long;
 use IO::File;
 use Pod::Usage;
-use POSIX qw(getuid);
+use POSIX qw(getuid mkfifo);
+use Unix::Mknod qw(major minor makedev mknod);
 
 use mySociety::Util;
 
@@ -68,7 +69,7 @@ sub verbose (@) {
     print STDERR @_;
 }
 
-# install_file SOURCE DESTINATION DATA KEY VALUE ...
+# install_file SOURCE DESTINATION DATA [KEY VALUE ...]
 # Install the file at SOURCE to DESTINATION. Optionally set the uid, gid and
 # mode of the installed file using appropriate KEYs and VALUEs. If DATA is
 # defined, it should be a reference to a scalar into which the contents of the
@@ -115,7 +116,52 @@ sub install_file ($$%) {
     };
 }
 
-# install_symlink SOURCE DESTINATION KEY VALUE
+# install_mknod SOURCE DESTINATION [KEY VALUE ...]
+# Install the device special file at SOURCE to DESTINATION. Optionally set the
+# uid and gid of the symlink using appropriate KEYs and VALUEs.
+sub install_mknod ($$%) {
+    my ($source, $dest, %options) = @_;
+
+    my $st = stat($source) || throw Oops("$source: stat: $!");
+
+    $options{uid} ||= $st->uid();
+    $options{gid} ||= $st->uid();
+    
+    my $mode = $st->mode();
+    throw Oops("$source: is not a block device, character device, or named pipe")
+        if (!S_ISCHR($mode) && !S_ISBLK($mode) && !S_ISFIFO($mode));
+
+    my $tempname;
+    try {
+        while (1) {
+            $tempname = sprintf('%s.%08x', $dest, int(rand(0xffffffff)));
+            my $fn = 'mkfifo';
+            my $res;
+            if (S_ISFIFO($st->mode())) {
+                $res = mkfifo($tempname, $st->mode());
+            } else {
+                # NB mknod doesn't follow perl's convention for syscall return
+                # values.
+                $res = mknod($tempname, $st->mode(), $st->rdev()) == -1 ? undef : 1;
+                
+                $fn = sprintf('mknod %s %d %d', S_ISCHR($st->mode()) ? 'c' : 'b', major($st->rdev()), minor($st->rdev()));
+            }
+            if ($res) {
+                last;
+            } elsif (!$!{EEXIST}) {
+                throw Oops("$tempname: $fn: $!");
+            }
+        }
+        chown($options{uid}, $options{gid}, $tempname)
+            || throw Oops("$tempname: chown: $!");
+        rename($tempname, $dest)
+            || throw Oops("$tempname: rename: $!");
+    } finally {
+        unlink($tempname);
+    };
+}
+
+# install_symlink SOURCE DESTINATION [KEY VALUE ...]
 # Install the symlink at SOURCE to DESTINATION. Optionally set the uid and gid
 # of the symlink using appropriate KEYs and VALUEs.
 sub install_symlink ($$%) {
@@ -299,31 +345,29 @@ sub process_directory ($$$) {
                 my $spec = join('', $f->getlines());
                 throw Oops("$indir/$name: read: $!") if ($f->error());
                 $f->close();
-                $spec =~ s/^\s*//s;
-                $spec =~ s/\s*$//s;
-                my @mknod_args = ();
-                if ($spec eq 'p') {
-                    # Named pipe.
-                    @mknod_args = qw(p);
-                } elsif ($spec =~ m#^([bcp])\s+([1-9]\d*)\s+([1-9]\d*)$#) {
-                    # Device special file.
-                    @mknod_args = ($1, $2, $3);
-                } else {
-                    throw Oops("$indir/$name: mknod file syntax is 'p' or 'b MAJOR MINOR' or 'c MAJOR MINOR'");
-                }
+
                 $name =~ s/\.mknod$//;
                 throw Oops("$indir/$name.mknod: already created $name, from $havefile{$name}")
                     if (exists($havefile{$name}));
-                verbose("MKNOD $indir/name\n");
-                # Hmm. perl seems to lack a mknod function.
-                system('mknod', "$indir/$name", @mknod_args);
-                my $cmd = "mknod $indir/$name " . join(' ', @mknod_args);
-                if ($? == -1) {
-                    throw Oops("$cmd: exec: $!");
-                } elsif ($? & 127) {
-                    throw Oops("$cmd: killed by signal " . ($? & 127));
-                } elsif ($? >> 8) {
-                    throw Oops("$cmd: exited with nonzero status " . ($? >> 8));
+
+                $spec =~ s/^\s*//s;
+                $spec =~ s/\s*$//s;
+                if ($spec eq 'p') {
+                    verbose("MKFIFO $indir/$name");
+                    throw Oops("$outdir/$name: mkfifo: $!")
+                        unless (mkfifo("$outdir/$name", $mode));
+                } if ($spec =~ m#^([bcp])\s+([1-9]\d*)\s+([1-9]\d*)$#) {
+                    # Device special file.
+                    verbose("MKNOD $indir/$name\n");
+                    my ($major, $minor, $type);
+                    $type = $1 eq 'b' ? S_IFBLK : S_IFCHR;
+                    $major = $2;
+                    $minor = $3;
+                    throw Oops("$outdir/$name: mknod $1 $major $minor: $!")
+                        unless (mknod("$outdir/$name", $type | $mode, makedev($major, $minor)) == 0);
+                        # NB mknod's odd return-value convention
+                } else {
+                    throw Oops("$indir/$name: mknod file syntax is 'p' or 'b MAJOR MINOR' or 'c MAJOR MINOR'");
                 }
                 $havefile{$name} = "$name.mknod";
             } elsif ($name =~ /.\.ugly$/) {
@@ -490,6 +534,11 @@ sub install_files ($$;$) {
             verbose("FILE $outname\n");
             install_file("$indir/$name", $outname, \$filedata);
             $tar->add_data(".$outname", $filedata, \%taropts);
+        } elsif (S_ISCHR($st->mode()) || S_ISBLK($st->mode())) {
+            my $major = major($st->rdev());
+            my $minor = minor($st->rdev());
+        } elsif (S_ISFIFO($st->mode())) {
+        
         } elsif (S_ISLNK($st->mode())) {
             verbose("SYMLINK $outname\n");
             $taropts{linkname} = install_symlink("$indir/$name", $outname);
@@ -541,8 +590,8 @@ sub compare_installed_files ($$$) {
             } elsif ($f->{type} == Archive::Tar::Constant::BLOCKDEV || $f->{type} == Archive::Tar::Constant::CHARDEV && $f->{type} == file_type_tar($st->mode())) {
                 # XXX from <sys/sysmacros.h>, but this will probably break with
                 # a later kernel or libc.
-                my $major = ($st->rdev() >> 8) & 0xff;
-                my $minor = $st->rdev() & 0xff;
+                my $major = major($st->rdev());
+                my $minor = minor($st->rdev());
                 push(@what, sprintf('type of device changed: was %d %d; now %d %d', $f->{devmajor}, $f->{devminor}, $major, $minor))
                     if ($major != $f->{devmajor} || $minor != $f->devminor());
             } elsif ($f->{type} == Archive::Tar::Constant::FILE && $f->{type} == file_type_tar($st->mode())) {
