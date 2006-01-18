@@ -62,7 +62,7 @@ case $COMMAND in
         exec /data/mysociety/bin/deploy-dns "$@"
         ;;
 
-    --help|-h)
+    *)
 	show_help
         ;;
 esac

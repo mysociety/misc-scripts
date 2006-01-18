@@ -20,6 +20,7 @@
 #
 
 set -e
+. ../shlib/deployfns
 
 # XXX use of mktemp here not safe; should make a temporary directory
 CVS_SCHEMA_FILE=`mktemp /tmp/ms-deploy-cvsschema.XXXXXX`

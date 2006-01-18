@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.16 2006-01-17 10:53:22 maint Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.17 2006-01-18 17:49:48 maint Exp $';
 
 package main;
 
@@ -114,6 +114,11 @@ foreach my $cvs_dir (@{$conf->{'cvs_dirs'}}) {
         my $current_root = read_file("$d/Root");
         $current_root =~ s/\s*$//;
         die "CVSROOT in $d is \n\t$current_root\nwhen config says\n\t$cvsroot\n" if ($current_root ne $cvsroot);
+
+        if ($conf->{'cvs_user'} eq 'anon') {
+            chdir("$vhost_dir/mysociety/$cvs_dir");
+            system("cvs -Q diff -u") == 0 || die "Files checked out with anonymous CVS have been modified in $vhost_dir/mysociety/$cvs_dir";
+        }
     }
 }
 
