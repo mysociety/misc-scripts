@@ -20,7 +20,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.24 2006-01-18 10:44:16 maint Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.25 2006-01-18 10:45:46 maint Exp $';
 
 package Oops;
 
@@ -724,18 +724,25 @@ Certain files within TREE are treated specially by this program. These are:
 
 =over 4
 
-=item *.ugly
+=item *.mknod
 
-These files are run through with the mugly macro processor to produce an
-output file without the ".ugly" suffix. mugly is invoked with "-p SETTINGS"
-preceding the named file, so that variable assignments etc. made in that file
-are available.
+The contents of the file, which should be either "p", "b MAJOR MINOR", or
+"c MAJOR MINOR" are read, and used to create a named pipe, block device file,
+or character device file, in the manner of mknod(1).
+
 
 =item *.symlink
 
 The contents of the file, which should be a single line reading "To: TARGET",
 are read, and a correspondingly named symbolic link to the given TARGET is
 created.
+
+=item *.ugly
+
+These files are run through with the mugly macro processor to produce an
+output file without the ".ugly" suffix. mugly is invoked with "-p SETTINGS"
+preceding the named file, so that variable assignments etc. made in that file
+are available.
 
 =item _perm
 
