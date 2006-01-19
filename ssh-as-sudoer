@@ -11,8 +11,7 @@
 # - The script just calls SSH if you are a non-root user.
 #
 # - If you're root, and you used sudo to become root (e.g. with "sudo
-#   bash") such that SUDO_USER is set, then it logs in with that, and
-#   ~$SUDO_USER/.ssh/id-dsa.
+#   bash") such that SUDO_USER is set, then it logs in as that user.
 #
 # - If you're root, and you didn't use sudo (e.g. you're a cron job) it
 #   users user maint.
@@ -28,10 +27,5 @@ elif [ -z "$SUDO_USER" ]
 then
     exec ssh -l maint "$@"
 else
-    SUDO_HOME=`eval "echo ~$SUDO_USER"`
-    if [ -e $SUDO_HOME/.ssh/id_dsa ] ; then
-        exec ssh -i $SUDO_HOME/.ssh/id_dsa -l $SUDO_USER "$@"
-    else
-        exec ssh -l maint "$@"
-    fi
+    su $SUDO_USER -c "ssh $*"
 fi
