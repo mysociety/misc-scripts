@@ -18,7 +18,7 @@ my $database_permissions = {
     'ycml' => ['ycml'] 
 };
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.1 2006-01-19 01:38:06 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.2 2006-01-19 01:39:36 francis Exp $';
 
 use strict;
 require 5.8.0;
@@ -34,6 +34,8 @@ foreach my $user (keys %$database_permissions) {
     chomp $user_home;
 
     my ($tmph, $tmpn) = mySociety::Util::named_tempfile();
+    $tmph->print("# DO NOT EDIT - edit and rerun generate-pgpass instead\n");
+    
     my $databases = $database_permissions->{$user};
     foreach my $database (@$databases) {
         my $password = `$FindBin::Bin/pgpw $database`;
