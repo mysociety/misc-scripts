@@ -11,14 +11,20 @@ die "run on bitter/tea only at the moment" if `hostname` !~ m/^(bitter|tea)$/;
 
 # Who can access what databases
 my $database_permissions = {
+    # People
     'francis' => ['pb','ycml','mapit','dadem','ratty','evel'],
-    'chris' => ['pb','ycml','chris'],
-    'matthew' => ['pb','ycml'],
+    'chris' => ['pb','ycml','chris','mapit','dadem','ratty','evel'],
+    'matthew' => ['pb','ycml','mapit','dadem','ratty','evel'],
+
+    # Sites
     'pb' => ['pb','pb-staging'],
-    'ycml' => ['ycml'] 
+    'ycml' => ['ycml'],
+
+    # Services
+    'msservices' => ['mapit','dadem','ratty','evel'],
 };
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.3 2006-01-19 11:51:29 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.4 2006-01-19 14:54:21 maint Exp $';
 
 use strict;
 require 5.8.0;
