@@ -27,5 +27,5 @@ elif [ -z "$SUDO_USER" ]
 then
     exec ssh -l maint "$@"
 else
-    su $SUDO_USER -c "ssh $*"
+    exec su $SUDO_USER -c "ssh $*"
 fi
