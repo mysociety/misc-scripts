@@ -1,0 +1,51 @@
+#!/usr/bin/perl -w
+#
+# generate-pgpass:
+#
+# Creates ~/.pgpass files for users who it is convenient to give
+# access to databases. Overwrites any existing ~/.pgpass file for
+# the specified users.
+#
+
+die "run on bitter/tea only at the moment" if `hostname` !~ m/^(bitter|tea)$/;
+
+# Who can access what databases
+my $database_permissions = {
+    'francis' => ['pb','ycml'],
+    'chris' => ['pb','ycml','chris'],
+    'matthew' => ['pb','ycml'],
+    'pb' => ['pb','pb-staging'],
+    'ycml' => ['ycml'] 
+};
+
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.1 2006-01-19 01:38:06 francis Exp $';
+
+use strict;
+require 5.8.0;
+
+use FindBin;
+use lib "$FindBin::Bin/../perllib";
+
+use mySociety::Util;
+
+foreach my $user (keys %$database_permissions) {
+    my ($user_login, $user_pass, $user_uid, $user_gid) = getpwnam($user);
+    my $user_home = `echo ~$user`;
+    chomp $user_home;
+
+    my ($tmph, $tmpn) = mySociety::Util::named_tempfile();
+    my $databases = $database_permissions->{$user};
+    foreach my $database (@$databases) {
+        my $password = `$FindBin::Bin/pgpw $database`;
+        chomp $password;
+        $tmph->print("*:*:$database:$database:$password\n") || throw Oops("$tmpn: write: $!");
+    }
+    $tmph->close();
+    
+    chmod 0400, $tmpn;
+    chown($user_uid, $user_gid, $tmpn);
+
+    my $dest = "$user_home/.pgpass";
+    rename($tmpn, $dest);
+}
+
