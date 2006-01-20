@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.9 2006-01-20 18:00:12 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.10 2006-01-20 19:36:13 chris Exp $';
 
 use strict;
 
@@ -36,9 +36,9 @@ use Pod::Usage;
 use Regexp::Common qw(dns);
 use Socket;
 
-        #ns0.ukcod.org.uk
-        #ns1.ukcod.org.uk
 my @nameservers = qw(
+        ns0.ukcod.org.uk
+        ns1.ukcod.org.uk
         ns0.flirble.org.uk
         ns1.flirble.org.uk
         ns2.flirble.org.uk
@@ -272,6 +272,9 @@ EOF
     $h->close() || throw Oops("$name: $!");
 
     # Now copy the zonefiles themselves. Use deploy-configuration for that.
+    # XXX this is broken -- deploy-configuration will also copy files that
+    # aren't in CVS, such as editor backup files, etc. Should warn/abort if
+    # there are any such before we get to this stage.
     my @cmd = qw(/data/mysociety/bin/deploy-configuration
                 --no-check-existing
                 --target /var/named/master);
