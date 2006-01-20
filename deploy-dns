@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.7 2006-01-20 09:29:32 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.8 2006-01-20 09:35:54 francis Exp $';
 
 use strict;
 
@@ -301,7 +301,7 @@ EOF
         }
     }
 
-    system("/data/mysociety/bin/deploy-logger Deployed DNS");
+    system("/data/mysociety/bin/deploy-logger Deployed DNS") == 0 or die "Failed to run deploy-logger";
 
 done:
     $ret = 0;

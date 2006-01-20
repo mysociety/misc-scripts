@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.19 2006-01-20 09:29:32 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.20 2006-01-20 09:35:54 francis Exp $';
 
 package main;
 
@@ -321,5 +321,5 @@ if ($ok) {
 }
 
 # Log
-system("/data/mysociety/bin/deploy-logger Deployed vhost $vhost");
+system("/data/mysociety/bin/deploy-logger Deployed vhost $vhost") == 0 or die "Failed to run deploy-logger";
 
