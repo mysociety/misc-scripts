@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.18 2006-01-19 14:54:21 maint Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.19 2006-01-20 09:29:32 francis Exp $';
 
 package main;
 
@@ -320,4 +320,6 @@ if ($ok) {
     unlink($cron_name);
 }
 
+# Log
+system("/data/mysociety/bin/deploy-logger Deployed vhost $vhost");
 

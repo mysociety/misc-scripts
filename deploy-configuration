@@ -20,7 +20,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.30 2006-01-18 11:36:36 maint Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.31 2006-01-20 09:29:32 francis Exp $';
 
 package Oops;
 
@@ -751,6 +751,7 @@ try {
 
             verbose("copying settings file to /etc/mysociety\n");
             copy($settings, "/etc/mysociety/config-settings.pl") or throw Oops("Failed to copy '$settings' to /etc/mysociety"); 
+            system("/data/mysociety/bin/deploy-logger Deployed configuration $tree $settings");
         }
     }
 } catch Oops with {

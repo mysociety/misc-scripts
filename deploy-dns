@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.6 2006-01-19 15:50:27 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.7 2006-01-20 09:29:32 francis Exp $';
 
 use strict;
 
@@ -300,6 +300,8 @@ EOF
             print STDERR "deploy-dns: WARNING: rndc failed with exit status ", ($? >> 8), "\n";
         }
     }
+
+    system("/data/mysociety/bin/deploy-logger Deployed DNS");
 
 done:
     $ret = 0;
