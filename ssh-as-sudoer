@@ -1,5 +1,5 @@
 #!/bin/sh
-
+#
 # ssh-as-sudoer:
 #
 # Set CVS_RSH for root to point to this script, and use a CVSROOT with no
