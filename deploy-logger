@@ -1,0 +1,14 @@
+#!/bin/sh
+
+# deploylog:
+# Call to log whenever a deploy action happens.
+# $* - Comment to log
+
+HOST=`hostname`
+LOGFILE=/data/servers/state/$HOST/deploy-log
+DATELOG=`date +"%Y-%m-%d %X"`
+WHO=$SUDO_USER
+[ "$WHO" = "" ] && WHO=$USER
+
+echo "$DATELOG $WHO- $*" >>$LOGFILE
+
