@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.20 2006-01-20 09:35:54 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.21 2006-01-20 18:00:12 chris Exp $';
 
 package main;
 
@@ -48,8 +48,9 @@ sub make_symlink {
 }
 
 sub shell {
-    #print "running: " . join(" ", @_) . "\n";
-	system(@_) == 0 || die "external program failed: " . join(" ", @_);
+    system(@_);
+    die "$_[0]: " . describe_waitval($?, "system")
+        if ($?);
 }
 
 #####################################################################
@@ -118,6 +119,7 @@ foreach my $cvs_dir (@{$conf->{'cvs_dirs'}}) {
 
         if ($conf->{'cvs_user'} eq 'anon') {
             chdir("$vhost_dir/mysociety/$cvs_dir");
+            # XXX detect errors.
             system("cvs -Q diff -u") == 0 || die "Files checked out with anonymous CVS have been modified in $vhost_dir/mysociety/$cvs_dir";
         }
     }
@@ -205,7 +207,8 @@ $conf_ugly_part =~ s#/#_#g;
 my $conf_ugly_file = "$servers_dir/vhosts/$conf_ugly_part.ugly";
 # check destination file hasn't been separately modified
 if (-e $conf_file) {
-   system("diff", "-u", "$conf_file.deployed", "$conf_file") == 0 || die "$conf_file was changed directly since last deployed, so cannot update from template";
+    # XXX detect errors
+    system("diff", "-u", "$conf_file.deployed", "$conf_file") == 0 || die "$conf_file was changed directly since last deployed, so cannot update from template";
 }
 # call mugly to generate from template
 shell("$mysociety_bin/mugly", "-O", "$conf_file.tmp", "-p", "$settings_file", "$conf_ugly_file");
@@ -321,5 +324,5 @@ if ($ok) {
 }
 
 # Log
-system("/data/mysociety/bin/deploy-logger Deployed vhost $vhost") == 0 or die "Failed to run deploy-logger";
+shell("/data/mysociety/bin/deploy-logger", "Deployed vhost $vhost");
 

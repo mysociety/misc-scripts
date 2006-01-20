@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.8 2006-01-20 09:35:54 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.9 2006-01-20 18:00:12 chris Exp $';
 
 use strict;
 
@@ -28,7 +28,7 @@ use Error qw(:try);
 use File::Slurp qw(read_file);
 use Getopt::Long;
 use IO::File;
-use mySociety::Util qw(create_file_to_replace);
+use mySociety::Util qw(create_file_to_replace describe_waitval);
 # we use ::Fast not for speed, but because it works and the regular one
 # doesn't.
 use Net::DNS::ZoneFile::Fast;
@@ -50,6 +50,12 @@ my $be_verbose = 0;
 sub verbose (@) {
     return unless ($be_verbose);
     print STDERR @_;
+}
+
+sub System (@) {
+    system(@_);
+    throw Oops("$_[0]: " . describe_waitval($?, "system"))
+        if ($?);
 }
 
 sub parse ($) {
@@ -273,15 +279,8 @@ EOF
     push(@cmd, qw(/data/servers/dns /dev/null));
     verbose("args to deploy-configuration: ", join(" ", @cmd), "\n");
     verbose("invoking deploy-configuration...\n");
-    system(@cmd);
+    System(@cmd);
     verbose("  done\n");
-    if ($? != 0) {
-        if ($? & 127) {
-            throw Oops("deploy-configuration died with signal " . ($? & 127));
-        } else {
-            throw Oops("deploy-configuration failed with exit status " . ($? >> 8));
-        }
-    }
 
     # We win.
     verbose("renaming $name to /var/named/etc/bind/domains.conf... ");
@@ -291,17 +290,10 @@ EOF
 
     # Try to reload the zones, but failure is not a fatal error.
     verbose("telling bind to reload zones... ");
-    system(qw(rndc reload));
+    System(qw(rndc reload));
     verbose("done\n");
-    if ($? != 0) {
-        if ($? & 127) {
-            print STDERR "deploy-dns: WARNING: rndc died with signal ", ($? & 127), "\n"; 
-        } else {
-            print STDERR "deploy-dns: WARNING: rndc failed with exit status ", ($? >> 8), "\n";
-        }
-    }
 
-    system("/data/mysociety/bin/deploy-logger Deployed DNS") == 0 or die "Failed to run deploy-logger";
+    System("/data/mysociety/bin/deploy-logger", "Deployed DNS");
 
 done:
     $ret = 0;

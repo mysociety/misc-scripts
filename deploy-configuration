@@ -20,7 +20,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.32 2006-01-20 09:35:54 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.33 2006-01-20 18:00:12 chris Exp $';
 
 package Oops;
 
@@ -62,6 +62,12 @@ my $default_dir_mode = 0750;
 my $mugly_bin = "$FindBin::Bin/mugly";
 
 my $save_file = "/var/lib/deploy-configuration.tar";
+
+sub System (@) {
+    system(@_);
+    throw Oops("$_[0]: " . mySociety::Util::describe_waitval($?, "system"))
+        if ($?);
+}
 
 my $be_verbose = 0;
 sub verbose (@) {
@@ -184,14 +190,7 @@ sub install_symlink ($$%) {
             }
         }
 
-        system('chown', '-h', "$options{uid}:$options{gid}", $tempname);
-        if ($? == -1) {
-            throw Oops("chown -h: exec: $!");
-        } elsif ($? & 127) {
-            throw Oops("chown -h $options{uid}:$options{gid} $tempname: killed by signal " . ($? & 127));
-        } elsif ($? >> 8) {
-            throw Oops("chown -h $options{uid}:$options{gid} $tempname: exited with nonzero status " . ($? >> 8));
-        }
+        System('chown', '-h', "$options{uid}:$options{gid}", $tempname);
 
         rename($tempname, $dest) || throw Oops("$tempname: rename: $!");
     } finally {
@@ -376,14 +375,7 @@ sub process_directory ($$$) {
                 throw Oops("$indir/$name: already created $name, from $havefile{$name}")
                     if (exists($havefile{$name}));
                 verbose("MUGLY $indir/$name\n");
-                system($mugly_bin, '-O', "$outdir/$name", "-p", $settings, "$indir/$name.ugly");
-                if ($? == -1) {
-                    throw Oops("$mugly_bin: exec: $!");
-                } elsif ($? & 127) {
-                    throw Oops("$mugly_bin ... $indir/$name.ugly: killed by signal " . ($? & 127));
-                } elsif ($? >> 8) {
-                    throw Oops("$mugly_bin ... $indir/$name.ugly: exited with nonzero status " . ($? >> 8));
-                }
+                System($mugly_bin, '-O', "$outdir/$name", "-p", $settings, "$indir/$name.ugly");
                 $havefile{$name} = "$name.ugly";
             } else {
                 verbose("COPY $indir/$name\n");
@@ -402,14 +394,7 @@ sub process_directory ($$$) {
         }
         if ($is_symlink) {
             # perl lacks lchown
-            system('chown', '-h', "$uid:$gid", "$outdir/$name");
-            if ($? == -1) {
-                throw Oops("chown -h: exec: $!");
-            } elsif ($? & 127) {
-                throw Oops("chown -h $uid:$gid $outdir/$name: killed by signal " . ($? & 127));
-            } elsif ($? >> 8) {
-                throw Oops("chown -h $uid:$gid $outdir/$name: exited with nonzero status " . ($? >> 8));
-            }
+            System('chown', '-h', "$uid:$gid", "$outdir/$name");
         } else {
             chown($uid, $gid, "$outdir/$name")
                 or throw Oops("$outdir/$name: chown: $!");
@@ -751,7 +736,7 @@ try {
 
             verbose("copying settings file to /etc/mysociety\n");
             copy($settings, "/etc/mysociety/config-settings.pl") or throw Oops("Failed to copy '$settings' to /etc/mysociety"); 
-            system("/data/mysociety/bin/deploy-logger Deployed configuration $tree $settings") == 0 or die "Failed to run deploy-logger";
+            System("/data/mysociety/bin/deploy-logger", "Deployed configuration $tree $settings")
         }
     }
 } catch Oops with {
