@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.21 2006-01-20 18:00:12 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.22 2006-01-23 12:03:45 francis Exp $';
 
 package main;
 
@@ -49,7 +49,7 @@ sub make_symlink {
 
 sub shell {
     system(@_);
-    die "$_[0]: " . describe_waitval($?, "system")
+    die "$_[0]: " . mySociety::Util::describe_waitval($?, "system")
         if ($?);
 }
 
