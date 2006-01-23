@@ -48,7 +48,8 @@ case $COMMAND in
                 ;;
         esac
 
-	exec /data/mysociety/bin/deploy-configuration /data/servers/$ARCHETYPE /data/servers/$HOST.pl "$@"
+	    /data/mysociety/bin/deploy-configuration /data/servers/$ARCHETYPE /data/servers/$HOST.pl "$@"
+        cp /data/servers/$HOST.pl "/etc/mysociety/config-settings.pl"
         ;;
         
     vhost)
