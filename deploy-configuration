@@ -20,7 +20,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.36 2006-01-26 09:50:22 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.37 2006-01-26 09:56:43 chris Exp $';
 
 package Oops;
 
@@ -520,6 +520,8 @@ sub install_files ($$;$) {
             install_file("$indir/$name", $outname, \$filedata);
             $tar->add_data(".$outname", $filedata, \%taropts);
         } elsif (S_ISCHR($st->mode()) || S_ISBLK($st->mode())) {
+            $taropts{devmajor} = major($st->rdev());
+            $taropts{devminor} = minor($st->rdev());
             verbose("MKNOD $outname\n");
             install_mknod("$indir/$name", $outname);
             $tar->add_data(".$outname", "", \%taropts);
