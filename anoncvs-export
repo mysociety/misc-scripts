@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: anoncvs-export,v 1.2 2006-01-26 10:50:21 chris Exp $
+# $Id: anoncvs-export,v 1.3 2006-01-26 10:58:54 chris Exp $
 #
 
 if [ x$1 = x-h -o x$1 = x--help ] ; then
@@ -32,7 +32,7 @@ touser=anoncvs
 locks=""
 
 # Want to clear up our locks on exit.
-trap 'for d in $locks ; do [ -d $d ] && rmdir d ; done' EXIT
+trap 'for d in $locks ; do [ -d $d ] && rmdir $d ; done' EXIT
 
 lock_repos () {
     repos=$1
@@ -53,7 +53,15 @@ lock_repos () {
 lock_repos $from || die "could not obtain lock on $from"
 lock_repos $to || die "could not obtain lock on $to"
 
-su -c "rsync -rav --exclude CVSROOT --exclude '#cvs.lock' $from/. $to/." $touser \
+# We have to run this as root, because anoncvs doesn't have access to the
+# public CVS repository itself. So we do that, then fix the permissions
+# afterwards.
+rsync -rlpt --exclude CVSROOT --exclude '#cvs.lock' $from/. $to/. \
     || die "failed in rsync"
+
+# Now change the ownership and permissions in the output repository.
+find $to -print0 | xargs -0 chown anoncvs:anoncvs
+find $to -type d -print0 | xargs -0 chmod 0700
+find $to -type f -print0 | xargs -0 chmod g-rwx,o-rwx
 
 exit 0
