@@ -1,0 +1,58 @@
+#!/bin/sh
+#
+# anoncvs-export:
+# Export the contents of the public CVS repository to the anonymous one.
+#
+# Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
+# Email: chris@mysociety.org; WWW: http://www.mysociety.org/
+#
+# $Id: anoncvs-export,v 1.1 2006-01-26 10:48:55 chris Exp $
+#
+
+if [ x$1 = x-h -o x$1 = x--help ] ; then
+    cat <<EOF
+anoncvs-export - copy the public CVS repository to the anonymous one
+
+This creates a read-only copy of the CVS repository for remote anonymous users,
+using rsync.
+
+EOF
+fi
+
+die () {
+    echo "anoncvs-export: " "$@" 1>&2
+    exit 1
+}
+
+from=/data/cvs/public
+to=/data/cvs/anon/repos
+touser=anoncvs
+
+locks=""
+
+# Want to clear up our locks on exit.
+trap 'for d in $locks ; do [ -d $d ] && rmdir d ; done' EXIT
+
+lock_repos () {
+    repos=shift
+    i=0
+    # http://ximbiot.com/cvs/manual/cvs-1.11.21/cvs_2.html#SEC17
+    while [ $i -lt 10 ] ; do
+        if mkdir "$repos/#cvs.lock" 2> /dev/null ; then
+            locks="$repos/#cvs.lock $locks"
+            return 0
+        fi
+        i=$[ $i + 1 ]
+        sleep 1
+    done
+    return 1
+}
+
+# Lock both repositories to avoid collisions with clients.
+lock_repos $from || die "could not obtain lock on $from"
+lock_repos $to || die "could not obtain lock on $to"
+
+su -c "rsync -rav --exclude CVSROOT --exclude '#cvs.lock' $from/. $to/." $touser \
+    || die "failed in rsync"
+
+exit 0
