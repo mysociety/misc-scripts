@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.23 2006-01-25 14:57:38 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.24 2006-01-26 11:13:53 francis Exp $';
 
 package main;
 
@@ -158,6 +158,7 @@ END
 print FH "\$conf_dir = '$conf->{'conf_dir'}';\n" if $conf->{'conf_dir'};
 print FH "\$admin_dir = '$conf->{'admin_dir'}';\n" if $conf->{'admin_dir'};
 print FH "\$admin_group = '$conf->{'admin_group'}';\n" if $conf->{'admin_group'};
+die "admin_group must be specified if admin_dir is" if $conf->{'admin_dir'} && !$conf->{'admin_group'};
 print FH "\$internal_access_only = '$conf->{'internal_access_only'}';\n" if $conf->{'internal_access_only'};
 print FH Dumper($conf->{'public_cache_dirs'});
 print FH "\$public_cache_dirs = \$VAR1;\n";
@@ -201,32 +202,34 @@ foreach my $daemon (keys %{$conf->{'daemons'}}) {
 my $conf_dir = $conf->{'conf_dir'};
 if ($conf_dir) {
     my $conf_file = "$vhost_dir/mysociety/$conf_dir/general"; # destination file
-    my $old_umask = umask(0077);
-    # find source template (.ugly) file
-    my $conf_ugly_part = $conf_dir . "/general";
-    $conf_ugly_part =~ s#/#_#g;
-    my $conf_ugly_file = "$servers_dir/vhosts/$conf_ugly_part.ugly";
-    # check destination file hasn't been separately modified
-    if (-e $conf_file) {
-        # XXX detect errors
-        system("diff", "-u", "$conf_file.deployed", "$conf_file") == 0 || die "$conf_file was changed directly since last deployed, so cannot update from template";
+    if (-e "$conf_file-example") {
+        my $old_umask = umask(0077);
+        # find source template (.ugly) file
+        my $conf_ugly_part = $conf_dir . "/general";
+        $conf_ugly_part =~ s#/#_#g;
+        my $conf_ugly_file = "$servers_dir/vhosts/$conf_ugly_part.ugly";
+        # check destination file hasn't been separately modified
+        if (-e $conf_file) {
+            # XXX detect errors
+            system("diff", "-u", "$conf_file.deployed", "$conf_file") == 0 || die "$conf_file was changed directly since last deployed, so cannot update from template";
+        }
+        # call mugly to generate from template
+        shell("$mysociety_bin/mugly", "-O", "$conf_file.tmp", "-p", "$settings_file", "$conf_ugly_file");
+        # test contents of new configuration file before copying it over
+        chdir $mysociety_dir;
+        shell("cvs", "-Q", "update", "$conf_dir/general-example");
+        chdir $mysociety_bin;
+        shell("$mysociety_bin/compareconfig.pl", "$conf_file.tmp", "$mysociety_dir/$conf_dir/general-example");
+        # copy into place
+        copy("$conf_file.tmp", "$conf_file.deployed");
+        chown($user_uid, $user_gid, "$conf_file.deployed");
+        copy("$conf_file.tmp", "$conf_file");
+        chown($user_uid, $user_gid, "$conf_file");
+        unlink("$conf_file.tmp") or die "couldn't unlink $conf_file.tmp";
+        # now we use this configuration
+        mySociety::Config::set_file($conf_file);
+        umask($old_umask);
     }
-    # call mugly to generate from template
-    shell("$mysociety_bin/mugly", "-O", "$conf_file.tmp", "-p", "$settings_file", "$conf_ugly_file");
-    # test contents of new configuration file before copying it over
-    chdir $mysociety_dir;
-    shell("cvs", "-Q", "update", "$conf_dir/general-example");
-    chdir $mysociety_bin;
-    shell("$mysociety_bin/compareconfig.pl", "$conf_file.tmp", "$mysociety_dir/$conf_dir/general-example");
-    # copy into place
-    copy("$conf_file.tmp", "$conf_file.deployed");
-    chown($user_uid, $user_gid, "$conf_file.deployed");
-    copy("$conf_file.tmp", "$conf_file");
-    chown($user_uid, $user_gid, "$conf_file");
-    unlink("$conf_file.tmp") or die "couldn't unlink $conf_file.tmp";
-    # now we use this configuration
-    mySociety::Config::set_file($conf_file);
-    umask($old_umask);
 }
 
 # Check pgsql databases are up to date
