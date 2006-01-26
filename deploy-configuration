@@ -20,7 +20,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.37 2006-01-26 09:56:43 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.38 2006-01-26 09:57:45 chris Exp $';
 
 package Oops;
 
@@ -579,7 +579,7 @@ sub compare_installed_files ($$$) {
                 my $major = major($st->rdev());
                 my $minor = minor($st->rdev());
                 push(@what, sprintf('type of device changed: was %d %d; now %d %d', $f->{devmajor}, $f->{devminor}, $major, $minor))
-                    if ($major != $f->{devmajor} || $minor != $f->devminor());
+                    if ($major != $f->{devmajor} || $minor != $f->{devminor});
             } elsif ($f->{type} == Archive::Tar::Constant::FILE && $f->{type} == file_type_tar($st->mode())) {
                 # Compare the two files.
                 my ($tmph, $tmpn) = mySociety::Util::named_tempfile();
