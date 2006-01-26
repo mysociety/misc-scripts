@@ -10,7 +10,7 @@
 # Email: chris@ex-parrot.com; WWW: http://www.ex-parrot.com/~chris/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: usersync,v 1.4 2005-12-19 16:05:11 maint Exp $';
+my $rcsid = ''; $rcsid .= '$Id: usersync,v 1.5 2006-01-26 17:34:45 chris Exp $';
 my $VERSION = "0.1";
 
 use strict;
@@ -252,7 +252,7 @@ sub synchronise_passwd ($$$) {
     foreach my $line (split(/\n/, $local)) {
         chomp $line;
         my ($login, $passwd, $uid, $gid, $gecos, $dir, $shell) = split(/:/, $line)
-            or throw UserSync::Error("bad line in local /etc/passwd");
+            or throw UserSync::Error("bad line '$line' in local /etc/passwd");
         if ($uid < $minuid) {
             $newlocal .= "$line\n";
         } else {
@@ -267,7 +267,7 @@ sub synchronise_passwd ($$$) {
     foreach my $line (split(/\n/, $remote)) {
         chomp $line;
         my ($login, $passwd, $uid, $gid, $gecos, $dir, $shell) = split(/:/, $line)
-            or throw UserSync::Error("bad line in remote /etc/passwd");
+            or throw UserSync::Error("bad line '$line' in remote /etc/passwd");
         if ($uid < $minuid) {
             $newremote .= "$line\n";
         } else {
@@ -320,7 +320,7 @@ sub synchronise_group ($$$) {
     foreach my $line (split(/\n/, $local)) {
         chomp $line;
         my ($name, $passwd, $gid, $members) = split(/:/, $line)
-            or throw UserSync::Error("bad line in local /etc/group");
+            or throw UserSync::Error("bad line '$line' in local /etc/group");
         if ($gid < $minuid) {
             $newlocal .= "$line\n";
         } else {
@@ -335,7 +335,7 @@ sub synchronise_group ($$$) {
     foreach my $line (split(/\n/, $remote)) {
         chomp $line;
         my ($name, $passwd, $gid, $members) = split(/:/, $line)
-            or throw UserSync::Error("bad line in remote /etc/group");
+            or throw UserSync::Error("bad line '$line' in remote /etc/group");
         if ($gid < $minuid) {
             $newremote .= "$line\n";
         } else {
@@ -388,7 +388,7 @@ sub synchronise_shadow ($$$$) {
     foreach my $line (split(/\n/, $local)) {
         chomp $line;
         my ($login, $passwd, $when, $remainder) = ($line =~ m#^([^:]+):([^:]+):(\d+):(.+)$#)
-            or throw UserSync::Error("bad line in local /etc/shadow");
+            or throw UserSync::Error("bad line '$line' in local /etc/shadow");
         my $uid = $uidmap->{$login};
         if (!defined($uid) or $uid < $minuid) {
             $newlocal .= "$line\n";
@@ -401,7 +401,7 @@ sub synchronise_shadow ($$$$) {
     foreach my $line (split(/\n/, $remote)) {
         chomp $line;
         my ($login, $passwd, $when, $remainder) = ($line =~ m#^([^:]+):([^:]+):(\d+):(.+)$#)
-            or throw UserSync::Error("bad line in remote /etc/shadow");
+            or throw UserSync::Error("bad line '$line' in remote /etc/shadow");
         my $uid = $uidmap->{$login};
         if (!defined($uid) or $uid < $minuid) {
             $newremote .= "$line\n";
