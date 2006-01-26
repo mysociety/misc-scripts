@@ -20,7 +20,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.35 2006-01-26 09:47:54 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.36 2006-01-26 09:50:22 chris Exp $';
 
 package Oops;
 
@@ -521,14 +521,14 @@ sub install_files ($$;$) {
             $tar->add_data(".$outname", $filedata, \%taropts);
         } elsif (S_ISCHR($st->mode()) || S_ISBLK($st->mode())) {
             verbose("MKNOD $outname\n");
-            install_mknod("$indir/$name", $outname, \%filedata);
-            $tar->add_data(".$outname", $filedata, \%taropts);
+            install_mknod("$indir/$name", $outname);
+            $tar->add_data(".$outname", "", \%taropts);
         } elsif (S_ISLNK($st->mode())) {
             verbose("SYMLINK $outname\n");
             $taropts{linkname} = install_symlink("$indir/$name", $outname);
             $tar->add_data(".$outname", "", \%taropts);
         } else {
-            throw Oops("$indir/$name: not a regular file, directory or symlink");
+            throw Oops("$indir/$name: not a regular file, directory, block or character device, or symlink");
         }
     }
     closedir(D);
