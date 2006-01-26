@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: anoncvs-export,v 1.1 2006-01-26 10:48:55 chris Exp $
+# $Id: anoncvs-export,v 1.2 2006-01-26 10:50:21 chris Exp $
 #
 
 if [ x$1 = x-h -o x$1 = x--help ] ; then
@@ -17,6 +17,7 @@ This creates a read-only copy of the CVS repository for remote anonymous users,
 using rsync.
 
 EOF
+    exit 0
 fi
 
 die () {
@@ -34,7 +35,7 @@ locks=""
 trap 'for d in $locks ; do [ -d $d ] && rmdir d ; done' EXIT
 
 lock_repos () {
-    repos=shift
+    repos=$1
     i=0
     # http://ximbiot.com/cvs/manual/cvs-1.11.21/cvs_2.html#SEC17
     while [ $i -lt 10 ] ; do
