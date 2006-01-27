@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.25 2006-01-27 03:54:04 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.26 2006-01-27 15:59:28 francis Exp $';
 
 package main;
 
@@ -89,6 +89,7 @@ die "Unknown group for user '".$conf->{'user'}."'" if !$user_gid;
 my $user = $conf->{'user'};
 my $group = getgrgid($user_gid);
 $conf->{'wildcard_vhost'} = 0 if (!exists($conf->{'wildcard_vhost'}));
+$conf->{'https'} = 0 if (!exists($conf->{'https'}));
 
 #####################################################################
 # Make directories and conf files, check database and conf files
@@ -164,6 +165,7 @@ print FH <<END;
 \$user = '$user';
 \$group = '$group';
 \$wildcard_vhost = '$conf->{'wildcard_vhost'}';
+\$https = '$conf->{'https'}';
 END
 print FH "\$conf_dir = '$conf->{'conf_dir'}';\n" if $conf->{'conf_dir'};
 print FH "\$admin_dir = '$conf->{'admin_dir'}';\n" if $conf->{'admin_dir'};
