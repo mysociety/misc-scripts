@@ -1,7 +1,11 @@
-#!/bin/bash
-
+#!/bin/sh
+#
+# compare-privatecvs-permissions:
 # Compares permissions bits between servers module of privatecvs repository, and its
 # checkout in /data/servers. Prints all times where the permissions bits differ.
+#
+# $Id: compare-privatecvs-permissions,v 1.2 2006-01-27 12:28:42 chris Exp $
+#
 
 cd /usr/local/privatecvs
 for X in `find servers -name "*,v" | egrep -v "Attic|\.mknod|\_perm" | sed "s/,v//;"`
