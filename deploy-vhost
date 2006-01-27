@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.24 2006-01-26 11:13:53 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.25 2006-01-27 03:54:04 francis Exp $';
 
 package main;
 
@@ -76,9 +76,14 @@ my $conf;
 foreach my $key ( keys %$site_conf ) { $conf->{$key} = $site_conf->{$key}; }
 foreach my $key ( keys %$vhost_conf ) { $conf->{$key} = $vhost_conf->{$key}; }
 die "must specify 'staging' in vhost config" if (!exists($conf->{staging}));
+die "must specify 'cvs_dirs' in vhost config" if (!exists($conf->{cvs_dirs}));
+die "must specify 'cvs_user' in vhost config" if (!exists($conf->{cvs_user}));
 
 # Look up some values
-my ($user_login, $user_pass, $user_uid, $user_gid) = getpwnam($conf->{'user'});
+my ($user_login, $user_pass, $user_uid, $user_gid, 
+    $user_quota, $user_comment, 
+    $user_real_name, $user_home_dir, $user_shell,
+    $user_expire) = getpwnam($conf->{'user'});
 die "Unknown user '".$conf->{'user'}."'" if !$user_uid;
 die "Unknown group for user '".$conf->{'user'}."'" if !$user_gid;
 my $user = $conf->{'user'};
@@ -106,6 +111,11 @@ if ($conf->{'cvs_user'} eq "") {
     $cvsroot = ($conf->{'cvs_user'} eq 'anon' ?
         ':pserver:anonymous@cvs.mysociety.org:/repos' :
         $conf->{'cvs_user'} . "\@cvs.mysociety.org:/usr/local/cvs");
+    # for some reason, CVS gives a warning if there is no .cvspass file during 
+    # anoncvs client use, so we make an empty file
+    if (! -e "$user_home_dir/.cvspass") {
+        system("su $conf->{'user'} -c \"touch ~$conf->{'user'}/.cvspass\"");
+    }
 }
 foreach my $cvs_dir (@{$conf->{'cvs_dirs'}}) {
     my $d = "$vhost_dir/mysociety/$cvs_dir/CVS";
