@@ -4,11 +4,11 @@
 # Compares permissions bits between servers module of privatecvs repository, and its
 # checkout in /data/servers. Prints all times where the permissions bits differ.
 #
-# $Id: compare-privatecvs-permissions,v 1.2 2006-01-27 12:28:42 chris Exp $
+# $Id: compare-privatecvs-permissions,v 1.3 2006-01-27 12:33:06 francis Exp $
 #
 
 cd /usr/local/privatecvs
-for X in `find servers -name "*,v" | egrep -v "Attic|\.mknod|\_perm" | sed "s/,v//;"`
+find servers -name "*,v" | egrep -v "Attic|\.mknod|\_perm" | sed "s/,v//;" | while read X
 do
     PERM_CVS=`ls -l $X,v | cut -d " " -f 1`
     PERM_CO=`ls -l /data/$X | cut -d " " -f 1`
