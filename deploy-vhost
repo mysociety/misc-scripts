@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.26 2006-01-27 15:59:28 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.27 2006-01-27 17:18:47 chris Exp $';
 
 package main;
 
@@ -128,6 +128,7 @@ foreach my $cvs_dir (@{$conf->{'cvs_dirs'}}) {
         $current_root =~ s/\s*$//;
         die "CVSROOT in $d is \n\t$current_root\nwhen config says\n\t$cvsroot\n" if ($current_root ne $cvsroot);
 
+        # XXX add a command-line option to override this check?
         if ($conf->{'cvs_user'} eq 'anon') {
             chdir("$vhost_dir/mysociety/$cvs_dir");
             # XXX detect errors.
