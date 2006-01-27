@@ -1,0 +1,16 @@
+#!/bin/bash
+
+# Compares permissions bits between servers module of privatecvs repository, and its
+# checkout in /data/servers. Prints all times where the permissions bits differ.
+
+cd /usr/local/privatecvs
+for X in `find servers -name "*,v" | egrep -v "Attic|\.mknod|\_perm" | sed "s/,v//;"`
+do
+    PERM_CVS=`ls -l $X,v | cut -d " " -f 1`
+    PERM_CO=`ls -l /data/$X | cut -d " " -f 1`
+    if [ "$PERM_CVS" != "$PERM_CO" ]
+    then
+        echo "cvs: $PERM_CVS checkout: $PERM_CO $X,v"
+    fi
+done
+
