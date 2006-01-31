@@ -1,7 +1,23 @@
 #!/bin/bash
 
-# Backup script for important database tables
-# TODO: Add all other databases as we migrate them
+# Backup script for important database tables. Warns if there are important
+# looking databases present in the state/*/psql-databases which are not being
+# backed up. Then makes backups to /data/backups/dailydb.
+
+# Make sure tea and bitter don't run at once
+if [ $( hostname ) = bitter ] ; then
+    sleep 300
+fi
+
+BITTER_PSQL_DATABASES="pb ycml rt" 
+TEA_PSQL_DATABASES="dadem evel mapit ratty fyr pb-interface"
+# Deliberately don't backup: 
+#   tracking - for privacy reasons
+#   gaze - large and easy to rebuild
+PSQL_DO_NOT_BACKUP="^tracking$|^gaze$"
+
+BITTER_MYSQL_DATABASES="mysql mysocietywordpress"
+# No MySQL databases on tea yet
 
 BACKUPDIR=/data/backups/dailydb
 TMPDUMP=$BACKUPDIR/temp
@@ -10,28 +26,36 @@ MYSQL_DUMP=/usr/bin/mysqldump
 mkdir -p $BACKUPDIR
 rm -f $TMPDUMP $TMPDUMP.bz2
 
-# PostgreSQL
-# TODO: add: dadem ratty
-for X in pb ycml
+# Check all MySQL databases are being backed up, except test ones
+POSSIBLE_DATABASES=$BACKUPDIR/mysql-databases-backup-candidates
+BACKED_DATABASES=$BACKUPDIR/mysql-databases-being-backed-up
+cat /data/servers/state/bitter/mysql-databases | egrep -v "Databases|+--------------|^\$" | cut -d " " -f 2 | egrep -v -- "^test$" | sort -u > $POSSIBLE_DATABASES
+for DB in $BITTER_MYSQL_DATABASES; do echo $DB; done | sort -u > $BACKED_DATABASES
+diff -u $BACKED_DATABASES $POSSIBLE_DATABASES
+
+# Check all PostgreSQL databases are being backed up, excepting -staging, schematest, template* etc.
+POSSIBLE_DATABASES=$BACKUPDIR/psql-databases-backup-candidates
+BACKED_DATABASES=$BACKUPDIR/psql-databases-being-backed-up
+cat /data/servers/state/tea/psql-databases /data/servers/state/bitter/psql-databases | egrep -v "List of databases|Name.*Owner.*Encoding.*|\([0-9]+ rows\)|--------------+|^\$" | cut -d " " -f 2 | egrep -v -- "-staging$|-migrate$|^schematest$|^template[0-9]+$|^chris$|$PSQL_DO_NOT_BACKUP" | sort -u > $POSSIBLE_DATABASES
+for DB in $BITTER_PSQL_DATABASES $TEA_PSQL_DATABASES; do echo $DB; done | sort -u > $BACKED_DATABASES
+diff -u $BACKED_DATABASES $POSSIBLE_DATABASES
+
+# Do MySQL backups
+for X in $BITTER_MYSQL_DATABASES
 do
-    #PGPASSWORD=/data/mysociety/bin/pgpw $PG_DUMP
-    su postgres -c "$PG_DUMP -d $X" | bzip2 >$TMPDUMP
-    mv $TMPDUMP $BACKUPDIR/$X.sql.bz2
+    $MYSQL_DUMP --databases $X | bzip2 >$TMPDUMP
+    mv $TMPDUMP $BACKUPDIR/$X.bitter.my.sql.bz2
 done
 
-# Partial mapit database
-#echo >$TMPDUMP
-#for Y in area area_name generation 
-#do
-#	$PG_DUMP -d mapit -t $Y >>$TMPDUMP
-#done
-#bzip2 $TMPDUMP
-#mv $TMPDUMP.bz2 $BACKUPDIR/mapit.sql.bz2
-
-# MySQL
-#for X in notapathetic mysocietywordpress
-#do
-#    $MYSQL_DUMP --databases $X >$TMPDUMP
-#    mv $TMPDUMP ~/backups/$X.sql.bz2
-#done
+# Do PostgreSQL backups
+for X in $BITTER_PSQL_DATABASES
+do
+    $PG_DUMP --inserts --host bitter.ukcod.org.uk -U $PGUSER $X | bzip2 >$TMPDUMP
+    mv $TMPDUMP $BACKUPDIR/$X.bitter.pg.sql.bz2
+done
+for X in $TEA_PSQL_DATABASES
+do
+    $PG_DUMP --inserts --host tea.ukcod.org.uk -U $X $X | bzip2 >$TMPDUMP
+    mv $TMPDUMP $BACKUPDIR/$X.tea.pg.sql.bz2
+done
 
