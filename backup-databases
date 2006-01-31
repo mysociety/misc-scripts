@@ -1,6 +1,7 @@
 #!/bin/bash
 
 set -x
+umask 027 # Can't write from group, or write/read from others
 
 # Backup script for important database tables. Warns if there are important
 # looking databases present in the state/*/psql-databases which are not being
@@ -28,9 +29,6 @@ MYSQL_DUMP=/usr/bin/mysqldump
 mkdir -p $BACKUPDIR
 rm -f $TMPDUMP $TMPDUMP.bz2
 
-# Can't write from group, or write/read from others
-umask 027
-
 # Check all MySQL databases are being backed up, except test ones
 POSSIBLE_DATABASES=$BACKUPDIR/mysql-databases-backup-candidates
 BACKED_DATABASES=$BACKUPDIR/mysql-databases-being-backed-up
@@ -48,7 +46,7 @@ diff -u $BACKED_DATABASES $POSSIBLE_DATABASES
 # Do MySQL backups
 for X in $BITTER_MYSQL_DATABASES
 do
-    $MYSQL_DUMP --databases $X | bzip2 >$TMPDUMP
+    ssh bitter.ukcod.org.uk $MYSQL_DUMP --databases $X | bzip2 >$TMPDUMP
     mv $TMPDUMP $BACKUPDIR/$X.bitter.my.sql.bz2
 done
 
