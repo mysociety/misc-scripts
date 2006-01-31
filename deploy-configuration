@@ -20,7 +20,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.38 2006-01-26 09:57:45 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.39 2006-01-31 21:17:04 chris Exp $';
 
 package Oops;
 
@@ -256,7 +256,7 @@ sub read_perms ($) {
                 ;
             } elsif ($mode =~ /^0?[0-7]+$/) {
                 $perm = oct($mode);
-            } elsif (!defined($perm = mySociety::Util::symbolic_permissions(0, $mode))) {
+            } elsif (!defined($perm = File::SymbolicMode::symbolic_permissions(0, $mode))) {
                 throw Oops("$indir/_perm:$n: '$mode' is neither a valid octal nor a symbolic mode");
             }
 
