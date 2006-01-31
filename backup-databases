@@ -8,7 +8,7 @@ set -x
 
 # Make sure tea and bitter don't run at once
 if [ $( hostname ) = bitter ] ; then
-    sleep 3
+    sleep 300
 fi
 
 BITTER_PSQL_DATABASES="pb ycml rt" 
