@@ -1,12 +1,14 @@
 #!/bin/bash
 
+set -x
+
 # Backup script for important database tables. Warns if there are important
 # looking databases present in the state/*/psql-databases which are not being
 # backed up. Then makes backups to /data/backups/dailydb.
 
 # Make sure tea and bitter don't run at once
 if [ $( hostname ) = bitter ] ; then
-    sleep 300
+    sleep 3
 fi
 
 BITTER_PSQL_DATABASES="pb ycml rt" 
@@ -25,6 +27,9 @@ PG_DUMP=/usr/bin/pg_dump
 MYSQL_DUMP=/usr/bin/mysqldump
 mkdir -p $BACKUPDIR
 rm -f $TMPDUMP $TMPDUMP.bz2
+
+# Can't write from group, or write/read from others
+umask 027
 
 # Check all MySQL databases are being backed up, except test ones
 POSSIBLE_DATABASES=$BACKUPDIR/mysql-databases-backup-candidates
