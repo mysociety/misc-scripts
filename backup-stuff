@@ -6,7 +6,7 @@
 # Copyright (c) 2004 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: backup-stuff,v 1.10 2005-10-28 06:29:32 francis Exp $
+# $Id: backup-stuff,v 1.11 2006-01-31 17:47:57 francis Exp $
 #
 
 set -e
@@ -27,7 +27,7 @@ else
     }
 fi
 
-for thing in /data/pgsql/backups /usr/local/cvs /usr/local/privatecvs /data0/vhost/www.mysociety.org/moindata; do
+for thing in /data/backups/dailydb /usr/local/cvs /usr/local/privatecvs /data/vhost/www.mysociety.org/moindata; do
     dir=$( echo $thing | sed s@/@_@g )
     now=$( date +%Y%m%dT%H%M%S )
     target=${dir}_$now
@@ -51,7 +51,7 @@ for thing in /data/pgsql/backups /usr/local/cvs /usr/local/privatecvs /data0/vho
         mkdir $target
     fi
 
-    rsync --exclude "event-log" --exclude "edit-lock" --exclude "/cache/" $rsyncopts very.unfortu.net:$thing/. $target/.
+    rsync --exclude "event-log" --exclude "edit-lock" --exclude "/cache/" $rsyncopts bitter.ukcod.org.uk:$thing/. $target/.
 
     trap '' EXIT
 done
