@@ -1,4 +1,4 @@
-u/bin/sh
+/bin/sh
 #
 # backup-stuff:
 # Backup mySociety CVS repository and other things.
@@ -6,7 +6,7 @@ u/bin/sh
 # Copyright (c) 2004 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: backup-stuff,v 1.12 2006-02-01 10:52:20 francis Exp $
+# $Id: backup-stuff,v 1.13 2006-02-01 10:53:48 francis Exp $
 #
 
 set -e
