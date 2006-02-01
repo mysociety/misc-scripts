@@ -20,7 +20,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.39 2006-01-31 21:17:04 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.40 2006-02-01 10:14:49 chris Exp $';
 
 package Oops;
 
@@ -310,7 +310,7 @@ sub process_directory ($$$) {
         if (S_ISDIR($s->mode())) {
             # This is a directory. Create it in the output, and add it to the
             # list of subdirectories into which to recurse.
-            my $m = exists($perm->{$name}) ? $perm->{$name} : $mode;
+            my $m = exists($perm->{$name}) ? $perm->{$name}->[2] : $mode;
             verbose("DIRECTORY $indir/$name\n");
             mkdir("$outdir/$name", $m) or throw Oops("$outdir/$name: mkdir: $!");
             $havefile{$name} = $name;
@@ -380,7 +380,7 @@ sub process_directory ($$$) {
             } else {
                 verbose("COPY $indir/$name\n");
                 install_file("$indir/$name", "$outdir/$name", undef,
-                              mode => exists($perm->{$name}) ? $perm->{$name} : $mode);
+                              mode => exists($perm->{$name}) ? $perm->{$name}->[2] : $mode);
                 $havefile{$name} = $name;
             }
         } else {
