@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.28 2006-01-31 22:21:48 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.29 2006-02-01 15:14:54 francis Exp $';
 
 package main;
 
@@ -48,6 +48,7 @@ sub make_symlink {
 }
 
 sub shell {
+    #print "shell: " . join(" ", @_);
     system(@_);
     die "$_[0]: " . mySociety::Util::describe_waitval($?, "system")
         if ($?);
@@ -117,6 +118,8 @@ if ($conf->{'cvs_user'} eq "") {
     if (! -e "$user_home_dir/.cvspass") {
         system("su $conf->{'user'} -c \"touch ~$conf->{'user'}/.cvspass\"");
     }
+    # make sure anoncvs is freshly updated
+    shell("ssh", "cvs.mysociety.org", "/data/mysociety/bin/anoncvs-export");
 }
 foreach my $cvs_dir (@{$conf->{'cvs_dirs'}}) {
     my $d = "$vhost_dir/mysociety/$cvs_dir/CVS";
