@@ -20,7 +20,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.41 2006-02-02 10:39:30 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.42 2006-02-02 13:10:52 chris Exp $';
 
 package Oops;
 
@@ -506,10 +506,9 @@ sub install_files ($$;$) {
             if (!$st2) {
                 mkdir($outname, $st->mode() & 07777)
                     || throw Oops("$outname: mkdir: $!");
-            } else {
-                chmod($st->mode() & 07777, $outname)
-                    || throw Oops("$outname: chmod: $!");
             }
+            chmod($st->mode() & 07777, $outname)
+                || throw Oops("$outname: chmod: $!");
             chown($st->uid(), $st->gid(), $outname)
                 || throw Oops("$outname: chown: $!");
             push(@subdirs, $name);
