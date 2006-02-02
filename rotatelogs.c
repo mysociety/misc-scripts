@@ -7,7 +7,7 @@
  *
  */
 
-static const char rcsid[] = "$Id: rotatelogs.c,v 1.3 2006-01-06 10:53:37 chris Exp $";
+static const char rcsid[] = "$Id: rotatelogs.c,v 1.4 2006-02-02 10:05:54 chris Exp $";
 
 #include <sys/types.h>
 
@@ -81,7 +81,7 @@ void usage(FILE *fp) {
 "        certain lines from the logs; optionally, send logged messages by\n"
 "        email\n"
 "\n"
-"Usage: rotatelogs -h | [-l] [-f FORMAT] [-e ADDRESS] [-r RULES] NAME INTERVAL\n"
+"Usage: rotatelogs -h | [OPTIONS] NAME INTERVAL\n"
 "\n"
 "Write log lines to automatically-rotated files. The current logfile is rotated\n"
 "every INTERVAL, which should be either 0, in which case no log rotation will be\n"
@@ -94,10 +94,22 @@ void usage(FILE *fp) {
 "\n"
 "A new file is created at each multiple of INTERVAL in epoch time.\n"
 "\n"
-"If -l is specified, then whenever a new logfile is opened, a symlink will be\n"
-"created from NAME to it.\n"
+"Options:\n"
 "\n"
-"If -e is specified, then log lines will be emailed to the specified ADDRESS.\n"
+"    -l          When a new logfile is created, make a symlink to it from NAME\n"
+"\n"
+"    -f FORMAT   Use the strftime(3) FORMAT for the suffix on logfile names,\n"
+"                rather than '.' followed by the number of seconds since the\n"
+"                epoch.\n"
+"\n"
+"    -e ADDRESS  Emailed logged lines to ADDRESS.\n"
+"\n"
+"    -r RULES    Read the given file of RULES and use them to filter lines to\n"
+"                be written to the log and/or emailed.\n"
+"\n"
+"    -m MODE     Use the octal MODE for creating new log files, rather than\n"
+"                the default, 0640.\n"
+"\n"
 "If -r is specified, it should give the name of a file of RULES which will be\n"
 "used to filter log lines to be written to the log and/or emailed. Each line\n"
 "in the file should be blank, a comment introduced by '#', the word 'include'\n"
@@ -327,6 +339,8 @@ time_t parse_interval(const char *s) {
     return a;
 }
 
+static int logfile_mode = 0640;
+
 /* reopen_logfile FD INTERVAL NAME FORMAT TIME SYMLINK
  * If the logfile open on FD should now be reopened under a new name because
  * INTERVAL has passed, do so, using FORMAT as an argument to strftime to
@@ -355,7 +369,7 @@ int reopen_logfile(int fd, const time_t interval, const char *name, const char *
     strcpy(buf, name);
     strftime(buf + strlen(name), MAXTIMELEN, format, &T);
 
-    if (-1 == (newfd = open(buf, O_WRONLY | O_CREAT | O_APPEND | O_SYNC, 0644))) {
+    if (-1 == (newfd = open(buf, O_WRONLY | O_CREAT | O_APPEND | O_SYNC, logfile_mode))) {
         our_error("%s: open: %s", buf, strerror(errno));
         return fd;
     }
@@ -522,7 +536,7 @@ int do_email(const char *name, const char *addr, const char *line, const size_t 
 /* main ARGC ARGV
  * Entry point. */
 int main(int argc, char *argv[]) {
-    const char *optstr = "+hlf:e:r:";
+    const char *optstr = "+hlf:e:r:m:";
     extern char *optarg;
     extern int opterr, optopt, optind;
     int c;
@@ -562,6 +576,14 @@ int main(int argc, char *argv[]) {
 
             case 'r':
                 rules = optarg;
+                break;
+
+            case 'm':
+                if (strlen(optarg) > 4 || optarg[strspn(optarg, "01234567")]) {
+                    fprintf(stderr, "rotatelogs: option -m should give a file mode in octal\n");
+                    return 1;
+                }
+                sscanf(optarg, "%o", &logfile_mode);
                 break;
 
             case '?':
