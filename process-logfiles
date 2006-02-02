@@ -1,0 +1,61 @@
+#!/bin/bash
+# Sync logfiles to machine secure.mysociety.org is on, run them
+# through awstats.
+set -e
+set -x # debug output
+
+# Edit these three to add more hosts, if the server running awstats changes, or
+# if new servers are added that serve any of the hosts.
+VHOSTS="www.mysociety.org www.writetothem.com www.pledgebank.com www.hearfromyourmp.com"
+AWSTATS_SERVER=bitter
+OTHER_SERVERS="tea"
+
+# Global config
+CACHE_DIR=/var/cache/process-logfiles
+AWSTATS_OUTPUT_DIR=/var/lib/awstats
+AWSTATS=/usr/lib/cgi-bin/awstats.pl
+mkdir -p $CACHE_DIR
+TODAY=`date +"%Y-%m-%d"`
+YESTERDAY=`date --date yesterday +"%Y-%m-%d"`
+
+# All servers need the config files generating (for the web interface)
+for VHOST in $VHOSTS
+do
+    # Generate awstats conf file from template file
+    VHOST_ALIAS=${VHOST//www./}
+    VHOST_ALIAS=${VHOST_ALIAS//./\\\\.}
+    echo "\$awstats_vhost = \"$VHOST\"; \$awstats_vhost_aliases = \"$VHOST_ALIAS\";" | /data/mysociety/bin/mugly -O /etc/awstats/awstats.$VHOST.conf -p - /etc/awstats/awstats.template.conf
+done
+
+# Exit unless we're on bitter
+if [ $( hostname ) != bitter ] ; then
+    echo "process-logfiles: exiting as not on bitter"
+    exit
+fi
+
+# Copy log files locally, collate them, process them and copy output back to all servers
+for VHOST in $VHOSTS
+do
+    # Copy all log files from all machines to the cache directory
+    for SERVER in $AWSTATS_SERVER $OTHER_SERVERS
+    do
+        # Check to see if server has the vhost, if so get its log files
+        if rsync --rsh="ssh" $SERVER:/data/vhost/ | grep $VHOST >/dev/null
+        then
+            rsync --rsh="ssh" --exclude "error_log*" --delete --archive $SERVER:/data/vhost/$VHOST/logs/ $CACHE_DIR/$VHOST-$SERVER/
+        fi
+    done
+
+    # Process all the log files
+    LOG_FILES=`find $CACHE_DIR -type f | grep "/$VHOST-.*/" | grep -v $TODAY` 
+    # >/dev/null
+    /usr/share/doc/awstats/examples/logresolvemerge.pl $LOG_FILES | $AWSTATS -update -config=$VHOST
+
+    # Copy awstats output to other servers
+    for SERVER in $OTHER_SERVERS
+    do
+        rsync --rsh="ssh" --archive $AWSTATS_OUTPUT_DIR/ $SERVER:$AWSTATS_OUTPUT_DIR
+    done
+done
+
+
