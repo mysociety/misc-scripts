@@ -2,7 +2,7 @@
 # Sync logfiles to machine secure.mysociety.org is on, run them
 # through awstats.
 set -e
-set -x # debug output
+#set -x # debug output
 
 # Edit these three to add more hosts, if the server running awstats changes, or
 # if new servers are added that serve any of the hosts.
@@ -29,7 +29,7 @@ done
 
 # Exit unless we're on bitter
 if [ $( hostname ) != bitter ] ; then
-    echo "process-logfiles: exiting as not on bitter"
+    # echo "process-logfiles: exiting as not on bitter"
     exit
 fi
 
@@ -47,8 +47,7 @@ do
     done
 
     # Process all the log files
-    LOG_FILES=`find $CACHE_DIR -type f | grep "/$VHOST-.*/" | grep -v $TODAY` 
-    # >/dev/null
+    LOG_FILES=`find $CACHE_DIR -type f | grep "/$VHOST-.*/" | grep -v $TODAY` >/dev/null
     /usr/share/doc/awstats/examples/logresolvemerge.pl $LOG_FILES | $AWSTATS -update -config=$VHOST
 
     # Copy awstats output to other servers
