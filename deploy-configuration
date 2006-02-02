@@ -20,7 +20,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.40 2006-02-01 10:14:49 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.41 2006-02-02 10:39:30 chris Exp $';
 
 package Oops;
 
@@ -301,7 +301,7 @@ sub process_directory ($$$) {
     opendir(D, $indir) or die "$indir: opendir: $!";
     while (defined(my $name = readdir(D))) {
         # XXX should have an exclusion list (maybe use .cvsignore?)
-        next if ($name eq '_perm' || $name eq '.' || $name eq '..' || $name eq 'CVS');
+        next if ($name eq '_perm' || $name eq '.' || $name eq '..' || $name eq 'CVS' || $name =~ /~$/);
         throw Oops("$indir/$name: already created $name, from $havefile{$name}")
             if (exists($havefile{$name}));
         my $s = lstat("$indir/$name");
