@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: cvs-mirror,v 1.2 2006-02-03 16:01:25 chris Exp $
+# $Id: cvs-mirror,v 1.3 2006-02-03 16:02:43 chris Exp $
 #
 
 if [ x$1 = x-h -o x$1 = x--help ] ; then
@@ -56,6 +56,6 @@ host=$2
 
 lock_repos $location || die "$location: could not lock repository"
 
-echo rsync --delete -ra --exclude '#cvs.lock' $location/. $host:$location/.
+rsync --delete -ra --exclude '#cvs.lock' $location/. $host:$location/.
 
 exit 0
