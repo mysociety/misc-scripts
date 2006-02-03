@@ -47,8 +47,8 @@ do
     done
 
     # Process all the log files
-    LOG_FILES=`find $CACHE_DIR -type f | grep "/$VHOST-.*/" | grep -v $TODAY` >/dev/null
-    /usr/bin/mergelog $LOG_FILES | $AWSTATS -update -config=$VHOST
+    LOG_FILES=`find $CACHE_DIR -type f | grep "/$VHOST-.*/" | grep -v $TODAY`
+    /usr/bin/mergelog $LOG_FILES | $AWSTATS -update -config=$VHOST >/dev/null
 
     # Copy awstats output to other servers
     for SERVER in $OTHER_SERVERS
