@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: cvs-mirror,v 1.1 2006-02-03 16:00:38 chris Exp $
+# $Id: cvs-mirror,v 1.2 2006-02-03 16:01:25 chris Exp $
 #
 
 if [ x$1 = x-h -o x$1 = x--help ] ; then
@@ -47,7 +47,7 @@ location=$1
 [ x$location = x ] && die "first argument must be location of CVS repository"
 [ ! -e $location ] && die "$location: No such file or directory"
 [ ! -d $location ] && die "$location: Not a directory"
-[ -d $location/CVSROOT ] && die "$location: not a CVS repository (no CVSROOT)"
+[ ! -d $location/CVSROOT ] && die "$location: not a CVS repository (no CVSROOT)"
 
 host=$2
 [ x$host = x ] && die "second argument must be host to mirror to"
