@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.29 2006-02-01 15:14:54 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.30 2006-02-05 01:55:55 francis Exp $';
 
 package main;
 
@@ -223,24 +223,36 @@ if ($conf_dir) {
         my $conf_ugly_part = $conf_dir . "/general";
         $conf_ugly_part =~ s#/#_#g;
         my $conf_ugly_file = "$servers_dir/vhosts/$conf_ugly_part.ugly";
-        # check destination file hasn't been separately modified
-        if (-e $conf_file) {
-            # XXX detect errors
-            system("diff", "-u", "$conf_file.deployed", "$conf_file") == 0 || die "$conf_file was changed directly since last deployed, so cannot update from template";
-        }
-        # call mugly to generate from template
-        shell("$mysociety_bin/mugly", "-O", "$conf_file.tmp", "-p", "$settings_file", "$conf_ugly_file");
-        # test contents of new configuration file before copying it over
+        # update example we'll be comparing against, to make sure no missing entries
         chdir $mysociety_dir;
         shell("cvs", "-Q", "update", "$conf_dir/general-example");
-        chdir $mysociety_bin;
-        shell("$mysociety_bin/compareconfig.pl", "$conf_file.tmp", "$mysociety_dir/$conf_dir/general-example");
-        # copy into place
-        copy("$conf_file.tmp", "$conf_file.deployed");
-        chown($user_uid, $user_gid, "$conf_file.deployed");
-        copy("$conf_file.tmp", "$conf_file");
-        chown($user_uid, $user_gid, "$conf_file");
-        unlink("$conf_file.tmp") or die "couldn't unlink $conf_file.tmp";
+        # check destination file hasn't been separately modified
+        my $make_conf = 1;
+        if (-e $conf_file) {
+            # XXX detect errors
+            if (system("diff", "-u", "$conf_file.deployed", "$conf_file") != 0) {
+                print STDERR "Warning: $conf_file was changed directly since last update from\n";
+                print STDERR "template file $conf_ugly_file, so has not been updated.\n";
+                $make_conf = 0;
+            }
+        }
+        if ($make_conf) {
+            # call mugly to generate from template
+            shell("$mysociety_bin/mugly", "-O", "$conf_file.tmp", "-p", "$settings_file", "$conf_ugly_file");
+            # test contents of new configuration file before copying it over
+            chdir $mysociety_bin;
+            shell("$mysociety_bin/compareconfig.pl", "$conf_file.tmp", "$mysociety_dir/$conf_dir/general-example");
+            # copy into place
+            copy("$conf_file.tmp", "$conf_file.deployed");
+            chown($user_uid, $user_gid, "$conf_file.deployed");
+            copy("$conf_file.tmp", "$conf_file");
+            chown($user_uid, $user_gid, "$conf_file");
+            unlink("$conf_file.tmp") or die "couldn't unlink $conf_file.tmp";
+        } else {
+            # test contents of configuration file before copying it over
+            chdir $mysociety_bin;
+            shell("$mysociety_bin/compareconfig.pl", "$conf_file", "$mysociety_dir/$conf_dir/general-example");
+        }
         # now we use this configuration
         mySociety::Config::set_file($conf_file);
         umask($old_umask);
