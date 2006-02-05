@@ -1,5 +1,6 @@
-#!/bin/sh
+#!/bin/bash
 # Shorter interface to deploy scripts on servers.
+# Bash script because it uses temporary named pipes <(cmd)
 
 die () {
     echo "mysociety:" "$@" 1>&2
@@ -19,7 +20,10 @@ COMMAND is one of:
 
     dns
         Update the DNS configuration on the current host.
-  
+
+    catlog VHOST access
+        Cats the latest VHOST log file from every server, merging them
+        
 Extra parameters are passed through to underlying deploy-... script.
 END
 	exit
@@ -63,6 +67,14 @@ case $COMMAND in
 
     dns)
         exec /data/mysociety/bin/deploy-dns "$@"
+        ;;
+
+    catlog)
+        VHOST=$1
+        shift || die "specify a virtual host"
+        TYPE=$1
+        shift || die "specify 'access' or 'error'"
+        mergelog <(ssh bitter.ukcod.org.uk cat /data/vhost/$VHOST/logs/${TYPE}_log) <(ssh tea.ukcod.org.uk cat /data/vhost/$VHOST/logs/${TYPE}_log)
         ;;
 
     *)
