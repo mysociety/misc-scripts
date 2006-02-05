@@ -4,6 +4,8 @@ use strict;
 my %langs = (
     'cy_GB' => 'cy',
     'de_DE' => 'de',
+    'it_IT' => 'it',
+    'nl_NL' => 'nl',
     'es_ES' => 'es',
     'pt_BR' => 'pt-br',
     'ru_RU' => 'ru',
@@ -11,7 +13,7 @@ my %langs = (
     'uk_UA' => 'uk',
 );
 
-for (<locale/*.*/LC_MESSAGES/PledgeBank.po>) {
+for (<locale/*.*-8/LC_MESSAGES/PledgeBank.po>) {
     my ($lang) = /locale\/(.*?)\./;
     open(FP, $_) or die $!;
     my $out = '';
