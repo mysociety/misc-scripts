@@ -1,5 +1,4 @@
   - make rotatelogs re-stat included config files too
   - rule to pass up to N lines matching a regex per time interval
-  - global rate-limiting for emails? need some kind of shared scoreboard
 
-$Id: TODO,v 1.2 2006-02-04 12:29:42 chris Exp $
+$Id: TODO,v 1.3 2006-02-06 09:59:24 maint Exp $
