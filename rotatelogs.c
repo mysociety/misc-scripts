@@ -7,7 +7,7 @@
  *
  */
 
-static const char rcsid[] = "$Id: rotatelogs.c,v 1.4 2006-02-02 10:05:54 chris Exp $";
+static const char rcsid[] = "$Id: rotatelogs.c,v 1.5 2006-02-06 09:49:40 chris Exp $";
 
 #include <sys/types.h>
 
@@ -103,6 +103,10 @@ void usage(FILE *fp) {
 "                epoch.\n"
 "\n"
 "    -e ADDRESS  Emailed logged lines to ADDRESS.\n"
+"\n"
+"    -i INTERVAL Send emails to ADDRESS no more than once every INTERVAL.\n"
+"                This limit is applied only for a single rotatelogs process;\n"
+"                the default is 30 minutes.\n"
 "\n"
 "    -r RULES    Read the given file of RULES and use them to filter lines to\n"
 "                be written to the log and/or emailed.\n"
@@ -440,6 +444,10 @@ struct rule *reread_rules(struct rule *rules, const char *filename, struct stat 
  * an email about a log line. */
 #define EMAIL_TIMEOUT 5
 
+/* EMAIL_INTERVAL
+ * Default minimum interval between sending two emails, in seconds. */
+#define EMAIL_INTERVAL 1800
+
 /* escaped_write_lines STREAM LINES LEN
  * Write the LEN-byte log LINES to STREAM, escaping non-ASCII characters */
 void escaped_write_lines(FILE *fp, const char *line, const size_t len) {
@@ -451,7 +459,7 @@ void escaped_write_lines(FILE *fp, const char *line, const size_t len) {
             case '\r': fprintf(fp, "\\r"); break;
             default:
                    if (isprint(*p)) fputc(*p, fp);
-                   else fprintf(fp, "\\%02x", (unsigned int)*p);
+                   else fprintf(fp, "\\x%02x", (unsigned int)*p);
                    break;
         }
     }
@@ -536,7 +544,7 @@ int do_email(const char *name, const char *addr, const char *line, const size_t 
 /* main ARGC ARGV
  * Entry point. */
 int main(int argc, char *argv[]) {
-    const char *optstr = "+hlf:e:r:m:";
+    const char *optstr = "+hlf:e:i:r:m:";
     extern char *optarg;
     extern int opterr, optopt, optind;
     int c;
@@ -551,6 +559,8 @@ int main(int argc, char *argv[]) {
     struct stat st = {0};   /* for rules file */
     struct rule *r = NULL;
     int email_fd = -1;      /* pipe to email-sending subprocess */
+    int email_interval = EMAIL_INTERVAL;
+    time_t last_email = 0;
 
     signal(SIGPIPE, SIG_IGN);
     
@@ -572,6 +582,13 @@ int main(int argc, char *argv[]) {
 
             case 'e':
                 email = optarg; /* XXX syntax check */
+                break;
+
+            case 'i':
+                if (!(email_interval = parse_interval(optarg))) {
+                    fprintf(stderr, "rotatelogs: '%s' is not a valid interval\n", optarg);
+                    return 1;
+                }
                 break;
 
             case 'r':
@@ -648,8 +665,10 @@ int main(int argc, char *argv[]) {
                     }
                 }
 
-                /* Now open a new one. */
-                if (email_fd == -1) {
+                /* Now open a new one, assuming it's not too soon after we
+                 * sent the last email. */
+                if (email_fd == -1
+                    && time(NULL) > last_email + email_interval) {
                     int pp[2];
                     if (-1 == pipe(pp))
                         our_error("pipe: %s", strerror(errno));
@@ -658,6 +677,7 @@ int main(int argc, char *argv[]) {
                         fcntl(email_fd, F_SETFL, fcntl(email_fd, F_GETFL) | O_NONBLOCK);
                         do_email(name, email, line, linelen, pp[0]);
                         close(pp[0]); /* in this process */
+                        time(&last_email);
                     }
                 }
             }
