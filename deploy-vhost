@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.30 2006-02-05 01:55:55 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.31 2006-02-06 12:16:16 francis Exp $';
 
 package main;
 
@@ -278,6 +278,15 @@ foreach my $psql_conf_prefix (keys %{$conf->{'psql_schemas'}}) {
 
 # Create httpd configuration stanza
 shell("$mysociety_bin/mugly", "-O", "/etc/apache/virtualhosts.d/$vhost.conf", "-p", "$settings_file", "$servers_dir/vhosts/single-vhost.conf.ugly");
+
+# Make .forward files
+if ($conf->{'email'}) {
+    foreach my $email_user (keys %{$conf->{'email'}}) {
+        my $email_pipeto = $conf->{'email'}->{$email_user};
+        shell("su", "-", $email_user, "echo \"|$vhost_dir/mysociety/$email_pipeto\" >~$email_user/.forward");
+        print ".forward done\n";
+    }
+}
 
 #####################################################################
 # Shut down services, update, start services
