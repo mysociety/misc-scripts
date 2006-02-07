@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.31 2006-02-06 12:16:16 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.32 2006-02-07 08:58:44 francis Exp $';
 
 package main;
 
@@ -169,6 +169,8 @@ print FH <<END;
 \$group = '$group';
 \$wildcard_vhost = '$conf->{'wildcard_vhost'}';
 \$https = '$conf->{'https'}';
+\$randomly = '/data/mysociety/bin/randomly -p 0.5'; # for crontab
+\$only_one = "[ \\\$(hostname) == 'bitter' ] &&"; # for crontab
 END
 print FH "\$conf_dir = '$conf->{'conf_dir'}';\n" if $conf->{'conf_dir'};
 print FH "\$admin_dir = '$conf->{'admin_dir'}';\n" if $conf->{'admin_dir'};
