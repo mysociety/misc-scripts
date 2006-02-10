@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.33 2006-02-07 08:59:56 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.34 2006-02-10 16:18:46 francis Exp $';
 
 package main;
 
@@ -204,7 +204,11 @@ chown($user_uid, $user_gid, $settings_file);
 
 # Generate daemon init scripts from templates
 foreach my $daemon (keys %{$conf->{'daemons'}}) {
-    my $daemon_mugly = $mysociety_dir.'/'.$conf->{'conf_dir'}.'/'.$conf->{'daemons'}->{$daemon};
+    my $daemon_mugly_path = $mysociety_dir.'/'.$conf->{'conf_dir'}.'/';
+    my $daemon_mugly_file = $conf->{'daemons'}->{$daemon};
+    chdir $daemon_mugly_path;
+    shell("cvs", "-Q", "update", "$daemon_mugly_file");
+    my $daemon_mugly = $daemon_mugly_path . $daemon_mugly_file;
     my ($fh, $filename) = tempfile();
     open(FH, ">$filename") or die "failed to open $filename for write";
     print FH "\$daemon_name = '$daemon';\n";
