@@ -8,7 +8,7 @@
 # Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: gettext-makemo,v 1.6 2005-12-15 21:50:35 francis Exp $
+# $Id: gettext-makemo,v 1.7 2006-02-24 16:42:04 francis Exp $
 
 if [ ! -d locale ]
 then
@@ -22,13 +22,23 @@ then
     MSGFMT_PARAMS=""
 fi
 
+# count number of times Subject: appears in original, times two
+SUBJECT_COUNT_ORIG=`grep Subject: locale/PledgeBank.po locale/PledgeBank.po | egrep -v "^#" | wc --lines`
+
 for X in locale/*.UTF-8
 do
     if [ -d $X ]
     then
         cd $X/LC_MESSAGES
+
         [ "$1" != "--quiet" ] && echo -n "$X: " 
         msgfmt -c $MSGFMT_PARAMS -o PledgeBank.mo PledgeBank.po
+        SUBJECT_COUNT=`grep Subject: PledgeBank.po  | egrep -v "^#" | wc --lines`
+        if [ "$SUBJECT_COUNT" != "$SUBJECT_COUNT_ORIG" ] 
+        then
+            echo "WARNING: Email 'Subject:' lines have probably been translated in $X' (got $SUBJECT_COUNT, $SUBJECT_COUNT_ORIG expected)"
+        fi
+
         cd ../../../
     fi
 done
