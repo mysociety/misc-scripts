@@ -8,7 +8,7 @@
 # Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: gettext-extract,v 1.9 2006-02-12 01:29:33 francis Exp $
+# $Id: gettext-extract,v 1.10 2006-02-24 19:20:32 matthew Exp $
 
 if [ ! -e ../mysociety ]
 then
@@ -46,10 +46,10 @@ function write_each_line_as_msg() {
 }
 
 # Extract from PHP
-xgettext --language=PHP --from-code=utf-8 -o $PO phplib/*.php pb/phplib/*.php pb/web/*.php pb/bin/frequentupdate pb/bin/send-comment-alerts pb/bin/send-local-alerts
+xgettext --add-comments=TRANS --language=PHP --from-code=utf-8 -o $PO phplib/*.php pb/phplib/*.php pb/web/*.php pb/bin/frequentupdate pb/bin/send-comment-alerts pb/bin/send-local-alerts
 
 # Extract from Python and JS (which seems to work if I tell it it's Python)
-xgettext --language=Python --from-code=utf-8 --join-existing -o $PO pb/web/poster.cgi pb/web/pb.js
+xgettext --add-comments=TRANS --language=Python --from-code=utf-8 --join-existing -o $PO pb/web/poster.cgi pb/web/pb.js
 
 # Fix headers
 TEMP=`tempfile`
@@ -66,6 +66,9 @@ cat $PO | sed "
 mv $TEMP $PO
 
 # Extract email templates
+echo >> $PO
+echo '#. In all of these email templates, should the first word "Subject:" be translated or not? Is it machine-read or human-read? (Tim Morley, 2005-11-23)' >> $PO
+echo "#. It's machine-read, yes, so please leave as \"Subject:\". (Matthew Somerville, http://www.mysociety.org/pipermail/mysociety-i18n/2005-November/000104.html)" >> $PO
 for X in pb/templates/emails/*
 do
     # TODO: Should check for "*~" type filenames too
