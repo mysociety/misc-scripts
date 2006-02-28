@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: newzonefile,v 1.7 2006-01-21 13:05:56 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: newzonefile,v 1.8 2006-02-28 12:20:36 chris Exp $';
 
 use strict;
 
@@ -101,14 +101,14 @@ $f->print(<<EOF);
                 MX      30          castaway.flirble.org.
 
 ; Address of $domain itself.
-                IN      A           82.111.230.100      ; tea.ukcod.org.uk
-                IN      A           82.111.230.101      ; bitter.ukcod.org.uk
+                IN      A           82.111.230.200      ; svcs.tea.ukcod.org.uk
+                IN      A           82.111.230.201      ; svcs.bitter.ukcod.org.uk
 
 localhost       IN      A           127.0.0.1
 
 ; Physical web servers for this domain.
-web             IN      A           82.111.230.100      ; tea.ukcod.org.uk
-                IN      A           82.111.230.101      ; bitter.ukcod.org.uk
+web             IN      A           82.111.230.200      ; svcs.tea.ukcod.org.uk
+                IN      A           82.111.230.201      ; svcs.bitter.ukcod.org.uk
 
 www             CNAME               web
 
