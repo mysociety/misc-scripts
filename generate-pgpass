@@ -7,8 +7,6 @@
 # the specified users.
 #
 
-die "run on bitter/tea only at the moment" if `hostname` !~ m/^(bitter|tea)$/;
-
 # Who can access what databases
 my $database_permissions = {
     # All-seeing power
@@ -32,24 +30,27 @@ my $database_permissions = {
     'msservices' => ['mapit','dadem','ratty','evel'],
 };
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.12 2006-03-06 15:05:05 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.13 2006-03-06 15:13:20 chris Exp $';
 
 use strict;
 require 5.8.0;
 
 use FindBin;
 use lib "$FindBin::Bin/../perllib";
+use POSIX;
 
 use mySociety::Util;
 
-foreach my $user (keys %$database_permissions) {
-    my ($user_login, $user_pass, $user_uid, $user_gid) = getpwnam($user);
-    my $user_home = `echo ~$user`;
-    chomp $user_home;
+die "run on bitter/tea only at the moment" if ((uname())[1] !~ m/^(bitter|tea)$/);
 
-    my ($tmph, $tmpn) = mySociety::Util::named_tempfile();
+foreach my $user (keys %$database_permissions) {
+    my @x = getpwnam($user) or die "$user: getpwnam: $!";
+    my ($user_login, $user_pass, $user_uid, $user_gid) = @x;
+    my $user_home = $x[7];
+
+    my ($tmpn, $tmph) = mySociety::Util::create_file_to_replace("$user_home/.pgpass") or die "open: $!";
     $tmph->print("# DO NOT EDIT - edit and rerun generate-pgpass instead\n");
-    
+
     my $databases = $database_permissions->{$user};
     foreach my $database (@$databases) {
         my $password = `$FindBin::Bin/pgpw $database`;
@@ -57,7 +58,7 @@ foreach my $user (keys %$database_permissions) {
         $tmph->print("*:*:$database:$database:$password\n") || throw Oops("$tmpn: write: $!");
     }
     $tmph->close();
-    
+
     chmod 0400, $tmpn;
     chown($user_uid, $user_gid, $tmpn);
 
