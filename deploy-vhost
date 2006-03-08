@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.35 2006-02-21 10:25:54 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.36 2006-03-08 17:21:44 chris Exp $';
 
 package main;
 
@@ -29,6 +29,8 @@ use File::Slurp;
 use File::Copy;
 use File::Temp qw(tempfile);
 
+our $verbose = $ENV{VERBOSE} ? 1 : 0;
+
 #####################################################################
 # General functions
 
@@ -48,10 +50,12 @@ sub make_symlink {
 }
 
 sub shell {
-    #print "shell: " . join(" ", @_);
     system(@_);
-    die "$_[0]: " . mySociety::Util::describe_waitval($?, "system")
-        if ($?);
+    if ($?) {
+        chomp(my $c = `pwd`);
+        die "in $c: " . join(" ", @_) . ": "
+            . mySociety::Util::describe_waitval($?, "system");
+    }
 }
 
 #####################################################################
@@ -220,8 +224,10 @@ foreach my $daemon (keys %{$conf->{'daemons'}}) {
 }
 
 # Generate conf/general file from its template file
-my $conf_dir = $conf->{'conf_dir'};
-if ($conf_dir) {
+my $conf_dirs = $conf->{'conf_dir'};
+$conf_dirs ||= [];
+$conf_dirs = [$conf_dirs] if (!ref($conf_dirs));
+foreach my $conf_dir (@$conf_dirs) {
     my $conf_file = "$vhost_dir/mysociety/$conf_dir/general"; # destination file
     if (-e "$conf_file-example") {
         my $old_umask = umask(0077);
@@ -363,8 +369,10 @@ if ($conf->{'crontab'}) {
 }
 if ($ok) {
     chdir $mysociety_dir;
-    shell("cvs", "-Q", "update", "$conf_dir/crontab.ugly");
-    shell("$mysociety_bin/mugly", "-O", $cron_name, "-p", "$settings_file", "$mysociety_dir/$conf_dir/crontab.ugly");
+    foreach my $conf_dir (@$conf_dirs) {
+        shell("cvs", "-Q", "update", "$conf_dir/crontab.ugly");
+        shell("$mysociety_bin/mugly", "-O", $cron_name, "-p", "$settings_file", "$mysociety_dir/$conf_dir/crontab.ugly");
+    }
 } else {
     unlink($cron_name);
 }
