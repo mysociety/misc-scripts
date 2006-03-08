@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.37 2006-03-08 17:26:28 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.38 2006-03-08 17:41:15 chris Exp $';
 
 package main;
 
@@ -176,7 +176,8 @@ print FH <<END;
 \$randomly = '/data/mysociety/bin/randomly -p 0.5'; # for crontab
 \$only_one = "[ \\\$(hostname) = 'bitter' ] &&"; # for crontab
 END
-print FH "\$conf_dir = '$conf->{'conf_dir'}';\n" if $conf->{'conf_dir'};
+print FH Dumper($conf->{conf_idr});
+print FH "\$conf_dir = \$VAR1;\n";
 print FH "\$admin_dir = '$conf->{'admin_dir'}';\n" if $conf->{'admin_dir'};
 print FH "\$admin_group = '$conf->{'admin_group'}';\n" if $conf->{'admin_group'};
 die "admin_group must be specified if admin_dir is" if $conf->{'admin_dir'} && !$conf->{'admin_group'};
