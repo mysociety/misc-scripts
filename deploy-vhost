@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.36 2006-03-08 17:21:44 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.37 2006-03-08 17:26:28 chris Exp $';
 
 package main;
 
@@ -23,6 +23,7 @@ my $mysociety_dir = "$FindBin::Bin/../../mysociety";
 use mySociety::Util;
 use mySociety::Config;
 
+use Cwd;
 use POSIX qw(getuid);
 use Data::Dumper;
 use File::Slurp;
@@ -52,8 +53,7 @@ sub make_symlink {
 sub shell {
     system(@_);
     if ($?) {
-        chomp(my $c = `pwd`);
-        die "in $c: " . join(" ", @_) . ": "
+        die "in " . getcwd() . ": " . join(" ", @_) . ": "
             . mySociety::Util::describe_waitval($?, "system");
     }
 }
