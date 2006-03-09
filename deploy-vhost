@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.40 2006-03-09 12:29:04 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.41 2006-03-09 12:32:59 chris Exp $';
 
 package main;
 
@@ -233,7 +233,7 @@ foreach my $daemon (keys %{$conf->{'daemons'}}) {
 }
 
 # Generate conf/general file from its template file
-foreach my $conf_dir ($conf->{conf_dir}) {
+foreach my $conf_dir (@{$conf->{conf_dir}}) {
     my $conf_file = "$vhost_dir/mysociety/$conf_dir/general"; # destination file
     if (-e "$conf_file-example") {
         my $old_umask = umask(0077);
@@ -278,6 +278,7 @@ foreach my $conf_dir ($conf->{conf_dir}) {
 }
 
 # Check pgsql databases are up to date
+# XXX this is broken for multiple conf_dir too.
 foreach my $psql_conf_prefix (keys %{$conf->{'psql_schemas'}}) {
 	my $psql_schema = $conf->{'psql_schemas'}->{$psql_conf_prefix};
 
