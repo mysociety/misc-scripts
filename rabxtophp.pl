@@ -5,7 +5,7 @@
 # PHP include file for talking to that RABX interface.
 #
 
-my $rcsid = ''; $rcsid .= '$Id: rabxtophp.pl,v 1.6 2005-11-25 16:27:12 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: rabxtophp.pl,v 1.7 2006-03-09 16:17:40 francis Exp $';
 
 use strict;
 
@@ -31,6 +31,7 @@ my ($rabx_namespace, $php_namespace, $conf_name);
 sub process_functions {
     my $parent = shift;
     foreach my $content ($parent->content()) {
+        # print STDERR $content->title() . "\n";
         if ($content->type() eq 'head2' or $content->type() eq 'over') {
             # Recurse through head2 or over
             process_functions($content)
