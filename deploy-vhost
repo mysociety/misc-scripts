@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.39 2006-03-08 17:42:16 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.40 2006-03-09 12:29:04 chris Exp $';
 
 package main;
 
@@ -96,6 +96,12 @@ my $group = getgrgid($user_gid);
 $conf->{'wildcard_vhost'} = 0 if (!exists($conf->{'wildcard_vhost'}));
 $conf->{'https'} = 0 if (!exists($conf->{'https'}));
 
+# Ensure that the conf_dir element is a reference to a list of config dirs.
+my $c = $conf->{conf_dir};
+$c ||= [];
+$c = [$c] if (!ref($c));
+$conf->{conf_dir} = $c;
+
 #####################################################################
 # Make directories and conf files, check database and conf files
 
@@ -176,6 +182,7 @@ print FH <<END;
 \$randomly = '/data/mysociety/bin/randomly -p 0.5'; # for crontab
 \$only_one = "[ \\\$(hostname) = 'bitter' ] &&"; # for crontab
 END
+
 print FH Dumper($conf->{conf_dir});
 print FH "\$conf_dirs = \$VAR1;\n";
 print FH "\$admin_dir = '$conf->{'admin_dir'}';\n" if $conf->{'admin_dir'};
@@ -209,7 +216,8 @@ chown($user_uid, $user_gid, $settings_file);
 
 # Generate daemon init scripts from templates
 foreach my $daemon (keys %{$conf->{'daemons'}}) {
-    my $daemon_mugly_path = $mysociety_dir.'/'.$conf->{'conf_dir'}.'/';
+    # XXX assume daemon is configured from first conf_dir.
+    my $daemon_mugly_path = $mysociety_dir . '/' . $conf->{conf_dir}->[0] . '/';
     my $daemon_mugly_file = $conf->{'daemons'}->{$daemon};
     chdir $daemon_mugly_path;
     shell("cvs", "-Q", "update", "$daemon_mugly_file");
@@ -225,10 +233,7 @@ foreach my $daemon (keys %{$conf->{'daemons'}}) {
 }
 
 # Generate conf/general file from its template file
-my $conf_dirs = $conf->{'conf_dir'};
-$conf_dirs ||= [];
-$conf_dirs = [$conf_dirs] if (!ref($conf_dirs));
-foreach my $conf_dir (@$conf_dirs) {
+foreach my $conf_dir ($conf->{conf_dir}) {
     my $conf_file = "$vhost_dir/mysociety/$conf_dir/general"; # destination file
     if (-e "$conf_file-example") {
         my $old_umask = umask(0077);
@@ -370,7 +375,7 @@ if ($conf->{'crontab'}) {
 }
 if ($ok) {
     chdir $mysociety_dir;
-    foreach my $conf_dir (@$conf_dirs) {
+    foreach my $conf_dir (@{$conf->{conf_dir}}) {
         shell("cvs", "-Q", "update", "$conf_dir/crontab.ugly");
         shell("$mysociety_bin/mugly", "-O", $cron_name, "-p", "$settings_file", "$mysociety_dir/$conf_dir/crontab.ugly");
     }
