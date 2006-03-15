@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: anoncvs-export,v 1.6 2006-02-10 09:36:10 francis Exp $
+# $Id: anoncvs-export,v 1.7 2006-03-15 17:44:31 francis Exp $
 #
 
 if [ x$1 = x-h -o x$1 = x--help ] ; then
@@ -56,7 +56,7 @@ lock_repos $to || die "could not obtain lock on $to"
 # We have to run this as root, because anoncvs doesn't have access to the
 # public CVS repository itself. So we do that, then fix the permissions
 # afterwards.
-rsync --delete -rlpt --exclude mysociety.db-journal --exclude CVSROOT --exclude '#cvs.*' $from/. $to/. \
+rsync --delete -rlpt --exclude mysociety.db-journal --exclude mysociety.db --exclude CVSROOT --exclude '#cvs.*' $from/. $to/. \
     || die "failed in rsync"
 
 # Now change the ownership and permissions in the output repository.
