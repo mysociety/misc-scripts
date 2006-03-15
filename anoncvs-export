@@ -6,8 +6,10 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: anoncvs-export,v 1.7 2006-03-15 17:44:31 francis Exp $
+# $Id: anoncvs-export,v 1.8 2006-03-15 17:44:49 francis Exp $
 #
+
+# set -x # debugging
 
 if [ x$1 = x-h -o x$1 = x--help ] ; then
     cat <<EOF
