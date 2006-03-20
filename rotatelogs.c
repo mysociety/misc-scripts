@@ -7,15 +7,18 @@
  *
  */
 
-static const char rcsid[] = "$Id: rotatelogs.c,v 1.5 2006-02-06 09:49:40 chris Exp $";
+static const char rcsid[] = "$Id: rotatelogs.c,v 1.6 2006-03-20 18:34:08 chris Exp $";
 
 #include <sys/types.h>
 
 #include <ctype.h>
 #include <errno.h>
+#include <grp.h>
 #include <pcre.h>
+#include <pwd.h>
 #include <signal.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -113,6 +116,12 @@ void usage(FILE *fp) {
 "\n"
 "    -m MODE     Use the octal MODE for creating new log files, rather than\n"
 "                the default, 0640.\n"
+"\n"
+"    -o OWNER    Create log files owned by OWNER rather than the UID and GID\n"
+"                of the rotatelogs process. OWNER may be specified as USER,\n"
+"                USER:GROUP, or :GROUP. This will only work if the\n"
+"                rotatelogs process has sufficient privilege to change the\n"
+"                file ownership as required.\n"
 "\n"
 "If -r is specified, it should give the name of a file of RULES which will be\n"
 "used to filter log lines to be written to the log and/or emailed. Each line\n"
@@ -344,6 +353,8 @@ time_t parse_interval(const char *s) {
 }
 
 static int logfile_mode = 0640;
+static uid_t logfile_uid = -1;
+static gid_t logfile_gid = -1;
 
 /* reopen_logfile FD INTERVAL NAME FORMAT TIME SYMLINK
  * If the logfile open on FD should now be reopened under a new name because
@@ -377,6 +388,13 @@ int reopen_logfile(int fd, const time_t interval, const char *name, const char *
         our_error("%s: open: %s", buf, strerror(errno));
         return fd;
     }
+    
+    /* Set the ownership of the new file. Note that there's a race here, but
+     * it's not very important. */
+    if ((-1 != logfile_uid || -1 != logfile_gid)
+        && -1 == fchown(newfd, logfile_uid, logfile_gid))
+        /* This is not a fatal error; report it, but do not abort. */
+        our_error("%s: fchown(%d, %d): %s", buf, logfile_uid, logfile_gid, strerror(errno));
 
     *t = now;
 
@@ -396,7 +414,15 @@ again:
                 goto again;
             else
                 our_error("%s: symlink to %s: %s", buf2, basename, strerror(errno));
-        } else if (-1 == rename(buf2, name)) {
+        }
+        
+        /* We should also set the ownership of the symlink. */
+        if ((-1 != logfile_uid || -1 != logfile_gid)
+            && -1 == lchown(buf2, logfile_uid, logfile_gid))
+            /* Again, not a fatal error. */
+            our_error("%s: lchown(%d, %d): %s", buf2, logfile_uid, logfile_gid, strerror(errno));
+        
+        if (-1 == rename(buf2, name)) {
             our_error("%s: rename to %s: %s", buf2, name, strerror(errno));
             unlink(buf2);
         }
@@ -407,8 +433,8 @@ again:
 
 /* reread_rules RULES FILENAME ST
  * Stat FILENAME and compare its attributes to those in ST. If it is unchanged,
- * then returl RULES; otherwise, free RULES and read a new set of rules from
- * FILENAME. */
+ * then return RULES; otherwise, free RULES, read a new set of rules from
+ * FILENAME, and return those. */
 struct rule *reread_rules(struct rule *rules, const char *filename, struct stat *st) {
     struct stat st2;
     struct rule *r;
@@ -541,10 +567,53 @@ int do_email(const char *name, const char *addr, const char *line, const size_t 
     _exit(0);
 }
 
+/* parse_owner OWNER
+ * Set logfile_uid and logfile_gid from OWNER, which should be of the form
+ * "USER", "USER:GROUP" or ":GROUP". Returns nonzero on success or prints an
+ * error and returns zero on failure. */
+static bool parse_owner(const char *s) {
+    char *user, *group;
+    bool ret = 0;
+    
+    user = strdup(s);
+    group = strchr(user, ':');
+    if (group) *(group++) = 0;
+
+    if (user[strspn(user, "0123456789")]) {
+        struct passwd *p;
+        if ((p = getpwnam(user)))
+            logfile_uid = p->pw_uid;
+        else {
+            fprintf(stderr, "rotatelogs: no such user '%s'\n", user);
+            goto fail;
+        }
+    } else if (*user)
+        logfile_uid = (uid_t)atoi(user);
+    /* else user is blank, so only set group */
+
+    if (group[strspn(group, "0123456789")]) {
+        struct group *g;
+        if ((g = getgrnam(group)))
+            logfile_gid = g->gr_gid;
+        else {
+            fprintf(stderr, "rotatelogs: no such group '%s'\n", group);
+            goto fail;
+        }
+    } else if (*group)
+        logfile_gid = (gid_t)atoi(group);
+    /* else blank group */
+
+    ret = 1;
+
+fail:
+    free(user);
+    return ret;
+}
+
 /* main ARGC ARGV
  * Entry point. */
 int main(int argc, char *argv[]) {
-    const char *optstr = "+hlf:e:i:r:m:";
+    const char *optstr = "+hlf:e:i:r:m:o:";
     extern char *optarg;
     extern int opterr, optopt, optind;
     int c;
@@ -601,6 +670,11 @@ int main(int argc, char *argv[]) {
                     return 1;
                 }
                 sscanf(optarg, "%o", &logfile_mode);
+                break;
+
+            case 'o':
+                if (!parse_owner(optarg))
+                    return 1;
                 break;
 
             case '?':

@@ -1,5 +1,4 @@
   - make rotatelogs re-stat included config files too
   - rule to pass up to N lines matching a regex per time interval
-  - set user and group of log files
 
-$Id: TODO,v 1.4 2006-02-22 16:09:43 chris Exp $
+$Id: TODO,v 1.5 2006-03-20 18:34:08 chris Exp $
