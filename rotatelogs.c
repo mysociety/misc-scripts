@@ -7,7 +7,7 @@
  *
  */
 
-static const char rcsid[] = "$Id: rotatelogs.c,v 1.6 2006-03-20 18:34:08 chris Exp $";
+static const char rcsid[] = "$Id: rotatelogs.c,v 1.7 2006-03-20 19:03:30 chris Exp $";
 
 #include <sys/types.h>
 
@@ -162,6 +162,10 @@ struct rule {
     char *r_regex;
     pcre *r_pcre;
     pcre_extra *r_pcre_extra;
+    /* record the file from which the rules came, and its attributes, so we
+     * know when to re-read them. */
+    char *r_filename;
+    struct stat r_st;
     struct rule *r_next;
 };
 
@@ -190,11 +194,13 @@ struct rule *rules_read(const char *filename) {
     r->r_regex = strdup("(none)");
     r->r_pcre = NULL;
     r->r_pcre_extra = NULL;
+    r->r_filename = strdup(filename);
+    fstat(fileno(fp), &r->r_st);    /* XXX we assume this succeeds */
     r->r_next = NULL;
     
     while ((line = getline(fp, &l))) {
         char *keyword, *regex;
-        struct rule R, *pR;
+        struct rule R = {0}, *pR;
         const char *err;
         int erroff;
 
@@ -209,6 +215,7 @@ struct rule *rules_read(const char *filename) {
 
         /* Process an include file. */
         if (0 == strncmp(keyword, "include", 7) && strchr(" \t", keyword[7])) {
+            /* XXX we ought to test for an include loop */
             char *f;
             struct rule *r2, *p;
             f = keyword + 7;
@@ -286,6 +293,7 @@ void rules_free(struct rule *r) {
         free(r->r_regex);
         if (r->r_pcre) pcre_free(r->r_pcre);
         if (r->r_pcre_extra) pcre_free(r->r_pcre_extra);
+        if (r->r_filename) free(r->r_filename);
         free(r);
         r = rn;
     }
@@ -431,29 +439,32 @@ again:
     return newfd;
 }
 
-/* reread_rules RULES FILENAME ST
- * Stat FILENAME and compare its attributes to those in ST. If it is unchanged,
- * then return RULES; otherwise, free RULES, read a new set of rules from
- * FILENAME, and return those. */
-struct rule *reread_rules(struct rule *rules, const char *filename, struct stat *st) {
-    struct stat st2;
+/* reread_rules RULES FILENAME
+ * If RULES is NULL, or if any of the files from which the rules were read have
+ * changed, then read FILENAME and return the new set of rules; otherwise,
+ * return RULES. */
+struct rule *reread_rules(struct rule *rules, const char *filename) {
     struct rule *r;
+    bool doread = 0;
 
-    if (-1 == stat(filename, &st2)) {
-        if (errno != ENOENT)
-            our_error("%s: stat: %s\n", filename, strerror(errno));
-        return rules;
+    if (!rules)
+        doread = 1;
+    else {
+        for (r = rules; r; r = r->r_next) {
+            struct stat st;
+            if (!r->r_filename)
+                continue;
+            if (-1 == stat(r->r_filename, &st)
+                || st.st_size != r->r_st.st_size
+                || st.st_mtime != r->r_st.st_mtime
+                || st.st_ino != r->r_st.st_ino) {
+                doread = 1;
+                break;
+            }
+        }
     }
 
-    if (st->st_size == st2.st_size
-        && st->st_mtime == st2.st_mtime
-        && st->st_ino == st2.st_ino)
-        return rules;
-
-    *st = st2;
-
-    r = rules_read(filename);
-    if (r) {
+    if (doread && (r = rules_read(filename))) {
         rules_free(rules);
         rules = r;
     }
@@ -625,7 +636,6 @@ int main(int argc, char *argv[]) {
     char *rules = NULL;
     char *line;
     size_t linelen;
-    struct stat st = {0};   /* for rules file */
     struct rule *r = NULL;
     int email_fd = -1;      /* pipe to email-sending subprocess */
     int email_interval = EMAIL_INTERVAL;
@@ -702,7 +712,7 @@ int main(int argc, char *argv[]) {
 
     time(&ft);
     logfile_fd = reopen_logfile(logfile_fd, interval, name, format, &ft, make_symlink);
-    if (rules) r = reread_rules(r, rules, &st);
+    if (rules) r = reread_rules(r, rules);
     while ((line = getline(stdin, &linelen))) {
         enum action a;
         if (rules) {
@@ -712,7 +722,7 @@ int main(int argc, char *argv[]) {
             if (!buf || buflen < linelen + 1) buf = realloc(buf, buflen = (linelen + 1) * 2);
             memcpy(buf, line, linelen + 1);
             line = buf;
-            r = reread_rules(r, rules, &st);
+            r = reread_rules(r, rules);
         }
         a = rules_test(r, line, linelen);
         if (a != act_drop) {
