@@ -1,0 +1,8 @@
+
+Individual monitoring components. Each should consist of a perl module which
+defines a single test() function; that function should print information about
+any test failures it encounters to standard output. Tests are run in a
+subprocess, connected to the monitoring program by a pipe. Tests will be timed
+out by the monitoring process after a while, but should try to detect timeouts
+themselves.
+
