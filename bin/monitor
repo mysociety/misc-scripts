@@ -1,0 +1,39 @@
+#!/usr/bin/perl -w
+#
+# monitor:
+# Run monitoring tests and notify administrators in case of failures.
+#
+# This should be run from init.
+#
+# Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
+# Email: chris@mysociety.org; WWW: http://www.mysociety.org/
+#
+
+my $rcsid = ''; $rcsid .= '$Id: monitor,v 1.1 2006-03-24 19:21:50 chris Exp $';
+
+use strict;
+
+use FindBin;
+
+my $testsdir = "$FindBin::Bin/tests";
+my $interval = 300;
+
+# do_tests
+# Perform tests, returning a hash of name-of-test to reference to list of
+# errors reported.
+sub do_tests () {
+    opendir(D, $testsdir);
+    while (my $name = readdir(D)) {
+        next unless ($name =~ /^[^.]+\.pm$/);
+
+        # Fork a process, connecting a pipe to its standard output and error.
+        # In the child, run the test obtained defined in this perl module.
+        # In the parent, accumulate output from the subprocess for a
+        # reasonable period of time, killing it if it persists for too long.
+    }
+    closedir(D);
+}
+
+while (1) {
+    my %failures = do_tests();
+}
