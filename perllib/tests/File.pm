@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: File.pm,v 1.1 2006-03-24 19:01:32 chris Exp $
+# $Id: File.pm,v 1.2 2006-03-27 11:09:27 chris Exp $
 #
 
 package File;
@@ -17,19 +17,27 @@ use Errno;
 use IO::File;
 use Time::HiRes qw(time);
 
-my @dirs = qw(
-        /tmp
-        /root
-        /var/log
-        /home
-        /data1
-        /data2
-    );
-
 use constant TEST_FILE_SIZE => 65536;
 use constant MAX_WRITE_TIME => 2;
 
 sub test () {
+    # Form list of directories to test from list of mounted file systems.
+    my $f = new IO::File("/etc/mtab", O_RDONLY);
+    if (!$f) {
+        print "/etc/mtab: open: $!\n";
+        return;
+    }
+    my @dirs;
+    while (my $line = $f->getline()) {
+        chomp($line);
+        my ($dev, $mnt, $type, $flags, $a, $b) = split(/\s+/, $line);
+        # Exclude filesystems to which we wouldn't expect to be able to write.
+        push(@dirs, $mnt) unless ($type =~ /^(proc|devpts|usbfs)$/);
+    }
+    if ($f->error()) {
+        print "/etc/mtab: read: $!\n";
+    }
+    $f->close();
     foreach my $dir (@dirs) {
         next unless (-d $dir);
         my ($name, $f, $i);
