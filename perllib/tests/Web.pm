@@ -8,7 +8,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Web.pm,v 1.2 2006-03-24 21:21:07 chris Exp $
+# $Id: Web.pm,v 1.3 2006-03-27 15:19:59 chris Exp $
 #
 
 package Web;
@@ -18,7 +18,7 @@ use strict;
 use IO::Socket;
 use IO::Socket::SSL;
 use Socket;
-use Time::HiRes qw(time);
+use Time::HiRes qw(time alarm);
 
 my @pages = qw(
         http://www.mysociety.org/
@@ -51,12 +51,20 @@ use constant GET_BODY_TIME_MAX => 10;
 use constant TOTAL_TIME_MAX => 20;
 
 sub test () {
+    local $SIG{ALRM} = sub { die "timeout"; };
     foreach my $page (@pages) {
         my ($hostname, $path) = ($page =~ m#^https?://([^/]+)(/.*)$#);
         if (!$hostname || !$path) {
             print "$page: bad URL\n";
             next;
         }
+
+        my $override_port;
+        if ($hostname =~ /^(.+):([1-9]\d*)$/) {
+            $hostname = $1;
+            $override_port = $2;
+        }
+        
         # now we need to resolve the hostname; if there's more than one
         # hostname, we must try the query against each of them.
         my @x = gethostbyname($hostname);
@@ -70,134 +78,127 @@ sub test () {
             next;
         }
         @addrs = map { inet_ntoa($_) } @addrs;
-        my $port = ($page =~ m#http://# ? 80 : 443);
+        my $port = $override_port;
+        $port ||= ($page =~ m#http://# ? 80 : 443);
         foreach my $addr (@addrs) {
             my $s;
-            my $desc = "$page -> $hostname:$port";
+            my $desc = "$page -> $addr:$port";
+            my $what = "connecting";
 
-            my $t_start = time();
-            if ($port == 80) {
-                $s = new IO::Socket::INET(
-                                Type => SOCK_STREAM,
-                                Proto => 'tcp',
-                                PeerHost => $addr,
-                                PeerPort => $port
-                            );
-                if (!$s) {
-                    print "$desc: $!\n";
-                    goto end;
-                }
-            } else {
-                $desc .= '(SSL)';
-                $s = new IO::Socket::SSL("$addr:$port");
-                if (!$s) {
-                    print "$desc: $!\n";
-                    goto end;
-                }
-            }
-
-            my $t_connected = time();
-
-            if ($t_connected - $t_start > CONNECT_TIME_MAX) {   
-                printf "%s: connect time %fs (> %fs)\n",
-                        $desc, $t_connected - $t_start, CONNECT_TIME_MAX;
-            }
-
-            if (!$s->print(
-                    "GET $path HTTP/1.0\r\n" .
-                    "Host: $hostname\r\n" .
-                    "Connection: close\r\n" .
-                    "\r\n"
-                )) {
-                print "$desc: send headers: $!\n";
-            }
-            $s->flush();
-
-            my $t_sent_headers = time();
-
-            if ($t_sent_headers - $t_connected > SEND_REQUEST_TIME_MAX) {
-                printf "%s: send request time %fs (> %fs)\n",
-                        $desc, $t_sent_headers - $t_connected, SEND_REQUEST_TIME_MAX;
-            }
-
-            local $/ = "\r\n";
-            
-            my $responseline = $s->getline();
-            if (!$responseline) {
-                print "$desc: read response line: $!\n";
-                goto end;
-            }
-
-            my $t_got_responseline = time();
-            if ($t_got_responseline - $t_sent_headers > GET_RESPONSELINE_TIME_MAX) {
-                printf "%s: receive response line %fs (> %fs)\n",
-                        $desc, $t_got_responseline - $t_sent_headers, GET_RESPONSELINE_TIME_MAX;
-            }
-
-            $responseline =~ s/\r\n$//;
-            if ($responseline !~ m#^HTTP/1.[01] ([1-9][0-9]{2}.+)$#) {
-                print "$desc: bad response line '$responseline'\n";
-                goto end;
-            }
-            my $status = $1;
-            if ($status !~ /^200 /) {
-                print "$desc: failure status '$status'\n";
-            }
-
-            my $length;
-            while (1) {
-                my $header = $s->getline();
-                if (!$header) {
-                    print "$desc: reading headers: $!";
-                    goto end;
-                }
-                $header =~ s/\r\n$//;
-                last if ($header eq '');
-                if ($header !~ m#^[A-Za-z0-9-]+: (.+)$#) {
-                    print "$desc: bad header '$header'\n";
-                    goto end;
-                }
-
-                $length = $1 if ($header =~ m/^Content-Type: \s*([1-9]\d*)$/i);
-            }
-
-            my $t_got_headers = time();
-            if ($t_got_headers - $t_got_responseline > GET_HEADERS_TIME_MAX) {
-                printf "%s: receive headers %fs (> %fs)\n",
-                        $desc, $t_got_headers - $t_got_responseline, GET_HEADERS_TIME_MAX;
-            }
-
-            my $nread = 0;
-            while (1) {
-                my $buf;
-                my $n = $s->read($buf, 8192);
-                if (!defined($n)) {
-                    print "$desc: while reading response (got $nread bytes): $!\n";
-                    goto end;
-                } elsif ($n == 0) {
-                    if (defined($length) && $nread < $length) {
-                        print "$desc: truncated body (got $nread of $length bytes)\n";
+            eval {
+                alarm(CONNECT_TIME_MAX);
+                if ($port == 80) {
+                    $s = new IO::Socket::INET(
+                                    Type => SOCK_STREAM,
+                                    Proto => 'tcp',
+                                    PeerHost => $addr,
+                                    PeerPort => $port
+                                );
+                    if (!$s) {
+                        print "$desc: $what: $!\n";
                         goto end;
                     }
-                    last;
+                } else {
+                    $desc .= '(SSL)';
+                    $s = new IO::Socket::SSL("$addr:$port");
+                    if (!$s) {
+                        print "$desc: $what: $!\n";
+                        goto end;
+                    }
                 }
-                $nread += $n;
-            }
 
-            my $t_got_body = time();
-            if ($t_got_body - $t_got_headers > GET_BODY_TIME_MAX) {
-                printf "%s: receive %d bytes of content %fs (> %fs)\n",
-                        $desc, $nread, $t_got_body - $t_got_headers, GET_BODY_TIME_MAX;
-            }
+                my $t_connected = time();
 
-            my $t_done = time();
-            if ($t_done - $t_start > TOTAL_TIME_MAX) {
-                printf "%s: total time %fs (> %fs)\n",
-                        $desc, $t_done - $t_start, TOTAL_TIME_MAX;
-            }
+                $what = "sending request";
+                alarm(SEND_REQUEST_TIME_MAX);
+
+                if (!$s->print(
+                        "GET $path HTTP/1.0\r\n" .
+                        "Host: $hostname\r\n" .
+                        "Connection: close\r\n" .
+                        "\r\n"
+                    )) {
+                    print "$desc: $what: $!\n";
+                    goto end;
+                }
+                $s->flush();
+
+                $what = "waiting for response line";
+                alarm(GET_RESPONSELINE_TIME_MAX);
+                local $/ = "\r\n";
+                
+                my $responseline = $s->getline();
+                if (!$responseline) {
+                    print "$desc: $what: $!\n";
+                    goto end;
+                }
+
+                $responseline =~ s/\r\n$//;
+                if ($responseline !~ m#^HTTP/1.[01] ([1-9][0-9]{2}.+)$#) {
+                    print "$desc: bad response line '$responseline'\n";
+                    goto end;
+                }
+                my $status = $1;
+                if ($status !~ /^200 /) {
+                    print "$desc: failure status '$status'\n";
+                }
+
+                $what = "receiving headers";
+                alarm(GET_HEADERS_TIME_MAX);
+
+                my $length;
+                while (1) {
+                    my $header = $s->getline();
+                    if (!$header) {
+                        print "$desc: $what: $!";
+                        goto end;
+                    }
+                    $header =~ s/\r\n$//;
+                    last if ($header eq '');
+                    if ($header !~ m#^[A-Za-z0-9-]+: (.+)$#) {
+                        print "$desc: bad header '$header'\n";
+                        goto end;
+                    }
+
+                    $length = $1 if ($header =~ m/^Content-Type: \s*([1-9]\d*)$/i);
+                }
+
+                $what = "receiving response body";
+                alarm(GET_BODY_TIME_MAX);
+
+                my $nread = 0;
+                while (1) {
+                    my $buf;
+                    my $n = $s->read($buf, 8192);
+                    if (!defined($n)) {
+                        print "$desc: $what (got $nread bytes): $!\n";
+                        goto end;
+                    } elsif ($n == 0) {
+                        if (defined($length) && $nread < $length) {
+                            print "$desc: truncated body (got $nread of $length bytes)\n";
+                            goto end;
+                        }
+                        last;
+                    }
+                    $nread += $n;
+                }
+
+                alarm(0);
+
+                my $t_done = time();
 
 end:
-            $s->close() if ($s);
+                alarm(0);
+                $s->close() if ($s);
+            };
+
+            if ($@) {
+                if ($@ =~ /timeout/) {
+                    print "$desc: $what: timed out\n";
+                } else {
+                    die $@;
+                }
+            }
         }
     }
 }
