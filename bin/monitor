@@ -9,31 +9,246 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: monitor,v 1.1 2006-03-24 19:21:50 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: monitor,v 1.2 2006-03-27 19:08:47 chris Exp $';
 
 use strict;
 
 use FindBin;
+use lib "$FindBin::Bin/../perllib";
+use lib "$FindBin::Bin/../../perllib";
 
-my $testsdir = "$FindBin::Bin/tests";
+use Errno;
+use Fcntl;
+use IO::Pipe;
+use IO::Select;
+use POSIX;
+use Sys::Syslog;
+use Time::HiRes qw(time);
+
+use mySociety::Config;
+BEGIN {
+    mySociety::Config::set_file("$FindBin::Bin/../conf/general");
+}
+use mySociety::Util qw(describe_waitval open_log print_log send_email);
+
+my $testsdir = "$FindBin::Bin/../perllib/tests";
 my $interval = 300;
+my $timeout = 60;   # in seconds, for an individual test
 
-# do_tests
-# Perform tests, returning a hash of name-of-test to reference to list of
-# errors reported.
-sub do_tests () {
-    opendir(D, $testsdir);
-    while (my $name = readdir(D)) {
-        next unless ($name =~ /^[^.]+\.pm$/);
+# minimum interval at which emails are sent out
+my $email_interval = 1200;
 
-        # Fork a process, connecting a pipe to its standard output and error.
-        # In the child, run the test obtained defined in this perl module.
-        # In the parent, accumulate output from the subprocess for a
-        # reasonable period of time, killing it if it persists for too long.
+# email recipient
+my $email_recipient = 'bugs@mysociety.org';
+
+# do_one_test TEST
+# Run the named TEST (name of perl module, without the ".pm" suffix), and
+# return in list context its results. An empty list indicates that the test run
+# was successful.
+sub do_one_test ($) {
+    my $name = shift;
+
+    # Fork a process, connecting a pipe to its standard output and error. In
+    # the child, run the test obtained defined in this perl module. In the
+    # parent, accumulate output from the subprocess for a reasonable period of
+    # time, killing it if it persists for too long.
+
+    my $p = new IO::Pipe();
+    my $child = fork();
+    if (!defined($child)) {
+        return ("fork child process: $!");
+    } elsif ($child == 0) {
+        $p->writer();
+        # close existing stdout and stderr, and connect them to the "write" end
+        # of the pipe.
+        POSIX::close(0);
+        POSIX::open("/dev/null");
+        POSIX::close(1);
+        POSIX::close(2);
+        POSIX::dup($p->fileno());
+        POSIX::dup($p->fileno());
+        if (!chdir($testsdir)) {
+            print "$testsdir: chdir: $!\n";
+            exit(1);
+        }
+        # contortion necessary to get a real die() if this fails
+        eval "use $name;";
+        my $fn = eval "\\&${name}::test";
+        STDOUT->autoflush(1);
+        &$fn();
+        exit(0);
     }
-    closedir(D);
+
+    my @results;
+    my $buf = '';
+
+    $p->reader();
+    fcntl($p, F_SETFL, O_NONBLOCK);
+
+    my $timeout_expired = 0;
+    my $eof = 0;
+    local $SIG{ALRM} = sub { $timeout_expired = 1; };
+    alarm($timeout);
+
+    my $S = new IO::Select();
+    $S->add($p);
+ 
+    while (!$timeout_expired) {
+        next if (!$S->can_read(1));
+        my $n = $p->sysread($buf, 8192, length($buf));
+        if (!defined($n)) {
+            if (!$!{EAGAIN}) {
+                push(@results, "read from pipe: $!");
+                last;
+            }
+        } elsif ($n == 0) {
+            $eof = 1;
+            last;
+        }
+    }
+
+    print_log('debug', "received " . length($buf) . " bytes output from test $name");
+
+    alarm(0);
+
+    if ($timeout_expired) {
+        print_log('err', "timeout running test $name");
+        push(@results, "timeout expired reading results of test");
+    }
+
+    if (length($buf) > 0) {
+        unshift(@results, split(/\n/, $buf));
+    }
+
+    $p->close();
+
+    # Give the child process a moment to finish up.
+    sleep(1);
+
+    if (waitpid($child, WNOHANG) <= 0) {
+        # XXX there's a race condition here, and we should block SIGCHLD
+        # between the waitpid and the kill, but who am I kidding?
+        # Actually perl's "synchronous signal handling" may make this a
+        # non-problem (i.e., by replacing it with a different one).
+        kill(SIGKILL, $child);      # why mess about?
+        waitpid($child, WNOHANG);
+        push(@results, "child process did not exit in a timely manner; killed it");
+    } elsif ($?) {
+        print_log('debug', "wait status of child process for test $name = $?");
+        push(@results, describe_waitval($?, "child process"));
+    }
+
+    return @results;
 }
 
+# do_tests
+# Perform tests, returning a reference of a hash of name-of-test to reference
+# to list of errors reported.
+sub do_tests () {
+    my $results = { };
+    opendir(D, $testsdir);
+    while (my $file = readdir(D)) {
+        next unless ($file =~ /^([^.]+)\.pm$/);
+
+        my $name = $1;
+
+        my @r = do_one_test($name);
+        $results->{$name} = \@r if (@r);
+    }
+    closedir(D);
+
+    return $results;
+}
+
+# do_email RESULTS
+# Send an email containing the failing test RESULTS.
+sub do_email ($) {
+    my $results = shift;
+
+    # We must not block here, so fork twice and have the first child exit; the
+    # second is a child of init and we can forget about it. If we don't manage
+    # to send the email then we're in trouble anyway; trying to report the
+    # error up to the parent process doesn't win us anything.
+    
+    my $c1 = fork();
+    if (!defined($c1)) {
+        # first fork failed
+        print_log('err', "fork (to send email): $!");
+        return;
+    } elsif ($c1 == 0) {
+        # first child
+        my $c2 = fork();
+        if (!defined($c2)) {
+            # second fork failed
+            print_log('err', "fork (to send email): $!");
+        } elsif ($c2 != 0) {
+            # first child
+            exit(0);
+        }
+    } else {
+        # parent
+        waitpid($c1, 0);
+        return;
+    }
+
+    # second child
+    
+
+    my $failures = join(' ', sort keys %$results);
+    my $email = <<EOF;
+From: root
+To: $email_recipient
+Subject: System monitor failures: $failures
+
+EOF
+    foreach (sort keys %$results) {
+        $email .= "$_\n"
+                    . join('', map { "  $_\n" } @{$results->{$_}})
+                    . "\n";
+    }
+
+    $email .= <<EOF;
+-- 
+$rcsid
+EOF
+
+    my $r = send_email($email, 'root', $email_recipient);
+    if ($r != mySociety::Util::EMAIL_SUCCESS) {
+        print_log('err', "failed to send email");
+    }
+    exit(0);
+}
+
+open_log("monitor");
+
+# hash of test name to number of consecutive failures
+my %failures;
+
+# when we last sent an email
+my $last_email = 0;
+
 while (1) {
-    my %failures = do_tests();
+    my $r = do_tests();
+    foreach my $name (sort keys %$r) {
+        print_log('err', "$name: test failed; details follow");
+        foreach (@{$r->{$name}}) {
+            print_log('err', "$name- $_");
+        }
+        $failures{$name} ||= 0;
+        $failures{$name}++;
+    }
+
+    # reset counter for things which are working again
+    foreach (keys %failures) {
+        $failures{$_} = 0 if (!exists($r->{$_}));
+    }
+
+    # possibly send an email
+    if (scalar(keys(%$r))
+        && $last_email < time() - $email_interval) {
+        do_email($r);
+        $last_email = time();
+    }
+
+    sleep($interval);
 }
