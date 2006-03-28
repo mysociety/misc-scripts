@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: onetest,v 1.1 2006-03-28 23:21:17 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: onetest,v 1.2 2006-03-28 23:27:20 francis Exp $';
 
 use strict;
 
@@ -19,9 +19,4 @@ die "Please specify test, e.g. Web, as parameter" if !$name;
 
 eval "use $name";
 eval "\\&${name}::test()";
-
-#      eval "use $name;";
-#     my $fn = eval "\\&${name}::test";
-   
-#system("perl -MWeb -e 'Web::test();'");
 
