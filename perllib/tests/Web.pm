@@ -8,7 +8,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Web.pm,v 1.3 2006-03-27 15:19:59 chris Exp $
+# $Id: Web.pm,v 1.4 2006-03-28 23:21:18 francis Exp $
 #
 
 package Web;
@@ -83,6 +83,7 @@ sub test () {
         foreach my $addr (@addrs) {
             my $s;
             my $desc = "$page -> $addr:$port";
+            #print "Web: $desc\n";
             my $what = "connecting";
 
             eval {

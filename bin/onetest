@@ -1,0 +1,27 @@
+#!/usr/bin/perl -w
+#
+# monitor:
+# Run one monitoring test directly, and display its output.
+#
+# Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
+# Email: chris@mysociety.org; WWW: http://www.mysociety.org/
+#
+
+my $rcsid = ''; $rcsid .= '$Id: onetest,v 1.1 2006-03-28 23:21:17 francis Exp $';
+
+use strict;
+
+use FindBin;
+use lib "$FindBin::Bin/../perllib/tests";
+
+my $name = shift;
+die "Please specify test, e.g. Web, as parameter" if !$name;
+
+eval "use $name";
+eval "\\&${name}::test()";
+
+#      eval "use $name;";
+#     my $fn = eval "\\&${name}::test";
+   
+#system("perl -MWeb -e 'Web::test();'");
+
