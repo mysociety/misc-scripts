@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: PostgreSQL.pm,v 1.1 2006-04-02 01:29:01 francis Exp $
+# $Id: PostgreSQL.pm,v 1.2 2006-04-02 01:37:37 francis Exp $
 #
 
 package PostgreSQL;
@@ -22,7 +22,7 @@ sub test() {
     my $pass = mySociety::Config::get('DB_PASS');
 
     # Connect to database
-    my $dbh = DBI->connect("dbi:Pg:host=$host;port=$port", $user, $pass);
+    my $dbh = DBI->connect("dbi:Pg:dbname=pb;host=$host;port=$port", $user, $pass);
     if ( !defined $dbh ) {
         print "Cannot connect to database on $host:$port as $user\n";
         return;
@@ -36,7 +36,7 @@ sub test() {
     }
     $sth->execute;
     while ( my ($datname, $usename, $current_query, $query_start) = $sth->fetchrow()) {
-        print "PostgreSQL query on $datname taking more than 30 minutes: $current_query\n";
+        print "database:$datname user:$usename; PostgreSQL query taking more than 30 minutes: $current_query\n";
     }
 }
 
