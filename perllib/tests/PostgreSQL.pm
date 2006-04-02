@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: PostgreSQL.pm,v 1.2 2006-04-02 01:37:37 francis Exp $
+# $Id: PostgreSQL.pm,v 1.3 2006-04-02 01:42:16 francis Exp $
 #
 
 package PostgreSQL;
@@ -38,6 +38,7 @@ sub test() {
     while ( my ($datname, $usename, $current_query, $query_start) = $sth->fetchrow()) {
         print "database:$datname user:$usename; PostgreSQL query taking more than 30 minutes: $current_query\n";
     }
+    $dbh->disconnect;
 }
 
 1;
