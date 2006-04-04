@@ -18,7 +18,7 @@ my $database_permissions = {
     'matthew' => ['fyr','pb','ycml','mapit','dadem','ratty','evel','pb-staging','ycml-staging','fyr-staging'],
     'etienne' => ['pb-staging','ycml-staging'],
     'timsk' => ['pb-staging'],
-    'louise' => ['mswww-staging','mswww'],
+    'louise' => ['mswww-staging','mswww','news-staging'],
 
     # Sites
     'pb' => ['pb','pb-staging','pb-interface'],
@@ -30,7 +30,7 @@ my $database_permissions = {
     'msservices' => ['mapit','dadem','ratty','evel'],
 };
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.13 2006-03-06 15:13:20 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.14 2006-04-04 09:01:18 francis Exp $';
 
 use strict;
 require 5.8.0;
