@@ -1,7 +1,6 @@
 <?php
 /*
- * general-example:
- * Example values for the "general" config file.
+ * monitoring.conf:
  *
  * Configuration parameters, in PHP syntax. Configuration parameters are set
  * using the PHP define('OPTION_...', '...') function. Both perl and PHP code
@@ -14,7 +13,7 @@
  * Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
  * Email: francis@mysociety.org; WWW: http://www.mysociety.org
  *
- * $Id: monitoring.conf-example,v 1.1 2006-04-04 12:28:55 francis Exp $
+ * $Id: monitoring.conf-example,v 1.2 2006-04-04 12:43:00 francis Exp $
  * 
  */
 
