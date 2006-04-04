@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: onetest,v 1.4 2006-04-04 09:33:46 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: onetest,v 1.5 2006-04-04 12:28:55 francis Exp $';
 
 use strict;
 
@@ -17,11 +17,13 @@ use lib "$FindBin::Bin/../perllib/tests";
 
 use mySociety::Config;
 BEGIN {
-    mySociety::Config::set_file("$FindBin::Bin/../conf/general");
+    my $config_file = shift;
+    die "Specify config file as first parameter" if !$config_file;
+    mySociety::Config::set_file($config_file);
 }
 
 my $name = shift;
-die "Please specify test, e.g. Web, as parameter" if !$name;
+die "Please specify test, e.g. Web, as second parameter" if !$name;
 
 eval "use $name";
 die "failed to import $name: $@" if ($@);

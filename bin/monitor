@@ -9,7 +9,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: monitor,v 1.3 2006-04-04 12:10:35 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: monitor,v 1.4 2006-04-04 12:28:55 francis Exp $';
 
 use strict;
 
@@ -28,7 +28,9 @@ use Data::Dumper;
 
 use mySociety::Config;
 BEGIN {
-    mySociety::Config::set_file("$FindBin::Bin/../conf/general");
+    my $config_file = shift;
+    die "specify config file as parameter" if !$config_file;
+    mySociety::Config::set_file($config_file);
 }
 use mySociety::Util qw(describe_waitval open_log print_log send_email);
 
