@@ -7,10 +7,10 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Test.pm,v 1.1 2006-04-04 12:43:00 francis Exp $
+# $Id: SelfTest.pm,v 1.1 2006-04-04 14:22:16 francis Exp $
 #
 
-package Test;
+package SelfTest;
 
 use strict;
 
