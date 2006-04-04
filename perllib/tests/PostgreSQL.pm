@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: PostgreSQL.pm,v 1.4 2006-04-04 08:55:37 francis Exp $
+# $Id: PostgreSQL.pm,v 1.5 2006-04-04 09:07:58 francis Exp $
 #
 
 package PostgreSQL;
@@ -15,7 +15,7 @@ use strict;
 
 use DBI;
 
-my @postgresql_servers = qw(svcs.tea.ukcod.org.uk svcs.bitter.ukcod.org.uk);
+my @postgresql_servers = qw(svcs.tea.int.ukcod.org.uk svcs.bitter.int.ukcod.org.uk);
 my $postgresql_port = 5432;
 
 sub test() {
@@ -24,7 +24,7 @@ sub test() {
     foreach my $postgresql_server (@postgresql_servers) {
 
         # Connect to database
-        my $dbh = DBI->connect("dbi:Pg:dbname=pb;host=$postgresql_server;port=$postgresql_port", $user, $pass);
+        my $dbh = DBI->connect("dbi:Pg:dbname=template1;host=$postgresql_server;port=$postgresql_port", $user, $pass);
         if ( !defined $dbh ) {
             print "Cannot connect to database on $postgresql_server:$postgresql_port as $user\n";
             next;
