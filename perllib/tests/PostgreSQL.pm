@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: PostgreSQL.pm,v 1.3 2006-04-02 01:42:16 francis Exp $
+# $Id: PostgreSQL.pm,v 1.4 2006-04-04 08:55:37 francis Exp $
 #
 
 package PostgreSQL;
@@ -15,30 +15,33 @@ use strict;
 
 use DBI;
 
+my @postgresql_servers = qw(svcs.tea.ukcod.org.uk svcs.bitter.ukcod.org.uk);
+my $postgresql_port = 5432;
+
 sub test() {
-    my $host = mySociety::Config::get('DB_HOST');
-    my $port = mySociety::Config::get('DB_PORT');
     my $user = mySociety::Config::get('DB_USER');
     my $pass = mySociety::Config::get('DB_PASS');
+    foreach my $postgresql_server (@postgresql_servers) {
 
-    # Connect to database
-    my $dbh = DBI->connect("dbi:Pg:dbname=pb;host=$host;port=$port", $user, $pass);
-    if ( !defined $dbh ) {
-        print "Cannot connect to database on $host:$port as $user\n";
-        return;
-    } 
+        # Connect to database
+        my $dbh = DBI->connect("dbi:Pg:dbname=pb;host=$postgresql_server;port=$postgresql_port", $user, $pass);
+        if ( !defined $dbh ) {
+            print "Cannot connect to database on $postgresql_server:$postgresql_port as $user\n";
+            next;
+        } 
 
-    # Find active queries which are old
-    my $sth = $dbh->prepare("select datname, usename, current_query, query_start from pg_stat_activity where current_query not like '<IDLE>%' and query_start < now() - '30 minutes'::interval order by query_start");
-    if ( !defined $sth ) {
-        print "Cannot prepare statement: $DBI::errstr\n";
-        return;
+        # Find active queries which are old
+        my $sth = $dbh->prepare("select datname, usename, current_query, query_start from pg_stat_activity where current_query not like '<IDLE>%' and query_start < now() - '30 minutes'::interval order by query_start");
+        if ( !defined $sth ) {
+            print "Cannot prepare statement on $postgresql_server:$postgresql_port as $user: $DBI::errstr\n";
+            next;
+        }
+        $sth->execute;
+        while ( my ($datname, $usename, $current_query, $query_start) = $sth->fetchrow()) {
+            print "PostgreSQL query taking more than 30 minutes; server:$postgresql_server; database:$datname; user:$usename; query:$current_query\n";
+        }
+        $dbh->disconnect;
     }
-    $sth->execute;
-    while ( my ($datname, $usename, $current_query, $query_start) = $sth->fetchrow()) {
-        print "database:$datname user:$usename; PostgreSQL query taking more than 30 minutes: $current_query\n";
-    }
-    $dbh->disconnect;
 }
 
 1;
