@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: PostgreSQL.pm,v 1.5 2006-04-04 09:07:58 francis Exp $
+# $Id: PostgreSQL.pm,v 1.6 2006-04-04 12:10:36 francis Exp $
 #
 
 package PostgreSQL;
@@ -19,8 +19,8 @@ my @postgresql_servers = qw(svcs.tea.int.ukcod.org.uk svcs.bitter.int.ukcod.org.
 my $postgresql_port = 5432;
 
 sub test() {
-    my $user = mySociety::Config::get('DB_USER');
-    my $pass = mySociety::Config::get('DB_PASS');
+    my $user = mySociety::Config::get('MONITOR_PSQL_USER');
+    my $pass = mySociety::Config::get('MONITOR_PSQL_PASS');
     foreach my $postgresql_server (@postgresql_servers) {
 
         # Connect to database
