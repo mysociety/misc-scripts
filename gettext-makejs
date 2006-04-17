@@ -27,7 +27,7 @@ for (<locale/*.*-8/LC_MESSAGES/PledgeBank.po>) {
         $fuzzy = 1 if $next =~ /fuzzy/;
         $next = <FP> if $next =~ /^#,/;
         my $msgid = '';
-        if ($next eq "msgid \"\"\n") {
+        if ($next =~ /^msgid ""\s+$/) {
             my $l;
             while (($l = <FP>) !~ /msgstr/) {
                 chomp($l);
@@ -40,8 +40,8 @@ for (<locale/*.*-8/LC_MESSAGES/PledgeBank.po>) {
         }
         my $msgstr = '';
         if (!$fuzzy) {
-            if ($next eq "msgstr \"\"\n") {
-                while ((my $l = <FP>) ne "\n") {
+            if ($next =~ /^msgstr ""\s+$/) {
+                while ((my $l = <FP>) !~ /^\s+$/) {
                     chomp($l);
                     $msgstr .= substr($l, 1, -1);
                 }
