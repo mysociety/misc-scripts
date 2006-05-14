@@ -7,7 +7,7 @@
  *
  */
 
-static const char rcsid[] = "$Id: rotatelogs.c,v 1.7 2006-03-20 19:03:30 chris Exp $";
+static const char rcsid[] = "$Id: rotatelogs.c,v 1.8 2006-05-14 14:00:31 chris Exp $";
 
 #include <sys/types.h>
 
@@ -513,6 +513,12 @@ int do_email(const char *name, const char *addr, const char *line, const size_t 
          *s_envp[] = { "PATH=/bin", NULL };
     time_t now, t;
     char buf[1024];
+    static char hostname[64];
+
+    if (!*hostname) {
+        gethostname(hostname, sizeof hostname);
+        hostname[(sizeof hostname) - 1] = 0;
+    }
 
     time(&now);
 
@@ -546,10 +552,10 @@ int do_email(const char *name, const char *addr, const char *line, const size_t 
     if (!(sendmail = fdopen(pp[1], "w")))
         _exit(1);
     fprintf(sendmail,
-            "Subject: error logged to %s\n"
+            "Subject: error logged to %s on %s\n"
             "To: %s\n"
             "\n",
-            name, addr);
+            name, hostname, addr);
 
     /* Need to be a bit more careful with the logged error line itself. */
     escaped_write_lines(sendmail, line, len);
