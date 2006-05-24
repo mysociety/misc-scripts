@@ -8,11 +8,12 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: pgwatchlocks,v 1.1 2006-05-24 21:07:52 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: pgwatchlocks,v 1.2 2006-05-24 22:29:48 chris Exp $';
 
 use strict;
 
 use DBI;
+use POSIX;
 
 my $dbh = DBI->connect('dbi:Pg:dbname=chris', 'chris', '', { PrintWarn => 0, PrintError => 0, RaiseError => 0 }) || die DBI->errstr();
 
@@ -73,7 +74,8 @@ while (1) {
         my ($relation, $database, $transaction, $pid, $mode, $granted)
                 = map { $_ eq '' ? undef : $_ } split(/,/, $_);
 
-        print "PID $pid ";
+        print POSIX::strftime('%Y-%m-%dT%H:%M:%S', localtime()),
+                " PID $pid ";
 
         if ($granted) {
             print "holds";
