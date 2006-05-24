@@ -1,11 +1,12 @@
 #!/usr/bin/perl -w
 #
 # generate-pgpass:
+# Creates ~/.pgpass files for users to whom it is convenient to give access to
+# databases. Overwrites any existing ~/.pgpass file for the specified users.
 #
-# Creates ~/.pgpass files for users who it is convenient to give
-# access to databases. Overwrites any existing ~/.pgpass file for
-# the specified users.
-#
+# Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
+# Email: francis@mysociety.org; WWW: http://www.mysociety.org/
+# 
 
 # Who can access what databases
 my $database_permissions = {
@@ -31,7 +32,7 @@ my $database_permissions = {
     'msservices' => ['mapit','dadem','ratty','evel'],
 };
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.15 2006-04-20 00:10:59 adam Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.16 2006-05-24 21:11:23 chris Exp $';
 
 use strict;
 require 5.8.0;
