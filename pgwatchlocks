@@ -1,0 +1,98 @@
+#!/usr/bin/perl -w
+#
+# pgwatchlocks:
+# Watch PostgreSQL's activity tables to detect locks which are held for a long
+# time.
+#
+# Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
+# Email: chris@mysociety.org; WWW: http://www.mysociety.org/
+#
+
+my $rcsid = ''; $rcsid .= '$Id: pgwatchlocks,v 1.1 2006-05-24 21:07:52 chris Exp $';
+
+use strict;
+
+use DBI;
+
+my $dbh = DBI->connect('dbi:Pg:dbname=chris', 'chris', '', { PrintWarn => 0, PrintError => 0, RaiseError => 0 }) || die DBI->errstr();
+
+# relation_name DB REL
+# Given a numeri DB id and REL id, return the text name of the relation.
+sub relation_name ($$) {
+    my ($db, $rel) = @_;
+    my $dbname = $dbh->selectrow_array('select datname from pg_catalog.pg_stat_database where datid = ?', {}, $db);
+    $dbname ||= "<db#$db>";
+    # We can't get the relation name from the pg_stat_user_tables view, because
+    # that will only show the names of relations in the current database.
+    my $relname = $dbh->selectrow_array('select relname from pg_catalog.pg_stat_user_tables where relid = ?', {}, $rel);
+    $relname ||= "<rel#$rel>";
+    return "$dbname.$relname";
+}
+
+# hash of comma-separated pg_locks row to time of start.
+my %outstanding_locks;
+my %last_report;
+
+while (1) {
+    my $r = $dbh->selectall_arrayref("select relation, database, transaction, pid, mode, granted from pg_catalog.pg_locks");
+    
+    my %locks;
+    foreach my $lock (@$r) {
+        my ($rel, $db, $tx, $pid, $mode, $granted) = @$lock;
+        # Each transaction always holds an exclusive lock on itself.
+        next if ($tx && $mode eq 'ExclusiveLock');
+        # Otherwise, assume that we don't care about  Share locks
+        # XXX this is probably wrong -- we do care about them if another
+        # process is waiting for them. Perhaps we should only report processes
+        # waiting for locks....
+        next if ($mode =~ /Share/);
+        my $row = join(',', map { defined($_) ? $_ : '' } @$lock);
+        $locks{$row} = time();
+    }
+
+    # Difference the two arrays.
+    foreach (grep { !exists($locks{$_}) } keys %outstanding_locks) {
+        delete($outstanding_locks{$_});
+        delete($last_report{$_});
+    }
+
+    foreach (grep { !exists($outstanding_locks{$_}) } keys %locks) {
+        $outstanding_locks{$_} = $locks{$_};
+    }
+    
+    # Now look for locks which have been outstanding for too long.
+    foreach (keys %outstanding_locks) {
+        next unless ($outstanding_locks{$_} < time() - 5);
+
+        my ($last, $n) = (0, 0);
+        ($last, $n) = @{$last_report{$_}} if (exists($last_report{$_}));
+
+        next if ($last > time() - 5 * (2 ** $n));
+        $last_report{$_} = [time(), $n + 1];
+
+        my ($relation, $database, $transaction, $pid, $mode, $granted)
+                = map { $_ eq '' ? undef : $_ } split(/,/, $_);
+
+        print "PID $pid ";
+
+        if ($granted) {
+            print "holds";
+        } else {
+            print "waits for";
+        }
+
+        print " $mode on ";
+
+        if ($relation) {
+            print relation_name($database, $relation);
+#            print "$database.$relation";
+        } else {
+            print "transaction $transaction, currently executing: ??";
+        }
+
+        printf " (for %ds)\n", time() - $outstanding_locks{$_};
+    }
+    
+    sleep(1);
+}
+
