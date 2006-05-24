@@ -8,7 +8,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: pgwatchlocks,v 1.2 2006-05-24 22:29:48 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: pgwatchlocks,v 1.3 2006-05-24 22:39:26 chris Exp $';
 
 use strict;
 
@@ -93,6 +93,18 @@ while (1) {
         }
 
         printf " (for %ds)\n", time() - $outstanding_locks{$_};
+
+        # Find out what that process is doing.
+        my ($user, $query, $when) = $dbh->selectrow_array('select usename, current_query, extract(epoch from query_start) from pg_catalog.pg_stat_activity where procpid = ?', {}, $pid);
+        
+        if (defined($user)) {
+            $query =~ s/\s+/ /gs;
+            my $what = 'is';
+            $what = 'executing' if ($query !~ /^<IDLE>/);
+            print "  since ", POSIX::strftime('%Y-%m-%dT%H:%M:%S', localtime($when)), " $user $what $query\n";
+        } else {
+            print "  (unknown query)\n";
+        }
     }
     
     sleep(1);
