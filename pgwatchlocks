@@ -8,14 +8,14 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: pgwatchlocks,v 1.4 2006-05-24 23:07:09 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: pgwatchlocks,v 1.5 2006-05-25 09:32:23 chris Exp $';
 
 use strict;
 
 use DBI;
 use POSIX;
 
-my $dbh = DBI->connect('dbi:Pg:dbname=chris', 'chris', '', { PrintWarn => 0, PrintError => 0, RaiseError => 0 }) || die DBI->errstr();
+my $dbh = DBI->connect('dbi:Pg:dbname=template1', 'postgres', '', { PrintWarn => 0, PrintError => 0, RaiseError => 0 }) || die DBI->errstr();
 
 # relation_name DB REL
 # Given a numeri DB id and REL id, return the text name of the relation.
@@ -63,12 +63,12 @@ while (1) {
     
     # Now look for locks which have been outstanding for too long.
     foreach (keys %outstanding_locks) {
-        next unless ($outstanding_locks{$_} < time() - 5);
+        next unless ($outstanding_locks{$_} < time() - 10);
 
         my ($last, $n) = (0, 0);
         ($last, $n) = @{$last_report{$_}} if (exists($last_report{$_}));
 
-        next if ($last > time() - 5 * (2 ** $n));
+        next if ($last > time() - 10 * (1.5 ** $n));
         $last_report{$_} = [time(), $n + 1];
 
         my ($relation, $database, $transaction, $pid, $mode, $granted)
