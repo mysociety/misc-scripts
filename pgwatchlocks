@@ -8,7 +8,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: pgwatchlocks,v 1.5 2006-05-25 09:32:23 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: pgwatchlocks,v 1.6 2006-05-25 09:36:31 chris Exp $';
 
 use strict;
 
@@ -42,11 +42,10 @@ while (1) {
         my ($rel, $db, $tx, $pid, $mode, $granted) = @$lock;
         # Each transaction always holds an exclusive lock on itself.
         next if ($tx && $mode eq 'ExclusiveLock');
-        # Otherwise, assume that we don't care about  Share locks
-        # XXX this is probably wrong -- we do care about them if another
-        # process is waiting for them. Perhaps we should only report processes
-        # waiting for locks....
-        next if ($mode =~ /Share/);
+        # Otherwise, assume that we don't care about Share locks unless a
+        # process is waiting for them.
+        # XXX really we should match up waited-for locks with held locks.
+        next if (!$granted && $mode =~ /Share/);
         my $row = join(',', map { defined($_) ? $_ : '' } @$lock);
         $locks{$row} = time();
     }
