@@ -8,7 +8,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: pgwatchlocks,v 1.6 2006-05-25 09:36:31 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: pgwatchlocks,v 1.7 2006-05-25 09:37:07 chris Exp $';
 
 use strict;
 
@@ -45,7 +45,7 @@ while (1) {
         # Otherwise, assume that we don't care about Share locks unless a
         # process is waiting for them.
         # XXX really we should match up waited-for locks with held locks.
-        next if (!$granted && $mode =~ /Share/);
+        next if ($granted && $mode =~ /Share/);
         my $row = join(',', map { defined($_) ? $_ : '' } @$lock);
         $locks{$row} = time();
     }
