@@ -8,7 +8,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: pgwatchlocks,v 1.7 2006-05-25 09:37:07 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: pgwatchlocks,v 1.8 2006-05-25 10:42:53 chris Exp $';
 
 use strict;
 
@@ -19,15 +19,21 @@ my $dbh = DBI->connect('dbi:Pg:dbname=template1', 'postgres', '', { PrintWarn =>
 
 # relation_name DB REL
 # Given a numeri DB id and REL id, return the text name of the relation.
+my %reln_name;
 sub relation_name ($$) {
     my ($db, $rel) = @_;
+    return $reln_name{"$db.$rel"} if (exists($reln_name{"$db.$rel"}));
+    
     my $dbname = $dbh->selectrow_array('select datname from pg_catalog.pg_stat_database where datid = ?', {}, $db);
     $dbname ||= "<db#$db>";
     # We can't get the relation name from the pg_stat_user_tables view, because
     # that will only show the names of relations in the current database.
-    my $relname = $dbh->selectrow_array('select relname from pg_catalog.pg_stat_user_tables where relid = ?', {}, $rel);
+    # Instead make a new connection to the db name we've just found.
+    my $newdbh = DBI->connect("dbi:Pg:dbname=$dbname", 'postgres', '', { PrintWarn => 0, PrintError => 0, RaiseError => 0 }) || warn "connecting to '$dbname' to get name of reln $rel: " . DBI->errstr() . "\n";
+    my $relname = $newdbh->selectrow_array('select relname from pg_catalog.pg_stat_user_tables where relid = ?', {}, $rel);
     $relname ||= "<rel#$rel>";
-    return "$dbname.$relname";
+    $newdbh->disconnect();
+    return $reln_name{"$db.$rel"} = "$dbname.$relname";
 }
 
 # hash of comma-separated pg_locks row to time of start.
