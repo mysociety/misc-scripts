@@ -8,17 +8,17 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: pgwatchlocks,v 1.8 2006-05-25 10:42:53 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: pgwatchlocks,v 1.9 2006-05-25 19:44:17 chris Exp $';
 
 use strict;
 
 use DBI;
 use POSIX;
 
-my $dbh = DBI->connect('dbi:Pg:dbname=template1', 'postgres', '', { PrintWarn => 0, PrintError => 0, RaiseError => 0 }) || die DBI->errstr();
+my $dbh = DBI->connect('dbi:Pg:dbname=template1', 'postgres', '', { PrintWarn => 1, PrintError => 1, RaiseError => 0, AutoCommit => 1 }) || die DBI->errstr();
 
 # relation_name DB REL
-# Given a numeri DB id and REL id, return the text name of the relation.
+# Given a numeric DB id and REL id, return the text name of the relation.
 my %reln_name;
 sub relation_name ($$) {
     my ($db, $rel) = @_;
@@ -36,22 +36,68 @@ sub relation_name ($$) {
     return $reln_name{"$db.$rel"} = "$dbname.$relname";
 }
 
+# describe_interval N
+# Describe an N-second interval in readable form..
+sub describe_interval ($) {
+    my $n = shift;
+    if ($n < 90) {
+        return sprintf('%ds', $n);
+    } elsif ($n < 5400) {
+        return sprintf('%dm %ds', int($n / 60), $n % 60);
+    } else {
+        return sprintf('%dh %dm %ds', int($n / 3600), int(($n % 3600) / 60), $n % 60);
+    }
+}
+
+# current_activity PID
+# Return the current activity of the connection with the given backend PID.
+sub current_activity ($) {
+    my $pid = shift;
+    return "??" unless (defined($pid));
+    my ($user, $query, $when) = $dbh->selectrow_array('select usename, current_query, extract(epoch from query_start) from pg_catalog.pg_stat_activity where procpid = ?', {}, $pid);
+    if (defined($user)) {
+        $query ||= '?';
+        $query =~ s/\s+/ /gs;   # clean up any \n etc.
+        my $what;
+        if ($query =~ /^<IDLE>(.*)/) {
+            $what = "idle$1";
+        } else {
+            $what = "executing << $query >>";
+        }
+        $what .= " for " . describe_interval(time() - $when)
+            if (defined($when));
+
+        return $what;
+    } else {
+        return "??";
+    }
+}
+
+# pid_of_transaction ID
+# Given a transaction ID, return the backend PID of the connection executing
+# it.
+sub pid_of_transaction ($) {
+    my $tx = shift;
+    # Find the connection which has an exclusive lock on that transaction.
+    return scalar($dbh->selectrow_array("select pid from pg_locks where transaction = ? and mode = 'ExclusiveLock'", {}, $tx));
+}
+
 # hash of comma-separated pg_locks row to time of start.
 my %outstanding_locks;
 my %last_report;
 
+#
+# Poll pg_locks to discover which connections are waiting for locks. When we
+# find one, warn about it, reporting as much detail as we can about what
+# process is holding the lock.
+# 
+
 while (1) {
-    my $r = $dbh->selectall_arrayref("select relation, database, transaction, pid, mode, granted from pg_catalog.pg_locks");
+
+    my $r = $dbh->selectall_arrayref("select relation, database, transaction, pid, mode, granted from pg_catalog.pg_locks where not granted");
     
     my %locks;
     foreach my $lock (@$r) {
-        my ($rel, $db, $tx, $pid, $mode, $granted) = @$lock;
-        # Each transaction always holds an exclusive lock on itself.
-        next if ($tx && $mode eq 'ExclusiveLock');
-        # Otherwise, assume that we don't care about Share locks unless a
-        # process is waiting for them.
-        # XXX really we should match up waited-for locks with held locks.
-        next if ($granted && $mode =~ /Share/);
         my $row = join(',', map { defined($_) ? $_ : '' } @$lock);
         $locks{$row} = time();
     }
@@ -66,7 +112,7 @@ while (1) {
         $outstanding_locks{$_} = $locks{$_};
     }
     
-    # Now look for locks which have been outstanding for too long.
+    # Now look for processes which have been waiting for locks for too long.
     foreach (keys %outstanding_locks) {
         next unless ($outstanding_locks{$_} < time() - 10);
 
@@ -79,39 +125,44 @@ while (1) {
         my ($relation, $database, $transaction, $pid, $mode, $granted)
                 = map { $_ eq '' ? undef : $_ } split(/,/, $_);
 
-        print POSIX::strftime('%Y-%m-%dT%H:%M:%S', localtime()),
-                " PID $pid ";
-
-        if ($granted) {
-            print "holds";
-        } else {
-            print "waits for";
-        }
-
-        print " $mode on ";
+        print POSIX::strftime('%H:%M:%S', localtime()),
+                " blocked: PID $pid needs $mode on ";
 
         if ($relation) {
-            print relation_name($database, $relation);
-#            print "$database.$relation";
+            print "relation ", relation_name($database, $relation);
         } else {
-            print "transaction $transaction, currently executing: ??";
+            print "transaction #$transaction";
         }
 
-        printf " (for %ds)\n", time() - $outstanding_locks{$_};
+        print "; duration ", describe_interval(time() - $outstanding_locks{$_}), "\n";
+        print "                  ", current_activity($pid), "\n";
 
-        # Find out what that process is doing.
-        my ($user, $query, $when) = $dbh->selectrow_array('select usename, current_query, extract(epoch from query_start) from pg_catalog.pg_stat_activity where procpid = ?', {}, $pid);
-        
-        if (defined($user)) {
-            $query ||= '??';
-            $query =~ s/\s+/ /gs;
-            my $what = 'is';
-            $what = 'executing' if ($query !~ /^<IDLE>/);
-            print "  since ", POSIX::strftime('%Y-%m-%dT%H:%M:%S', localtime($when)) if (defined($when));
-            print " $user $what $query\n";
+        # Now we need to show the processes it's waiting for, and what they're
+        # doing.
+        my @pids;
+        if ($relation) {
+            @pids = @{$dbh->selectall_arrayref('select pid, mode from pg_locks where granted and database = ? and relation = ?', {}, $database, $relation)};
         } else {
-            print "  (unknown query)\n";
+            @pids = ([pid_of_transaction($transaction), 'ExclusiveLock']);
         }
+
+        for (my $i = 0; $i < @pids; ++$i) {
+            if ($i == 0) {
+                print "              by: ";
+            } else {
+                print "                  ";
+            }
+
+            my ($pid, $mode) = @{$pids[$i]};
+            print "PID $pid holds $mode\n";
+            print "                  ", current_activity($pid), "\n";
+        }
+
+        # XXX rationalise all those prints
+        # XXX it'd be nice to print details of the *client* processes of the
+        # back-ends, where we can. That requires picking over /proc, and
+        # perhaps sshing out to other machines -- a pain in the arse,
+        # basically.
     }
     
     sleep(1);
