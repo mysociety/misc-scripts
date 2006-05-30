@@ -15,7 +15,7 @@ my $database_permissions = {
      
     # People
     'francis' => ['fyr','pb','ycml','mapit','dadem','ratty','evel','mswww'],
-    'chris' => ['fyr','pb','ycml','chris','mapit','dadem','ratty','evel', 'track'],
+    'chris' => ['fyr','pb','ycml','chris','mapit','dadem','ratty','evel', 'track', 'pb-staging'],
     'matthew' => ['fyr','pb','ycml','mapit','dadem','ratty','evel','pb-staging','ycml-staging','fyr-staging', 'track'],
     'etienne' => ['pb-staging','ycml-staging'],
     'timsk' => ['pb-staging'],
@@ -32,7 +32,7 @@ my $database_permissions = {
     'msservices' => ['mapit','dadem','ratty','evel'],
 };
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.17 2006-05-26 08:44:25 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.18 2006-05-30 18:01:39 chris Exp $';
 
 use strict;
 require 5.8.0;
