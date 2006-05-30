@@ -11,7 +11,7 @@
 # Who can access what databases
 my $database_permissions = {
     # All-seeing power
-    'root' => ['pb', 'ycml', 'rt', 'gaze', 'dadem', 'evel', 'mapit', 'ratty', 'fyr', 'pb-interface', 'mswww', 'track'],
+    'root' => ['pb', 'ycml', 'rt', 'gaze', 'dadem', 'evel', 'mapit', 'ratty', 'fyr', 'pb-interface', 'pb-staging', 'mswww', 'track'],
      
     # People
     'francis' => ['fyr','pb','ycml','mapit','dadem','ratty','evel','mswww'],
@@ -32,7 +32,7 @@ my $database_permissions = {
     'msservices' => ['mapit','dadem','ratty','evel'],
 };
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.18 2006-05-30 18:01:39 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.19 2006-05-30 18:01:57 chris Exp $';
 
 use strict;
 require 5.8.0;
