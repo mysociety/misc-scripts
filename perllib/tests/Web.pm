@@ -8,7 +8,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Web.pm,v 1.4 2006-03-28 23:21:18 francis Exp $
+# $Id: Web.pm,v 1.5 2006-06-08 13:19:02 matthew Exp $
 #
 
 package Web;
@@ -34,6 +34,7 @@ my @pages = qw(
 
         http://www.hearfromyourmp.com/
         http://www.hearfromyourmp.com/league
+        http://www.hearfromyourmp.com/view/message/91
 
         https://secure.mysociety.org/
         https://secure.mysociety.org/cvstrac/
