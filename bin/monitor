@@ -9,7 +9,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: monitor,v 1.4 2006-04-04 12:28:55 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: monitor,v 1.5 2006-06-12 16:39:17 chris Exp $';
 
 use strict;
 
@@ -133,8 +133,15 @@ sub do_one_test ($) {
         # Actually perl's "synchronous signal handling" may make this a
         # non-problem (i.e., by replacing it with a different one).
         kill(SIGKILL, $child);      # why mess about?
-        waitpid($child, WNOHANG);
         push(@results, "child process did not exit in a timely manner; killed it");
+        # Give the system a chance to terminate the process. We could wait
+        # without WNOHANG, but paranoia suggests we shouldn't.
+        for (my $i = 0; $i < 10; ++$i) {
+            last if (waitpid($child, 0) > 0);
+            sleep(1);
+        }
+        push(@results, "wait failed to reap child process after 10 seconds")
+            if ($i == 10);
     } elsif ($?) {
         print_log('debug', "wait status of child process for test $name = $?");
         push(@results, describe_waitval($?, "child process"));
