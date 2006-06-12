@@ -9,7 +9,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: monitor,v 1.5 2006-06-12 16:39:17 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: monitor,v 1.6 2006-06-12 16:41:14 chris Exp $';
 
 use strict;
 
@@ -136,7 +136,8 @@ sub do_one_test ($) {
         push(@results, "child process did not exit in a timely manner; killed it");
         # Give the system a chance to terminate the process. We could wait
         # without WNOHANG, but paranoia suggests we shouldn't.
-        for (my $i = 0; $i < 10; ++$i) {
+        my $i;
+        for ($i = 0; $i < 10; ++$i) {
             last if (waitpid($child, 0) > 0);
             sleep(1);
         }
