@@ -1,0 +1,172 @@
+#!/usr/bin/perl -w
+#
+# psdbench:
+# Accurately benchmark a web page on a live server using phase-sensitive
+# detection.
+#
+# Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
+# Email: chris@mysociety.org; WWW: http://www.mysociety.org/
+#
+
+my $rcsid = ''; $rcsid .= '$Id: psdbench,v 1.1 2006-06-13 14:08:17 chris Exp $';
+
+use strict;
+require 5.8.0;
+
+use File::stat;
+use IO::Socket;
+use LWP::Simple;
+use Time::HiRes qw(time sleep);
+
+# Linux clock rate.
+use constant HZ => 100.;
+
+my $url = shift(@ARGV);
+my @users;
+while (@ARGV) {
+    my $u = shift(@ARGV);
+    if ($u !~ /^(0|[1-9]\d*)$/) {
+        my $u2 = getpwnam($u);
+        die "bad username $u" if (!$u2);
+        push(@users, $u2);
+    } else {
+        push(@users, $u);
+    }
+}
+
+# read_proc_times USERS
+# Read the times of all PIDs in /proc owned by USERS, returning them in a
+# reference-to-hash.
+sub read_proc_times ($) {
+    my ($users) = @_;
+
+    if (@$users == 0) {
+        open(S, '/proc/stat') or die "/proc/stat: open: $!";
+        my $line = <S>;
+        close(S);
+        chomp($line);
+        my @ff = split(/\s+/, $line);
+        return { '*' => { 1 => [$ff[1] + $ff[2], $ff[3]] } };
+    }
+    
+    $users = { map { $_ => 1 } @$users };
+    opendir(D, '/proc') || die "/proc: opendir: $!";
+    my $times = { };
+    while (my $pid = readdir(D)) {
+        next unless ($pid =~ /^[1-9]\d*$/);
+        my $st = stat("/proc/$pid")
+            or next;
+        next unless (exists($users->{$st->uid()}));
+        open(S, "/proc/$pid/stat")
+            or next; # file went away before we opened it
+        my $line = <S>;
+        close(S);
+        chomp($line);
+        my @ff = split(/\s+/, $line);
+        # save user and system times
+        $times->{$st->uid()}->{$pid} = [$ff[13], $ff[14]];
+    }
+    closedir(D);
+    return $times;
+}
+
+# compare_proc_times USERS H1 H2
+# Figure out how much CPU time was used by the given USERS between the records
+# of their processes in H1 and H2 (returned by read_proc_times).
+sub compare_proc_times ($$$) {
+    my ($users, $t1, $t2) = @_;
+    $users = ['*'] if (@$users == 0);
+    my $summary = { map { $_ => [0, 0] } @$users };
+    foreach my $uid (@$users) {
+        my %donepid;
+        foreach my $pid (keys(%{$t1->{$uid}})) {
+            my ($u1, $s1) = @{$t1->{$uid}->{$pid}};
+            next unless (exists($t2->{$uid}->{$pid}));
+            my ($u2, $s2) = @{$t2->{$uid}->{$pid}};
+            next unless ($u2 >= $u1 && $s2 >= $s1);
+            
+            # Process which existed at both times. Add the differences in
+            # time spent.
+            $summary->{$uid}->[0] += $u2 - $u1;
+            $summary->{$uid}->[1] += $s2 - $s1;
+            $donepid{$pid} = 1;
+        }
+
+        foreach my $pid (keys(%{$t2->{$uid}})) {
+            next if (exists($donepid{$pid}));
+
+            # This is a new process since the last timestep so add all its
+            # execution time to the total.
+            my ($u2, $s2) = @{$t2->{$uid}->{$pid}};
+            $summary->{$uid}->[0] += $u2;
+            $summary->{$uid}->[1] += $s2;
+        }
+    }
+    return $summary;
+}
+
+# XXX hard-coded for the moment.
+sub do_request ($$) {
+    my $s = new IO::Socket::INET('localhost:80');
+    $s->print(
+            "GET /100laptop HTTP/1.0\r\n",
+            "Host: www.pledgebank.com\r\n",
+            "\r\n"
+        );
+    while (defined($s->getline())) { }
+}
+
+my %measurements = ( );
+
+while (1) {
+    my $nreqs = 0;
+    my $h1 = read_proc_times(\@users);
+    my $t1 = time();
+    while (time() < $t1 + 0.5) {
+        do_request($url, 'localhost');
+        ++$nreqs;
+    }
+    my $t2 = time();
+    my $h2 = read_proc_times(\@users);
+    my $t3 = time();
+    sleep($t2 - $t1);
+    my $t4 = time();
+    my $h3 = read_proc_times(\@users);
+
+    my $d1 = compare_proc_times(\@users, $h1, $h2);
+    my $d2 = compare_proc_times(\@users, $h2, $h3);
+
+    foreach my $user (sort(keys(%$d1))) {
+        my $u = ($d1->{$user}->[0] - $d2->{$user}->[0]) / $nreqs / HZ;
+        my $s = ($d1->{$user}->[1] - $d2->{$user}->[1]) / $nreqs / HZ;
+        $measurements{$user} ||= [ ];
+        push(@{$measurements{$user}}, [$u, $s]);
+        printf "    %s %f %f\n", $user, $u, $s;
+    }
+
+    # Compute average and sd of sys and cpu time for each user.
+    my $nbad = 0;
+    foreach my $user (sort(keys(%measurements))) {
+        my ($u, $uu, $s, $ss, $n) = (0, 0, 0, 0, 0);
+        foreach (@{$measurements{$user}}) {
+            $u += $_->[0];
+            $s += $_->[1];
+            ++$n;
+        }
+
+        next if ($n < 2);
+
+        my $U = $u / $n;
+        my $S = $s / $n;
+
+        foreach (@{$measurements{$user}}) {
+            $uu += ($_->[0] - $U) ** 2;
+            $ss += ($_->[1] - $S) ** 2;
+        }
+        
+        my $Ud = sqrt($uu / $n);
+        my $Sd = sqrt($ss / $n);
+
+        printf "%s  u %f ± %f  s %f ± %f   %d reqs\n", $user, $U, $Ud, $S, $Sd, $n;
+    }
+}
