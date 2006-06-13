@@ -8,7 +8,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: psdbench,v 1.1 2006-06-13 14:08:17 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: psdbench,v 1.2 2006-06-13 14:14:49 chris Exp $';
 
 use strict;
 require 5.8.0;
@@ -118,6 +118,7 @@ sub do_request ($$) {
 
 my %measurements = ( );
 
+my $total = 0;
 while (1) {
     my $nreqs = 0;
     my $h1 = read_proc_times(\@users);
@@ -144,6 +145,8 @@ while (1) {
         printf "    %s %f %f\n", $user, $u, $s;
     }
 
+    $total += $nreqs;
+
     # Compute average and sd of sys and cpu time for each user.
     my $nbad = 0;
     foreach my $user (sort(keys(%measurements))) {
@@ -167,6 +170,6 @@ while (1) {
         my $Ud = sqrt($uu / $n);
         my $Sd = sqrt($ss / $n);
 
-        printf "%s  u %f ± %f  s %f ± %f   %d reqs\n", $user, $U, $Ud, $S, $Sd, $n;
+        printf "%s  u %f ± %f  s %f ± %f   %d reqs\n", $user, $U, $Ud, $S, $Sd, $total;
     }
 }
