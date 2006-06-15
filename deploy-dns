@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.13 2006-01-27 10:35:14 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.14 2006-06-15 12:58:52 chris Exp $';
 
 use strict;
 
@@ -188,8 +188,8 @@ try {
 
     chdir("/data/servers/dns") || throw Oops("/data/servers/dns: $!");
 
-    # Get the list of files under CVS control from CVS/Entries. This is nasty, but
-    # the alternatives are worse.
+    # Get the list of files under CVS control from CVS/Entries. This is nasty,
+    # but the alternatives are worse.
     verbose("getting list of domains...");
     my $f = new IO::File("CVS/Entries", O_RDONLY) || throw Oops("CVS/Entries: $!");
 
