@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-email,v 1.2 2006-06-15 16:13:10 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-email,v 1.3 2006-06-15 16:18:11 chris Exp $';
 
 use strict;
 
@@ -124,9 +124,10 @@ try {
 
     my %files = ();
     while (defined(my $line = $f->getline())) {
-        $files{$1} = 0 if ($line =~ m#^/([^/]+)/# && $1 !~ /(?:_perm|\.cvsignore)$/);
+        $files{$1} = 0 if ($line =~ m#^/([^/]+)/# && $1 !~ /(?:_perm|\.cvsignore|README)$/);
     }
     throw Oops("CVS/Entries: $!") if ($f->error());
+    verbose(" done\n");
 
     my $errors = 0;
     my @domains = ();
@@ -194,6 +195,7 @@ try {
 
     opendir(D, $destination) or die "$destination: $!";
     while (my $file = readdir(D)) {
+        next if ($file =~ /^(\.|\.\.|_lock)$/);
         if (!exists($domains{$file})) {
             verbose("$file is no longer needed; deleting it\n");
             unlink("$destination/$file");
@@ -233,6 +235,8 @@ try {
             }
         }
         throw Oops("$domain: unable to create new symlink") if (!$name);
+        # perl lacks lchown
+        System('chown', '-h', "$file_uid:$file_gid", $name);
         rename($name, "$destination/$domain") or throw Oops("$name: $!");
     }
 
