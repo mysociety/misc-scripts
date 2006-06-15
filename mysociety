@@ -69,6 +69,10 @@ case $COMMAND in
         exec /data/mysociety/bin/deploy-dns "$@"
         ;;
 
+    email)
+        exec /data/mysociety/bin/deploy-email "$@"
+        ;;
+
     catlog)
         VHOST=$1
         shift || die "specify a virtual host"
