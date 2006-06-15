@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.14 2006-06-15 12:58:52 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.15 2006-06-15 13:01:01 chris Exp $';
 
 use strict;
 
@@ -194,7 +194,7 @@ try {
     my $f = new IO::File("CVS/Entries", O_RDONLY) || throw Oops("CVS/Entries: $!");
 
     my %files = ();
-    while (my $line = $f->getline()) {
+    while (defined(my $line = $f->getline())) {
         $files{$1} = 0 if ($line =~ m#^/([^/]+)/# && $1 !~ /^(?:_perm|\.cvsignore)$/);
     }
     die "CVS/Entries: $!" if ($f->error());
