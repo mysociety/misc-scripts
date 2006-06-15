@@ -1,0 +1,251 @@
+#!/usr/bin/perl -w
+#
+# deploy-email:
+# Deploy email alias files so that they are accessible to exim.
+#
+# Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
+# Email: chris@mysociety.org; WWW: http://www.mysociety.org/
+#
+
+my $rcsid = ''; $rcsid .= '$Id: deploy-email,v 1.1 2006-06-15 16:09:53 chris Exp $';
+
+use strict;
+
+package Oops;
+
+use Error;
+
+@Oops::ISA = qw(Error::Simple);
+
+package main;
+require 5.8.0;
+
+use FindBin;
+use lib "$FindBin::Bin/../perllib";
+
+use Errno;
+use Error qw(:try);
+use File::Slurp qw(read_file);
+use File::stat;
+use GetOpt::Long;
+use IO::File;
+
+use mySociety::PIDFile;
+use mySociety::Util qw(create_file_to_replace describe_waitval);
+
+my $be_verbose = 0;
+sub verbose (@) {
+    return unless ($be_verbose);
+    print STDERR @_;
+}
+
+sub System (@) {
+    system(@_);
+    throw Oops("$_[0]: " . describe_waitval($?, "system"))
+        if ($?);
+}
+
+# test_aliasfile FILE
+# Confirm that the named alias FILE is syntactically valid. Throws an Oops on a
+# fatal error, returns a string describing any error in FILE, or undef if
+# nothing is wrong. This is a simple syntax check, and it'd be nice to do
+# better.
+sub test_aliasfile ($) {
+    my $file = shift;
+    
+    my $f = new IO::File($file, O_RDONLY) or throw Oops("$file: $!");
+
+    # A line in an alias file may be a comment introduced by '#' in the first
+    # column, or a key followed by a colon or whitespace or both, followed by a
+    # value, or a continuation introduced by whitespace in the first column.
+    # (See src/lookups/lsearch.c in the Exim tree).
+    my $n = 0;
+    my $in_key = 0;
+    my $ret = undef;
+    while (defined(my $line = $f->getline())) {
+        ++$n;
+        chomp($line);
+        if ($line eq '' || $line =~ /^#/) {
+            # Comment or blank line; no effect.
+            next;
+        } elsif ($line =~ /^\s/) {
+            # Continuation.
+            if (!$in_key) {
+                $ret = "continuation line does not follow a key at line $n";
+                last;
+            }
+            $in_key = 0;
+            next;
+        } elsif ($line =~ /^([^\s]||\\.)+\s*:?/) {
+            $in_key = 1;
+        }
+    }
+    throw Oops("$file: $!") if ($f->error());
+    $f->close();
+
+    return $ret;
+}
+
+#
+# Alias files for domains are stored in CVS in servers/email. As for zone files
+# and other files handled by deploy-configuration, there may also be .symlink
+# files for configuring several domains identically. This script checks that
+# each of the alias files is valid and copies them into /etc/exim4/virtual.
+# 
+
+my @files_to_delete = ();
+my $ret = 1;
+my $destination = '/etc/exim4/virtual2';
+
+my $file_uid;
+my $file_gid;
+
+try {
+    my $help = 0;
+    my $check_only = 0;
+    if (!GetOptions(
+            'help' =>           \$help,
+            'verbose' =>        \$be_verbose,
+            'check-only' =>     \$check_only
+        )) {
+        throw Oops("bad options; try --help for help");
+    }
+    
+    if ($help) {
+        pod2usage(-exitval => 0, -verbose => 2);
+        exit(0);
+    }
+
+    chdir("/data/servers/email") || throw Oops("/data/servers/email: $!");
+
+    # Get the list of alias files.
+    verbose("getting list of domains...");
+    my $f = new IO::File("CVS/Entries", O_RDONLY) || throw Oops("CVS/Entries: $!");
+
+    my %files = ();
+    while (defined(my $line = $f->getline())) {
+        $files{$1} = 0 if ($line =~ m#^/([^/]+)/# && $1 !~ /(?:_perm|\.cvsignore)$/);
+    }
+    throw Oops("CVS/Entries: $!") if ($f->error());
+
+    my $errors = 0;
+    my @domains = ();
+    my %symlink = ();
+    foreach my $n (sort @files) {
+        my $domain = $n;
+        if ($domain =~ /^(.*)\.symlink$/) {
+            push(@domains, $1);
+            my $d = $1;
+            verbose("will symlink $d to ");
+            my $t = read_file($domain) || throw Oops("$domain: $!");
+            if ($t !~ /^To:\s*(.*)$/m) {
+                print STDERR "deploy-email: $domain: not a proper .symlink file\n";
+                ++$errors;
+                next;
+            } elsif (!exists($files{$1}))
+                print STDERR "deploy-email: $domain: symlink to a file which does not exist\n";
+                ++$errors;
+                next;
+            }
+            verbose("$1\n");
+            $domain = $1;
+            $symlink{$d} = $1;
+        } else {
+            verbose("will create alias file $domain\n");
+            push(@domains, $domain);
+            chmod(0644, $domain);
+        }
+
+        if (!$files{$domain}) {
+            verbose("testing alias file $domain for validity...\n");
+            if (my $err = test_aliasfile($domain)) {
+                print STDERR "deploy-email: $domain: $err\n";
+                ++$errors;
+            }
+            ++$files{$domain};
+        }
+    }
+
+    throw Oops("problems with alias files") if ($errors > 0);
+
+    if ($check_only) {
+        verbose("done, since only checking the alias files\n");
+        goto done;
+    }
+
+    $file_uid = 0;
+    $file_gid = getpwnam('Debian-exim') or throw Oops("Debian-exim: unknown username"); # XXX
+
+    # Everything is fine, so we need to install the new alias files, and remove
+    # any which are obsolete, because exim relies on the *presence* of a file
+    # to see whether it should handle mail for the domain. But first we must
+    # create a lockfile in the destination directory, to make sure that there
+    # are no races over removal of existing alias files.
+    my $lockfile;
+    try {
+        # use an _ in the lockfile name as that is not valid in domain names
+        $lockfile = new mySociety::PIDFile("$destination/_lock");
+    } catch mySociety::PIDFile::Error with {
+        my $E = shift;
+        throw Oops($E->text());
+    };
+
+    my %domains = map { $_ => 1 } @domains;
+
+    opendir(D, $destination) or die "$destination: $!";
+    while (my $file = readdir(D)) {
+        if (!exists($domains{$file})) {
+            verbose("$domain is no longer needed; deleting it\n");
+            unlink("$destination/$file");
+        }
+    }
+    closedir(D);
+
+    # Now we need to iterate over the files we have, and put them into the
+    # destination directory. But we must make sure that we replace regular
+    # files first, before any symlinks they depend on.
+    foreach my $domain (@domains) {
+        next if (exists($symlinks{$domain}));
+        my ($name, $f) = create_file_to_replace("$destination/$domain");
+        verbose("created $name to replace alias file for $domain\n");
+        push(@files_to_delete, $name);
+        my $text = read_file($domain) or throw Oops("$file: $!");
+        $f->print($text) or throw Oops("$name: $!");
+        $f->close() or throw Oops("$name: $!");
+        chmod(0440, $name) or throw Oops("$name: chmod: $!");
+        chown($file_uid, $file_gid, $name) or throw Oops("$name: chown: $!");
+        rename($name, "$destination/$domain") or throw Oops("$name: rename: $!");
+    }
+
+    # Now the symlinks.
+    foreach my $domain (keys %symlinks) {
+        verbose("symlinking $destination/$domain to $symlinks{$domain}");
+        my $name;
+        for (my $i = 0; $i < 10; ++$i) {
+            $name = sprintf('%s.%08x.%08x.%d', "$destination/$domain", int(rand(0xffffffff)), time(), $$);
+            if (symlink($symlinks{$domain}, $name)) {
+                last;
+            } elsif (!$!{EEXIST}) {
+                throw Oops("$name: symlink to $symlinks{$domain}: $!");
+            } else {
+                $name = undef;
+            }
+        }
+        throw Oops("$domain: unable to create new symlink") if (!$name);
+        rename($name, "$destination/$domain") or throw Oops("$name: $!");
+    }
+
+    # all done.
+    verbose("all done");
+
+done:
+    $ret = 0;
+
+} catch Oops with {
+} finally {
+    foreach (@files_to_delete) {
+        unlink($_);
+    }
+};
+
+exit($ret);
