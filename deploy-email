@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-email,v 1.1 2006-06-15 16:09:53 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-email,v 1.2 2006-06-15 16:13:10 chris Exp $';
 
 use strict;
 
@@ -27,7 +27,7 @@ use Errno;
 use Error qw(:try);
 use File::Slurp qw(read_file);
 use File::stat;
-use GetOpt::Long;
+use Getopt::Long;
 use IO::File;
 
 use mySociety::PIDFile;
@@ -131,7 +131,7 @@ try {
     my $errors = 0;
     my @domains = ();
     my %symlink = ();
-    foreach my $n (sort @files) {
+    foreach my $n (sort keys %files) {
         my $domain = $n;
         if ($domain =~ /^(.*)\.symlink$/) {
             push(@domains, $1);
@@ -142,7 +142,7 @@ try {
                 print STDERR "deploy-email: $domain: not a proper .symlink file\n";
                 ++$errors;
                 next;
-            } elsif (!exists($files{$1}))
+            } elsif (!exists($files{$1})) {
                 print STDERR "deploy-email: $domain: symlink to a file which does not exist\n";
                 ++$errors;
                 next;
@@ -195,7 +195,7 @@ try {
     opendir(D, $destination) or die "$destination: $!";
     while (my $file = readdir(D)) {
         if (!exists($domains{$file})) {
-            verbose("$domain is no longer needed; deleting it\n");
+            verbose("$file is no longer needed; deleting it\n");
             unlink("$destination/$file");
         }
     }
@@ -205,11 +205,11 @@ try {
     # destination directory. But we must make sure that we replace regular
     # files first, before any symlinks they depend on.
     foreach my $domain (@domains) {
-        next if (exists($symlinks{$domain}));
+        next if (exists($symlink{$domain}));
         my ($name, $f) = create_file_to_replace("$destination/$domain");
         verbose("created $name to replace alias file for $domain\n");
         push(@files_to_delete, $name);
-        my $text = read_file($domain) or throw Oops("$file: $!");
+        my $text = read_file($domain) or throw Oops("$domain: $!");
         $f->print($text) or throw Oops("$name: $!");
         $f->close() or throw Oops("$name: $!");
         chmod(0440, $name) or throw Oops("$name: chmod: $!");
@@ -218,15 +218,16 @@ try {
     }
 
     # Now the symlinks.
-    foreach my $domain (keys %symlinks) {
-        verbose("symlinking $destination/$domain to $symlinks{$domain}");
+    foreach my $domain (keys %symlink) {
+        verbose("symlinking $destination/$domain to $symlink{$domain}");
         my $name;
+        # XXX should reuse the code in deploy-configuration really
         for (my $i = 0; $i < 10; ++$i) {
             $name = sprintf('%s.%08x.%08x.%d', "$destination/$domain", int(rand(0xffffffff)), time(), $$);
-            if (symlink($symlinks{$domain}, $name)) {
+            if (symlink($symlink{$domain}, $name)) {
                 last;
             } elsif (!$!{EEXIST}) {
-                throw Oops("$name: symlink to $symlinks{$domain}: $!");
+                throw Oops("$name: symlink to $symlink{$domain}: $!");
             } else {
                 $name = undef;
             }
@@ -242,6 +243,9 @@ done:
     $ret = 0;
 
 } catch Oops with {
+    my $E = shift;
+    print STDERR "deploy-email: ", $E->text(), "\n";
+    $ret ||= 1;
 } finally {
     foreach (@files_to_delete) {
         unlink($_);
@@ -249,3 +253,11 @@ done:
 };
 
 exit($ret);
+
+__END__
+
+=head1 NAME
+
+deploy-email
+
+=head1 SYNOPSIS
