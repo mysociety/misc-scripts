@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-email,v 1.3 2006-06-15 16:18:11 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-email,v 1.4 2006-06-15 16:21:18 chris Exp $';
 
 use strict;
 
@@ -29,6 +29,7 @@ use File::Slurp qw(read_file);
 use File::stat;
 use Getopt::Long;
 use IO::File;
+use Pod::Usage;
 
 use mySociety::PIDFile;
 use mySociety::Util qw(create_file_to_replace describe_waitval);
@@ -265,3 +266,34 @@ __END__
 deploy-email
 
 =head1 SYNOPSIS
+
+deploy-email --help | [OPTIONS]
+
+=head1 DESCRIPTION
+
+Takes domain alias files in /data/servers/email (which should be a CVS
+checkout), and installs them in /etc/exim4/virtual, being careful never to
+leave Exim in a situation where a necessary file is missing.
+
+=head1 OPTIONS
+
+=over 4
+
+=item --help
+
+Display this help message.
+
+=item --verbose
+
+Print lots of verbose debugging information on standard error.
+
+=item --check-only
+
+Only check that the new alias files are valid; do not install them. NB that
+this I<only> checks the syntax of the new files, and that .symlink files refer
+to valid other files; it does not check that the resulting configuration
+generates only deliverable email addresses.
+
+=back
+
+=cut
