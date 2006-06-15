@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-email,v 1.5 2006-06-15 16:35:54 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-email,v 1.6 2006-06-15 17:31:48 chris Exp $';
 
 use strict;
 
@@ -78,9 +78,12 @@ sub test_aliasfile ($) {
             }
             $in_key = 0;
             next;
-        } elsif ($line =~ /^([^\s]||\\.)+\s*:?/) {
+        } elsif ($line =~ /^(([^\s]|\\.)+)\s*:?/) {
             $in_key = 1;
-            $keys{$1}++;
+            my $k = $1;
+            $k =~ s/([^\\]):$/$1/;
+            $k =~ s/\\(.)/$1/g;
+            $keys{$k}++;
         }
     }
     throw Oops("$file: $!") if ($f->error());
