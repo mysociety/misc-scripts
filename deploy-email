@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-email,v 1.7 2006-06-16 00:37:57 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-email,v 1.8 2006-06-16 09:54:24 chris Exp $';
 
 use strict;
 
@@ -107,7 +107,7 @@ sub test_aliasfile ($) {
 
 my @files_to_delete = ();
 my $ret = 1;
-my $destination = '/etc/exim4/virtual2';
+my $destination = '/etc/exim4/virtual';
 
 my $file_uid;
 my $file_gid;
