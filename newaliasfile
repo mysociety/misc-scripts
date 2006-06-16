@@ -1,0 +1,93 @@
+#!/usr/bin/perl -w
+#
+# newaliasfile:
+# Create a new template alias file.
+#
+# Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
+# Email: chris@mysociety.org; WWW: http://www.mysociety.org/
+#
+
+my $rcsid = ''; $rcsid .= '$Id: newaliasfile,v 1.1 2006-06-16 00:45:32 chris Exp $';
+
+use strict;
+
+use IO::File;
+use POSIX qw();
+use Regexp::Common qw(dns);
+
+if (@ARGV == 0) {
+    print STDERR "newaliasfile: try --help for usage\n";
+    exit(1);
+}
+
+if ($ARGV[0] =~ /^(--?help|-h)$/) {
+    print <<EOF;
+Usage: newaliasfile DOMAIN [ALIAS ...]
+
+Create a new template email alias file for DOMAIN, and save it in a file with
+the same name; also create .symlink files linking any specified ALIASes to it.
+
+$rcsid
+EOF
+    exit(0);
+}
+
+if (!chdir("/data/servers/email")) {
+    print STDERR "newaliasfile: /data/servers/email: $!\n";
+    exit(1);
+}
+
+my ($domain, @aliases) = @ARGV;
+my @bad = grep { $_ !~ /^$RE{dns}{domain}$/ } ($domain, @aliases);
+foreach (@bad) {
+    print STDERR "newaliasfile: $_: invalid domain name\n";
+}
+exit(1) if (@bad);
+
+my $f = new IO::File($domain, O_WRONLY | O_CREAT | O_EXCL, 0644);
+if (!$f) {
+    print STDERR "newaliasfile: $domain: $!\n";
+    exit(1);
+}
+
+my $descr = scalar(@aliases) ? $domain : "$domain; also " . join(', ', @aliases);
+
+my $kw = '$'; $kw .= 'Id:'; $kw .= '$';
+
+$f->print(<<EOF);
+#
+# $domain:
+# Email alias file for addresses in \@$domain.
+#
+# $kw
+#
+
+#
+# People
+#
+
+#
+# Role addresses
+# 
+
+# Required by RFC
+postmaster:     postmaster\@ukcod.org.uk
+
+EOF
+
+$f->close();
+my @cvsfiles = ($domain);
+
+foreach (@aliases) {
+    my $f = new IO::File("$_.symlink", O_WRONLY | O_CREAT | O_EXCL, 0644);
+    if ($f) {
+        $f->print("To: $domain\n");
+        $f->close();
+        push(@cvsfiles, $_);
+    } else {
+        print STDERR "newaliasfile: $_: $!\n";
+    }
+}
+
+system("cvs", "add", "-m", "Created new alias file for $descr", @cvsfiles);
+system("cvs", "commit", "-m", "Created new alias file for $descr", @cvsfiles);
