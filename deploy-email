@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-email,v 1.6 2006-06-15 17:31:48 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-email,v 1.7 2006-06-16 00:37:57 chris Exp $';
 
 use strict;
 
@@ -137,6 +137,7 @@ try {
     my %files = ();
     while (defined(my $line = $f->getline())) {
         $files{$1} = 0 if ($line =~ m#^/([^/]+)/# && $1 !~ /(?:_perm|\.cvsignore|README)$/);
+        throw Oops("$1: is not a regular file") if (!-f $1);
     }
     throw Oops("CVS/Entries: $!") if ($f->error());
     verbose(" done\n");
