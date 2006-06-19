@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-email,v 1.9 2006-06-16 09:56:24 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-email,v 1.10 2006-06-19 09:29:32 chris Exp $';
 
 use strict;
 
@@ -305,7 +305,7 @@ Print lots of verbose debugging information on standard error.
 
 Only check that the new alias files are valid; do not install them. NB that
 this I<only> checks the syntax of the new files, and that .symlink files refer
-to valid other files; it does not check that the resulting configuration
+to other valid files; it does not check that the resulting configuration
 generates only deliverable email addresses.
 
 =back
