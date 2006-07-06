@@ -46,8 +46,8 @@ case $COMMAND in
             die "/data/servers/serverclass: No such file or directory"
         fi
         
-        ARCHETYPE=`echo $HOST | cat - /data/servers | sed 's/#.*//' | \
-                    awk '{
+        ARCHETYPE=`echo $HOST | cat - /data/servers/serverclass | \
+                    sed 's/#.*//' | awk '{
                         if (NR == 1) hostname = $1; 
                         else if ($1 == hostname) print $2
                     }'`
