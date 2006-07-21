@@ -26,13 +26,14 @@ my $database_permissions = {
     'pb' => ['pb','pb-staging','pb-interface'],
     'ycml' => ['ycml','ycml-staging'],
     'fyr' => ['fyr','fyr-staging'],
+    'pet' => ['pet','pet-staging'],
     'dademcron' => ['fyr', 'fyr-staging', 'rt'],
 
     # Services
     'msservices' => ['mapit','dadem','ratty','evel'],
 };
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.20 2006-06-28 10:37:25 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.21 2006-07-21 12:08:07 francis Exp $';
 
 use strict;
 require 5.8.0;
