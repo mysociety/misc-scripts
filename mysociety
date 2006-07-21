@@ -21,6 +21,9 @@ COMMAND is one of:
     dns
         Update the DNS configuration on the current host.
 
+    email
+        Update the exim virtual mail configuration on the current host.
+
     catlog VHOST access
         Cats the latest VHOST log file from every server, merging them
         
