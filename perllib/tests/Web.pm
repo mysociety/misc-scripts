@@ -8,7 +8,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Web.pm,v 1.5 2006-06-08 13:19:02 matthew Exp $
+# $Id: Web.pm,v 1.6 2006-07-24 11:10:21 chris Exp $
 #
 
 package Web;
@@ -27,6 +27,7 @@ my @pages = qw(
 
         http://www.pledgebank.com/
         http://www.pledgebank.com/rights
+        http://www.pledgebank.com/faq
 
         http://www.writetothem.com/
         http://www.writetothem.com/who?pc=CB4+1EP
@@ -88,8 +89,8 @@ sub test () {
             my $what = "connecting";
 
             eval {
-                alarm(CONNECT_TIME_MAX);
                 if ($port == 80) {
+                    alarm(CONNECT_TIME_MAX);
                     $s = new IO::Socket::INET(
                                     Type => SOCK_STREAM,
                                     Proto => 'tcp',
@@ -101,6 +102,8 @@ sub test () {
                         goto end;
                     }
                 } else {
+                    # Hack.
+                    alarm(3 * CONNECT_TIME_MAX);
                     $desc .= '(SSL)';
                     $s = new IO::Socket::SSL("$addr:$port");
                     if (!$s) {
