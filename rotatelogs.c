@@ -7,7 +7,7 @@
  *
  */
 
-static const char rcsid[] = "$Id: rotatelogs.c,v 1.8 2006-05-14 14:00:31 chris Exp $";
+static const char rcsid[] = "$Id: rotatelogs.c,v 1.9 2006-07-31 18:43:31 chris Exp $";
 
 #include <sys/types.h>
 
@@ -99,7 +99,9 @@ void usage(FILE *fp) {
 "\n"
 "Options:\n"
 "\n"
-"    -l          When a new logfile is created, make a symlink to it from NAME\n"
+"    -l          When a new logfile is created, make a symlink to it from NAME.\n"
+"\n"
+"    -s          Open logfiles O_SYNC, so that changes are forced out to disk.\n"
 "\n"
 "    -f FORMAT   Use the strftime(3) FORMAT for the suffix on logfile names,\n"
 "                rather than '.' followed by the number of seconds since the\n"
@@ -370,6 +372,7 @@ static gid_t logfile_gid = -1;
  * obtain a suffix added to NAME. If SYMLINK is true, create a symlink from
  * NAME itself to the new file. Returns a file descriptor open on the new
  * logfile, FD if no new logfile is needed, or -1 on error. */
+static int openflags = O_WRONLY | O_CREAT | O_APPEND;
 int reopen_logfile(int fd, const time_t interval, const char *name, const char *format, time_t *t, const int make_symlink) {
     time_t now;
     struct tm T;
@@ -392,7 +395,7 @@ int reopen_logfile(int fd, const time_t interval, const char *name, const char *
     strcpy(buf, name);
     strftime(buf + strlen(name), MAXTIMELEN, format, &T);
 
-    if (-1 == (newfd = open(buf, O_WRONLY | O_CREAT | O_APPEND | O_SYNC, logfile_mode))) {
+    if (-1 == (newfd = open(buf, openflags, logfile_mode))) {
         our_error("%s: open: %s", buf, strerror(errno));
         return fd;
     }
@@ -630,7 +633,7 @@ fail:
 /* main ARGC ARGV
  * Entry point. */
 int main(int argc, char *argv[]) {
-    const char *optstr = "+hlf:e:i:r:m:o:";
+    const char *optstr = "+hlf:e:i:r:m:o:s";
     extern char *optarg;
     extern int opterr, optopt, optind;
     int c;
@@ -691,6 +694,10 @@ int main(int argc, char *argv[]) {
             case 'o':
                 if (!parse_owner(optarg))
                     return 1;
+                break;
+
+            case 's':
+                openflags |= O_SYNC;
                 break;
 
             case '?':
