@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: cvs-mirror,v 1.3 2006-02-03 16:02:43 chris Exp $
+# $Id: cvs-mirror,v 1.4 2006-08-08 12:39:22 chris Exp $
 #
 
 if [ x$1 = x-h -o x$1 = x--help ] ; then
@@ -26,7 +26,7 @@ die () {
 
 # Want to clear up our locks on exit.
 locks=""
-trap 'for d in $locks ; do [ -d $d ] && rmdir $d ; done' EXIT
+trap 'for d in $locks ; do [ -d "$d" ] && rmdir "$d" ; done' EXIT
 
 lock_repos () {
     repos=$1
@@ -35,7 +35,29 @@ lock_repos () {
     while [ $i -lt 10 ] ; do
         if mkdir "$repos/#cvs.lock" 2> /dev/null ; then
             locks="$repos/#cvs.lock $locks"
-            return 0
+
+            # We have the master lock, so we should now grab locks on every
+            # other part of the repository.
+            success=1
+            suffix="cvs-mirror.$$"
+            find "$repos" -type d ! -name Attic ! -name CVS -print \
+                | while read leaf ; do
+                if mkdir "$leaf/#cvs.rfl.cvs-mirror.$$" 2> /dev/null ; then
+                    locks="$leaf/#cvs.rfl.$suffix $locks"
+                else
+                    success=0
+                    break
+                fi
+            done
+            
+            # We win.
+            if [ x$success = x1 ] ; then
+                rmdir "$repos/#cvs.lock"
+                return 0
+            fi
+
+            # Remove the locks.
+            for i in $locks ; do [ -d "$d" ] && rmdir "$d" ; done
         fi
         i=$[ $i + 1 ]
         sleep 1
