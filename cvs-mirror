@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: cvs-mirror,v 1.4 2006-08-08 12:39:22 chris Exp $
+# $Id: cvs-mirror,v 1.5 2006-08-08 13:15:39 chris Exp $
 #
 
 if [ x$1 = x-h -o x$1 = x--help ] ; then
@@ -26,7 +26,8 @@ die () {
 
 # Want to clear up our locks on exit.
 locks=""
-trap 'for d in $locks ; do [ -d "$d" ] && rmdir "$d" ; done' EXIT
+lockname="#cvs.rfl.cvs-mirror.$$"
+trap 'for d in $locks ; do [ -d "$d" ] && echo unlocking "$d" && rmdir "$d" ; find "$repos" -type d -name "$lockname" | xargs rmdir ; done' EXIT
 
 lock_repos () {
     repos=$1
@@ -40,11 +41,10 @@ lock_repos () {
             # other part of the repository.
             success=1
             suffix="cvs-mirror.$$"
-            find "$repos" -type d ! -name Attic ! -name CVS -print \
+            find "$repos" -type d ! -name Attic ! -name CVS ! -name '#cvs.lock' \
+                    ! -name "#cvs.[rw]fl*"-print \
                 | while read leaf ; do
-                if mkdir "$leaf/#cvs.rfl.cvs-mirror.$$" 2> /dev/null ; then
-                    locks="$leaf/#cvs.rfl.$suffix $locks"
-                else
+                if ! mkdir "$leaf/$lockname" 2> /dev/null ; then
                     success=0
                     break
                 fi
@@ -57,7 +57,7 @@ lock_repos () {
             fi
 
             # Remove the locks.
-            for i in $locks ; do [ -d "$d" ] && rmdir "$d" ; done
+            find "$repos" -type d -name "$lockname" | xargs rmdir
         fi
         i=$[ $i + 1 ]
         sleep 1
