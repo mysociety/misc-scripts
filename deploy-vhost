@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.43 2006-08-02 13:11:32 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.44 2006-08-09 10:00:38 francis Exp $';
 
 package main;
 
@@ -80,9 +80,15 @@ my $vhost_dir = "/data/vhost/$vhost";
 my $conf;
 foreach my $key ( keys %$site_conf ) { $conf->{$key} = $site_conf->{$key}; }
 foreach my $key ( keys %$vhost_conf ) { $conf->{$key} = $vhost_conf->{$key}; }
+die "must specify 'servers' in vhost config" if (!exists($conf->{servers}));
 die "must specify 'staging' in vhost config" if (!exists($conf->{staging}));
 die "must specify 'cvs_dirs' in vhost config" if (!exists($conf->{cvs_dirs}));
 die "must specify 'cvs_user' in vhost config" if (!exists($conf->{cvs_user}));
+
+# Verify that this server is listed for this vhost
+my $hostname = `hostname`;
+chomp($hostname);
+die "This host '$hostname' is not in 'servers' list in vhost config for '$vhost'. Check whether this server is meant to run this vhost, and if so add it to the list." if !grep { m/^$hostname$/ } @{$conf->{'servers'}};
 
 # Look up some values
 my ($user_login, $user_pass, $user_uid, $user_gid, 
@@ -369,8 +375,6 @@ if ($conf->{'crontab'}) {
     if ($conf->{'crontab'} eq '1') {
         $ok = 1;
     } else {
-        my $hostname = `hostname`;
-        chomp($hostname);
         if ($hostname eq $conf->{'crontab'}) {
             $ok = 1;
         }
