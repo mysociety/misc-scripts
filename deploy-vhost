@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.44 2006-08-09 10:00:38 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.45 2006-08-11 15:43:26 francis Exp $';
 
 package main;
 
@@ -47,14 +47,6 @@ sub make_symlink {
     my $current = readlink($b);
     if (!$current) {
         symlink($a, $b) || die "failed to make symlink '$a'->'$b'";
-    }
-}
-
-sub shell {
-    system(@_);
-    if ($?) {
-        die "in " . getcwd() . ": " . join(" ", @_) . ": "
-            . mySociety::Util::describe_waitval($?, "system");
     }
 }
 

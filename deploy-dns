@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.17 2006-06-15 13:24:53 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.18 2006-08-11 15:43:26 francis Exp $';
 
 use strict;
 
@@ -28,7 +28,7 @@ use Error qw(:try);
 use File::Slurp qw(read_file);
 use Getopt::Long;
 use IO::File;
-use mySociety::Util qw(create_file_to_replace describe_waitval);
+use mySociety::Util qw(create_file_to_replace describe_waitval shell);
 # we use ::Fast not for speed, but because it works and the regular one
 # doesn't.
 use Net::DNS::ZoneFile::Fast;
@@ -78,12 +78,6 @@ my $be_verbose = 0;
 sub verbose (@) {
     return unless ($be_verbose);
     print STDERR @_;
-}
-
-sub System (@) {
-    system(@_);
-    throw Oops("$_[0]: " . describe_waitval($?, "system"))
-        if ($?);
 }
 
 sub parse ($) {
@@ -187,6 +181,7 @@ try {
     }
 
     chdir("/data/servers/dns") || throw Oops("/data/servers/dns: $!");
+    shell("cvs", "-Q", "update", "-dP");
 
     # Get the list of files under CVS control from CVS/Entries. This is nasty,
     # but the alternatives are worse.
@@ -304,7 +299,7 @@ EOF
     push(@cmd, qw(/data/servers/dns /dev/null));
     verbose("args to deploy-configuration: ", join(" ", @cmd), "\n");
     verbose("invoking deploy-configuration...\n");
-    System(@cmd);
+    shell(@cmd);
     verbose("  done\n");
 
     # We win.
@@ -315,10 +310,10 @@ EOF
 
     # Try to reload the zones, but failure is not a fatal error.
     verbose("telling bind to reload zones... ");
-    System(qw(rndc reload));
+    shell(qw(rndc reload));
     verbose("done\n");
 
-    System("/data/mysociety/bin/deploy-logger", "Deployed DNS");
+    shell("/data/mysociety/bin/deploy-logger", "Deployed DNS");
 
 done:
     $ret = 0;
