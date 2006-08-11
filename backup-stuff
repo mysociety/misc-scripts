@@ -6,7 +6,7 @@
 # Copyright (c) 2004 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: backup-stuff,v 1.15 2006-08-11 12:39:20 francis Exp $
+# $Id: backup-stuff,v 1.16 2006-08-11 12:40:58 francis Exp $
 #
 
 set -e
@@ -31,7 +31,7 @@ fi
 keepbackto=$( date +%Y%m%dT%H%M%S --date='1 month ago')
 for X in _data_backups_dailydb_????????T??????; do
     if [[ "$X" < "_data_backups_dailydb_$keepbackto" ]]; then
-        echo $X
+        #echo $X
         chmod u+w $X
         rm -f $X/fyr.*
         chmod u-w $X
