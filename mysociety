@@ -24,9 +24,6 @@ COMMAND is one of:
     email
         Update the exim virtual mail configuration on the current host.
 
-    catlog VHOST access
-        Cats the latest VHOST log file from every server, merging them
-        
 Extra parameters are passed through to underlying deploy-... script.
 END
 	exit
@@ -80,14 +77,6 @@ case $COMMAND in
 
     email)
         exec /data/mysociety/bin/deploy-email "$@"
-        ;;
-
-    catlog)
-        VHOST=$1
-        shift || die "specify a virtual host"
-        TYPE=$1
-        shift || die "specify 'access' or 'error'"
-        mergelog <(ssh bitter.ukcod.org.uk cat /data/vhost/$VHOST/logs/${TYPE}_log) <(ssh tea.ukcod.org.uk cat /data/vhost/$VHOST/logs/${TYPE}_log)
         ;;
 
     *)
