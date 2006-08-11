@@ -24,6 +24,12 @@ COMMAND is one of:
     email
         Update the exim virtual mail configuration on the current host.
 
+    update
+        "cvs update" all of /data/servers and /data/mysociety
+
+    commit
+        "cvs commit" all of /data/servers and /data/mysociety
+
 Extra parameters are passed through to underlying deploy-... script.
 END
 	exit
@@ -83,6 +89,19 @@ case $COMMAND in
         exec /data/mysociety/bin/deploy-email "$@"
         ;;
 
+    update)
+        cd /data/servers
+        cvs -Q update -dP
+        cd /data/mysociety
+        cvs -Q update -dP
+        ;;
+
+    commit)
+        cd /data/servers
+        cvs -Q commit
+        cd /data/mysociety
+        cvs -Q commit
+        ;;
     *)
 	show_help
         ;;
