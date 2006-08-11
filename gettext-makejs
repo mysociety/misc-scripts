@@ -11,6 +11,7 @@ my %langs = (
     'ru_RU' => 'ru',
     'eo_XX' => 'eo',
     'uk_UA' => 'uk',
+    'et_EE' => 'et',
 );
 
 for (<locale/*.*-8/LC_MESSAGES/PledgeBank.po>) {
