@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: PB.pm,v 1.2 2006-08-16 08:51:23 chris Exp $
+# $Id: PB.pm,v 1.3 2006-08-16 08:52:57 chris Exp $
 #
 
 package PB;
@@ -61,7 +61,7 @@ sub test () {
                         limit 1');
 
     printf("last signup was %d minutes ago", int($last_signup_age / 60))
-        if ($last_signup_age > (3 * 3600));
+        if ($last_signup_age > (6 * 3600));
 
     dbh()->disconnect();
 }
