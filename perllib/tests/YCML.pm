@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: YCML.pm,v 1.1 2006-08-15 17:28:45 chris Exp $
+# $Id: YCML.pm,v 1.2 2006-08-16 08:51:23 chris Exp $
 #
 
 package YCML;
@@ -60,7 +60,7 @@ sub test () {
                         order by creation_time desc
                         limit 1');
 
-    printf("last signup was %d hours ago", int($last_signup_age / 3600))
+    printf("last signup was %d minutes ago", int($last_signup_age / 60))
         if ($last_signup_age > (1.5 * 3600));
 
     dbh()->disconnect();
