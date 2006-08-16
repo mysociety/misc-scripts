@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: FYR.pm,v 1.2 2006-08-15 16:49:15 chris Exp $
+# $Id: FYR.pm,v 1.3 2006-08-16 08:50:37 chris Exp $
 #
 
 package FYR;
@@ -62,10 +62,17 @@ sub test () {
                             and recipient_email is null
                         order by dispatched desc
                         limit 1');
+
+    # We only include faxes/emails that have had no delivery attempts in our
+    # count of pending messages, because it is not useful for the test to fire
+    # just because (say) an email is sitting on the queue because of a
+    # transient failure at the remote site.
     my $n_ready_faxes =
             dbh()->selectrow_array("
                         select count(id) from message
                         where state = 'ready'
+                            and not frozen
+                            and numactions = 0
                             and recipient_fax is not null");
 
     my $last_email_age =
@@ -80,6 +87,8 @@ sub test () {
             dbh()->selectrow_array("
                         select count(id) from message
                         where state = 'ready'
+                            and not frozen
+                            and numactions = 0
                             and recipient_email is not null");
 
     my $time = POSIX::strftime('%H:%M', localtime());
@@ -93,12 +102,14 @@ sub test () {
     printf("last message was submitted %d minutes ago\n", int($last_message_age / 60))
         if ($last_message_age > $message_threshold);
     
-    printf("last fax was sent %d minutes ago\n", int($last_fax_age / 60))
-        if ($time ge '08:20' && $time le '20:00'
-            && $n_ready_faxes > 0 && $last_fax_age > 1200);
+    printf("last fax was sent %d minutes ago; %d pending\n",
+        int($last_fax_age / 60), $n_ready_faxes)
+            if ($time ge '08:20' && $time le '20:00'
+                && $n_ready_faxes > 0 && $last_fax_age > 1200);
 
-    printf("last email was sent %d minutes ago\n", int($last_email_age / 60))
-        if ($n_ready_emails > 0 && $last_email_age > 1200);
+    printf("last email was sent %d minutes ago; %d pending\n",
+        int($last_email_age / 60), $n_ready_emails)
+            if ($n_ready_emails > 0 && $last_email_age > 1200);
 
     # XXX maybe ought to check for messages being confirmed.
 
