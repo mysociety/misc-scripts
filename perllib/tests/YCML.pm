@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: YCML.pm,v 1.3 2006-08-16 08:52:37 chris Exp $
+# $Id: YCML.pm,v 1.4 2006-08-22 09:22:54 chris Exp $
 #
 
 package YCML;
@@ -53,6 +53,11 @@ sub test () {
     # 95th percentile signup interval is about 1.5 hours
     # 99th percentile signup interval is about 6.5 hours
 
+    my $time = POSIX::strftime('%H:%M', localtime());
+
+    my $age_threshold = 6 * 3600;
+    $age_threshold = 12 * 3600 if ($time lt '07:00' || $time gt '23:00')
+
     my $last_signup_age =
             time() - dbh()->selectrow_array('
                         select extract(epoch from creation_time)
@@ -61,7 +66,7 @@ sub test () {
                         limit 1');
 
     printf("last signup was %d minutes ago", int($last_signup_age / 60))
-        if ($last_signup_age > (6.5 * 3600));
+        if ($last_signup_age > $age_threshold);
 
     dbh()->disconnect();
 }
