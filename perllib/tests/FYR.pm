@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: FYR.pm,v 1.3 2006-08-16 08:50:37 chris Exp $
+# $Id: FYR.pm,v 1.4 2006-08-23 14:55:39 chris Exp $
 #
 
 package FYR;
@@ -99,8 +99,9 @@ sub test () {
     my $message_threshold = 1200;
     $message_threshold = 7200 if ($time lt '09:00' || $time gt '22:00');
     
-    printf("last message was submitted %d minutes ago\n", int($last_message_age / 60))
-        if ($last_message_age > $message_threshold);
+    printf("last message was submitted %d minutes ago\n",
+        int($last_message_age / 60))
+            if ($last_message_age > $message_threshold);
     
     printf("last fax was sent %d minutes ago; %d pending\n",
         int($last_fax_age / 60), $n_ready_faxes)
