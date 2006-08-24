@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: PostgreSQL.pm,v 1.6 2006-04-04 12:10:36 francis Exp $
+# $Id: PostgreSQL.pm,v 1.7 2006-08-24 22:53:27 francis Exp $
 #
 
 package PostgreSQL;
@@ -31,14 +31,14 @@ sub test() {
         } 
 
         # Find active queries which are old
-        my $sth = $dbh->prepare("select datname, usename, current_query, query_start from pg_stat_activity where current_query not like '<IDLE>%' and query_start < now() - '30 minutes'::interval order by query_start");
+        my $sth = $dbh->prepare("select datname, usename, current_query, query_start, procpid from pg_stat_activity where current_query not like '<IDLE>%' and query_start < now() - '30 minutes'::interval order by query_start");
         if ( !defined $sth ) {
             print "Cannot prepare statement on $postgresql_server:$postgresql_port as $user: $DBI::errstr\n";
             next;
         }
         $sth->execute;
-        while ( my ($datname, $usename, $current_query, $query_start) = $sth->fetchrow()) {
-            print "PostgreSQL query taking more than 30 minutes; server:$postgresql_server; database:$datname; user:$usename; query:$current_query\n";
+        while ( my ($datname, $usename, $current_query, $query_start, $procpid) = $sth->fetchrow()) {
+            print "PostgreSQL query taking more than 30 minutes; server:$postgresql_server; database:$datname; user:$usename; process: $procpid; query:$current_query\n";
         }
         $dbh->disconnect;
     }
