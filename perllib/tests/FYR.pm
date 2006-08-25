@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: FYR.pm,v 1.5 2006-08-25 10:30:45 francis Exp $
+# $Id: FYR.pm,v 1.6 2006-08-25 13:09:49 chris Exp $
 #
 
 package FYR;
@@ -89,7 +89,9 @@ sub test () {
                         where state = 'ready'
                             and not frozen
                             and numactions = 0
-                            and recipient_email is not null");
+                            and recipient_email is not null
+                            and (dispatched is null
+                                or dispatched < ? - 7200)", {}, time());
 
     my $time = POSIX::strftime('%H:%M', localtime());
 
