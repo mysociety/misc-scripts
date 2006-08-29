@@ -5,7 +5,7 @@
 # PHP include file for talking to that RABX interface.
 #
 
-my $rcsid = ''; $rcsid .= '$Id: rabxtophp.pl,v 1.7 2006-03-09 16:17:40 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: rabxtophp.pl,v 1.8 2006-08-29 10:44:09 francis Exp $';
 
 use strict;
 
@@ -150,7 +150,8 @@ function ${php_namespace}_check_error(\$data) {
         err(\$error_message);
 }
 
-\$${php_namespace}_client = new RABX_Client(OPTION_${conf_name}_URL);
+\$${php_namespace}_client = new RABX_Client(OPTION_${conf_name}_URL, 
+    defined('OPTION_${conf_name}_USERPWD') ? OPTION_${conf_name}_USERPWD : null);
 
 END
 
