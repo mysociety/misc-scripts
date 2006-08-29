@@ -28,7 +28,7 @@
 # Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: mugly,v 1.7 2006-01-18 15:44:37 maint Exp $
+# $Id: mugly,v 1.8 2006-08-29 14:34:38 francis Exp $
 #
 
 use strict;
@@ -188,6 +188,7 @@ again:
                 return 0;
             } else {
                 print STDERR "mugly: $name: (warning) $msg\n";
+                return 0;
             }
         }
     }
