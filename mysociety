@@ -68,6 +68,8 @@ case $COMMAND in
         cvs -Q update -dP $ARCHETYPE $HOST.pl
         /data/mysociety/bin/deploy-configuration /data/servers/$ARCHETYPE /data/servers/$HOST.pl "$@"
         cp /data/servers/$HOST.pl "/etc/mysociety/config-settings.pl"
+
+        /data/mysociety/bin/deploy-logger "Deployed configuration for archetype \"$ARCHETYPE\" with settings \"$HOST.pl\""
         ;;
         
     vhost)
