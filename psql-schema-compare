@@ -32,11 +32,11 @@ PSQL_SCHEMATEST_USER=postgres
 su $PSQL_SCHEMATEST_USER -c "dropdb -q schematest" || warn "schematest already dropped, continuing"
 su $PSQL_SCHEMATEST_USER -c "createdb -q schematest"
 su $PSQL_SCHEMATEST_USER -c "psql --file=$1 -q schematest" 2>&1 | grep -v "will create implicit" && echo -n 
-su $PSQL_SCHEMATEST_USER -c "pg_dump -s schematest" | egrep -v "^--|SET SESSION AUTHORIZATION|\\connect - |GRANT ALL|REVOKE ALL|START WITH 1" | grep -v "SET search_path = public, pg_catalog;" | sed "s/,$//;" | grep -v '^[ \t]*$' > $CVS_SCHEMA_FILE
+su $PSQL_SCHEMATEST_USER -c "pg_dump --schema-only --schema=public -s schematest" | egrep -v "^--|SET SESSION AUTHORIZATION|\\connect - |GRANT ALL|REVOKE ALL|START WITH 1" | grep -v "SET search_path = public, pg_catalog;" | sed "s/,$//;" | grep -v '^[ \t]*$' > $CVS_SCHEMA_FILE
 
 # ... the live database dump
 export PGPASSWORD=$5
-su $2 -c "pg_dump --schema-only -U $4 --host $6 --port $7 $3" | egrep -v "^--|SET SESSION AUTHORIZATION|\\connect - |GRANT ALL|REVOKE ALL|START WITH 1" | grep -v "SET search_path = public, pg_catalog;" | sed "s/,$//;" | grep -v '^[ \t]*$' > $CURRENT_SCHEMA_FILE
+su $2 -c "pg_dump --schema-only --schema=public -U $4 --host $6 --port $7 $3" | egrep -v "^--|SET SESSION AUTHORIZATION|\\connect - |GRANT ALL|REVOKE ALL|START WITH 1" | grep -v "SET search_path = public, pg_catalog;" | sed "s/,$//;" | grep -v '^[ \t]*$' > $CURRENT_SCHEMA_FILE
 
 # Note:  Using sort here is completely evil.  It is because
 # older verions of pg_dump don't output the tables in a stable
