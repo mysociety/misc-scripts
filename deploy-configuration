@@ -20,7 +20,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.44 2006-06-21 12:46:13 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.45 2006-08-31 12:57:53 chris Exp $';
 
 package Oops;
 
@@ -734,8 +734,6 @@ try {
                 unlink($t);
                 throw Oops("$t: rename: $!");
             }
-
-            System("/data/mysociety/bin/deploy-logger", "Deployed configuration $tree $settings")
         }
     }
 } catch Oops with {
