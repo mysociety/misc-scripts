@@ -40,7 +40,7 @@ my $database_permissions_balti = {
     # People
 
     # Sites
-    'pb' => ['pb-testharness'],
+    'pb-testharness' => ['pb-testharness'],
 
     # Services
 };
@@ -55,7 +55,7 @@ if ($server eq 'bitter' || $server eq 'tea') {
 	die "generate-pgpass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.23 2006-09-04 15:10:38 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.24 2006-09-04 16:00:01 francis Exp $';
 
 use strict;
 require 5.8.0;
