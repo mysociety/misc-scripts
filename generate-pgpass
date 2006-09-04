@@ -9,7 +9,7 @@
 # 
 
 # Who can access what databases
-my $database_permissions = {
+my $database_permissions_bitter_tea = {
     # All-seeing power
     'root' => ['pb', 'ycml', 'rt', 'gaze', 'dadem', 'evel', 'mapit', 'ratty', 'fyr', 'pb-interface', 'pb-staging', 'mswww', 'track', 'list'],
      
@@ -33,7 +33,29 @@ my $database_permissions = {
     'msservices' => ['mapit','dadem','ratty','evel'],
 };
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.22 2006-08-10 07:56:34 francis Exp $';
+my $database_permissions_balti = {
+    # All-seeing power
+    'root' => [],
+     
+    # People
+
+    # Sites
+    'pb' => ['pb-testharness'],
+
+    # Services
+};
+
+my $database_permissions;
+my $server = (uname())[1];
+if ($server eq 'bitter' || $server eq 'tea') {
+	$database_permissions = $database_permissions_bitter_tea;
+} elsif ($server eq 'balti') {
+	$database_permissions = $database_permissions_balti;
+} else {
+	die "generate-pgpass not configured for server $server";
+}
+
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.23 2006-09-04 15:10:38 francis Exp $';
 
 use strict;
 require 5.8.0;
@@ -43,8 +65,6 @@ use lib "$FindBin::Bin/../perllib";
 use POSIX;
 
 use mySociety::Util;
-
-die "run on bitter/tea only at the moment" if ((uname())[1] !~ m/^(bitter|tea)$/);
 
 foreach my $user (keys %$database_permissions) {
     my @x = getpwnam($user) or die "$user: getpwnam: $!";
