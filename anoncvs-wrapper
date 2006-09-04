@@ -1,0 +1,9 @@
+#!/bin/bash
+# Called from inetd.conf to run CVS pserver.
+
+# Sync anoncvs repository from live one
+/data/mysociety/bin/anoncvs-export
+
+# Launch pserver, safely in a chroot
+exec /usr/bin/chrootuid /data/cvs/anon anoncvs /bin/cvs --allow-root=/repos pserver "$@"
+

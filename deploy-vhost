@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.46 2006-08-14 11:25:12 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.47 2006-09-04 14:58:02 francis Exp $';
 
 package main;
 
@@ -126,8 +126,7 @@ if ($conf->{'cvs_user'} eq "") {
     if (! -e "$user_home_dir/.cvspass") {
         system("su $conf->{'user'} -c \"touch ~$conf->{'user'}/.cvspass\"");
     }
-    # make sure anoncvs is freshly updated
-    shell("ssh", "cvs.mysociety.org", "/data/mysociety/bin/anoncvs-export");
+    # note that anoncvs is now freshly updated automatically by anoncvs-wrapper
 }
 foreach my $cvs_dir (@{$conf->{'cvs_dirs'}}) {
     my $d = "$vhost_dir/mysociety/$cvs_dir/CVS";
