@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: FYR.pm,v 1.6 2006-08-25 13:09:49 chris Exp $
+# $Id: FYR.pm,v 1.7 2006-09-09 00:18:42 francis Exp $
 #
 
 package FYR;
@@ -96,9 +96,9 @@ sub test () {
     my $time = POSIX::strftime('%H:%M', localtime());
 
     # Most FYR messages are sent between 0900h and 2200h local time. Check that
-    # a message has been submitted within 20 minutes during peak hours or
+    # a message has been submitted within 45 minutes during peak hours or
     # within 4 hours during off hours.
-    my $message_threshold = 1200;
+    my $message_threshold = 2700;
     $message_threshold = 14400 if ($time lt '09:00' || $time gt '22:00');
     
     printf("last message was submitted %d minutes ago\n",
