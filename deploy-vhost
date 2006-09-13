@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.47 2006-09-04 14:58:02 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.48 2006-09-13 18:54:37 francis Exp $';
 
 package main;
 
@@ -240,6 +240,9 @@ foreach my $conf_dir (@{$conf->{conf_dir}}) {
         my $conf_ugly_part = $conf_dir . "/general";
         $conf_ugly_part =~ s#/#_#g;
         my $conf_ugly_file = "$servers_dir/vhosts/$conf_ugly_part.ugly";
+        # update the conf/general template
+        chdir "$servers_dir/vhosts";
+        shell("cvs", "-Q", "update", "$conf_ugly_part.ugly");
         # update example we'll be comparing against, to make sure no missing entries
         chdir $mysociety_dir;
         shell("cvs", "-Q", "update", "$conf_dir/general-example");
