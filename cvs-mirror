@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: cvs-mirror,v 1.5 2006-08-08 13:15:39 chris Exp $
+# $Id: cvs-mirror,v 1.6 2006-09-20 21:23:11 chris Exp $
 #
 
 if [ x$1 = x-h -o x$1 = x--help ] ; then
@@ -42,12 +42,13 @@ lock_repos () {
             success=1
             suffix="cvs-mirror.$$"
             find "$repos" -type d ! -name Attic ! -name CVS ! -name '#cvs.lock' \
-                    ! -name "#cvs.[rw]fl*"-print \
+                    ! -name "#cvs.[rw]fl*" -print \
                 | while read leaf ; do
                 if ! mkdir "$leaf/$lockname" 2> /dev/null ; then
                     success=0
                     break
                 fi
+                locks="$leaf/$lockname $locks"
             done
             
             # We win.
