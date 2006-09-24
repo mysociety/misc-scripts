@@ -2,6 +2,35 @@
 # Shorter interface to deploy scripts on servers.
 # Bash script because it uses temporary named pipes <(cmd)
 
+# Obtain hostname
+HOST=`hostname`
+if [ x$HOST = x ] ; then
+    die "can't establish hostname"
+fi
+
+# Obtain archetype
+cd /data/servers
+cvs -Q update serverclass
+if [ ! -e /data/servers/serverclass ] ; then
+    die "/data/servers/serverclass: No such file or directory"
+fi
+ARCHETYPE=`echo $HOST | cat - /data/servers/serverclass | \
+            sed 's/#.*//' | awk '{
+                if (NR == 1) hostname = $1; 
+                else if ($1 == hostname) print $2
+            }'`
+if [ x$ARCHETYPE = x ] ; then
+    die "don't know archetype for this host ($HOST), add to /data/servers/serverclass"
+fi
+
+# Obtain list of other servers in same archetype
+SAME_ARCHETYPE=`echo $ARCHETYPE | cat - /data/servers/serverclass | \
+    sed 's/#.*//' | awk '{
+        if (NR == 1) classname = $1; 
+        else if ($2 == classname) print $1
+    }'`
+
+# Error reporting
 die () {
     echo "mysociety:" "$@" 1>&2
     exit 1
@@ -30,6 +59,9 @@ COMMAND is one of:
     commit
         "cvs commit" all of /data/servers and /data/mysociety
 
+    class COMMAND
+        Run a command on all machines in the class
+
 Extra parameters are passed through to underlying deploy-... script.
 END
 	exit
@@ -42,28 +74,6 @@ set -e
 
 case $COMMAND in
     config)
-	HOST=`hostname`
-        if [ x$HOST = x ] ; then
-            die "can't establish hostname"
-        fi
-
-        # Obtain archetype.
-        cd /data/servers
-        cvs -Q update serverclass
-        if [ ! -e /data/servers/serverclass ] ; then
-            die "/data/servers/serverclass: No such file or directory"
-        fi
-        
-        ARCHETYPE=`echo $HOST | cat - /data/servers/serverclass | \
-                    sed 's/#.*//' | awk '{
-                        if (NR == 1) hostname = $1; 
-                        else if ($1 == hostname) print $2
-                    }'`
-
-        if [ x$ARCHETYPE = x ] ; then
-            die "don't know how to configure this host ($HOST)"
-        fi
-
         cd /data/servers
         cvs -Q update -dP $ARCHETYPE $HOST.pl
         /data/mysociety/bin/deploy-configuration /data/servers/$ARCHETYPE /data/servers/$HOST.pl "$@"
@@ -103,6 +113,14 @@ case $COMMAND in
         cvs -Q commit
         cd /data/mysociety
         cvs -Q commit
+        ;;
+
+    class)
+        for X in $SAME_ARCHETYPE
+        do
+            echo " -- on $X..."
+            ssh $X "$@"
+        done
         ;;
     *)
 	show_help
