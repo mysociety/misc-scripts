@@ -43,21 +43,20 @@ Usage: mysociety COMMAND [OPTIONS]
 COMMAND is one of:
     config
         Deploy new config for current server from /data/servers/...
-
     vhost VHOST
         Deploy latest version of VHOST, e.g. www.pledgebank.com.
 
     dns
         Update the DNS configuration on the current host.
-
     email
         Update the exim virtual mail configuration on the current host.
 
     update
         "cvs update" all of /data/servers and /data/mysociety
-
     commit
         "cvs commit" all of /data/servers and /data/mysociety
+    diff
+        "cvs diff -u" all of /data/servers and /data/mysociety
 
     class COMMAND
         Run a command on all machines in the class
@@ -113,6 +112,13 @@ case $COMMAND in
         cvs -Q commit
         cd /data/mysociety
         cvs -Q commit
+        ;;
+
+    diff)
+        cd /data/servers
+        cvs -Q diff -u
+        cd /data/mysociety
+        cvs -Q diff -u
         ;;
 
     class)
