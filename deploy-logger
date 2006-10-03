@@ -5,7 +5,7 @@
 #
 # Arguments are the message to log, as in echo(1).
 #
-# $Id: deploy-logger,v 1.4 2006-08-11 15:43:26 francis Exp $
+# $Id: deploy-logger,v 1.5 2006-10-03 09:03:15 francis Exp $
 #
 
 HOST=`hostname`
@@ -18,7 +18,7 @@ WHO=$SUDO_USER
 cd $LOGFILE_PATH
 echo "$DATELOG $WHO-" "$@" >>$LOGFILE
 
-cvs -Q commit -m "Automatic update by deploy-logger" $LOGFILE | grep -v "Mailing the commit message to"
+cvs -Q commit -m "deploy-logger: $@" $LOGFILE | grep -v "Mailing the commit message to"
 
 exit 0 # otherwise it exits with code of grep
 
