@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.48 2006-09-13 18:54:37 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.49 2006-10-06 13:24:58 francis Exp $';
 
 package main;
 
@@ -80,7 +80,7 @@ die "must specify 'cvs_user' in vhost config" if (!exists($conf->{cvs_user}));
 # Verify that this server is listed for this vhost
 my $hostname = `hostname`;
 chomp($hostname);
-die "This host '$hostname' is not in 'servers' list in vhost config for '$vhost'. Check whether this server is meant to run this vhost, and if so add it to the list." if !grep { m/^$hostname$/ } @{$conf->{'servers'}};
+die "'$hostname' is not a vhost for '$vhost'" if !grep { m/^$hostname$/ } @{$conf->{'servers'}};
 
 # Look up some values
 my ($user_login, $user_pass, $user_uid, $user_gid, 
