@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.49 2006-10-06 13:24:58 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.50 2006-10-13 14:03:17 francis Exp $';
 
 package main;
 
@@ -93,6 +93,7 @@ my $user = $conf->{'user'};
 my $group = getgrgid($user_gid);
 $conf->{'wildcard_vhost'} = 0 if (!exists($conf->{'wildcard_vhost'}));
 $conf->{'https'} = 0 if (!exists($conf->{'https'}));
+$conf->{'fastcgi'} = 1 if (!exists($conf->{'fastcgi'}));
 
 # Ensure that the conf_dir element is a reference to a list of config dirs.
 my $c = $conf->{conf_dir};
@@ -178,6 +179,7 @@ print FH <<END;
 \$group = '$group';
 \$wildcard_vhost = '$conf->{'wildcard_vhost'}';
 \$https = '$conf->{'https'}';
+\$fastcgi = '$conf->{'fastcgi'}';
 \$randomly = '/data/mysociety/bin/randomly -p 0.5'; # for crontab
 \$only_one = "[ \\\$(hostname) = 'bitter' ] &&"; # for crontab
 END
