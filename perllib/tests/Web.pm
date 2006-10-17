@@ -8,7 +8,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Web.pm,v 1.6 2006-07-24 11:10:21 chris Exp $
+# $Id: Web.pm,v 1.7 2006-10-17 23:21:56 francis Exp $
 #
 
 package Web;
@@ -48,6 +48,7 @@ my @pages = qw(
 use constant CONNECT_TIME_MAX => 0.5;
 use constant SEND_REQUEST_TIME_MAX => 1;
 use constant GET_RESPONSELINE_TIME_MAX => 10;
+use constant GET_RESPONSELINE_TIME_MAX_YCML_LEAGUE => 20;
 use constant GET_HEADERS_TIME_MAX => 5;
 use constant GET_BODY_TIME_MAX => 10;
 use constant TOTAL_TIME_MAX => 20;
@@ -129,7 +130,11 @@ sub test () {
                 $s->flush();
 
                 $what = "waiting for response line";
-                alarm(GET_RESPONSELINE_TIME_MAX);
+                if ($page eq "http://www.hearfromyourmp.com/league") {
+                    alarm(GET_RESPONSELINE_TIME_MAX_YCML_LEAGUE);
+                } else {
+                    alarm(GET_RESPONSELINE_TIME_MAX);
+                }
                 local $/ = "\r\n";
                 
                 my $responseline = $s->getline();
