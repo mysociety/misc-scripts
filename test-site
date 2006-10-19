@@ -1,0 +1,70 @@
+#!/usr/bin/perl -w
+#
+# test-site
+# Calls the test script for a site.
+#
+# Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
+# Email: francis@mysociety.org; WWW: http://www.mysociety.org/
+#
+
+my $rcsid = ''; $rcsid .= '$Id: test-site,v 1.1 2006-10-19 08:04:51 francis Exp $';
+
+package main;
+
+use strict;
+require 5.8.0;
+
+use FindBin;
+use lib "$FindBin::Bin/../perllib";
+my $mysociety_bin = $FindBin::Bin;
+my $servers_dir = "$FindBin::Bin/../../servers";
+my $mysociety_dir = "$FindBin::Bin/../../mysociety";
+
+use mySociety::Util qw(shell);
+use mySociety::Config;
+
+use Data::Dumper;
+use File::Basename;
+
+our $verbose = $ENV{VERBOSE} ? $ENV{VERBOSE} : 0;
+
+#####################################################################
+# Main code
+
+# Read in configuration file
+our ($vhosts, $sites);
+require "$servers_dir/vhosts.pl";
+
+# Check command line parameters, look up in config file
+die "Specify virtual host name as only parameter" if scalar(@ARGV) != 1;
+my $vhost = $ARGV[0];
+my $vhost_conf = $vhosts->{$vhost};
+die "vhost '$vhost' is not in vhosts.pl" if !$vhost_conf;
+die "test vhosts must begin testharness." if $vhost !~ m/^testharness\./;
+my $site = $vhost_conf->{'site'};
+die "site not specified for '$vhost' in vhosts.pl" if !$site;
+my $site_conf = $sites->{$site};
+die "site '$site' is not in vhosts.pl" if !$site_conf;
+my $vhost_dir = "/data/vhost/$vhost";
+
+# Merge vhost and site configs together
+my $conf;
+foreach my $key ( keys %$site_conf ) { $conf->{$key} = $site_conf->{$key}; }
+foreach my $key ( keys %$vhost_conf ) { $conf->{$key} = $vhost_conf->{$key}; }
+die "must specify 'test_script' in vhost config" if (!exists($conf->{test_script}));
+
+# Verify that this server is listed for this vhost
+my $hostname = `hostname`;
+chomp($hostname);
+die "'$hostname' is not a vhost for '$vhost'" if !grep { m/^$hostname$/ } @{$conf->{'servers'}};
+
+chdir($vhost_dir."/mysociety");
+chdir(dirname($conf->{test_script}));
+shell("./".basename($conf->{test_script}), "--verbose=$verbose");
+print "Error level: $?";
+
+# Log
+#shell("/data/mysociety/bin/deploy-logger", "Tested vhost $vhost");
+
+
+
