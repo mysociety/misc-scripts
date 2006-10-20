@@ -125,7 +125,7 @@ case $COMMAND in
         for X in $SAME_ARCHETYPE
         do
             echo " -- on $X..."
-            ssh $X "$@"
+            ssh $X "$@" || echo " -- ...failed"
         done
         ;;
     *)
