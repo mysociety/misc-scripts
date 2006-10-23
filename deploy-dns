@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.18 2006-08-11 15:43:26 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.19 2006-10-23 08:49:46 chris Exp $';
 
 use strict;
 
@@ -312,8 +312,6 @@ EOF
     verbose("telling bind to reload zones... ");
     shell(qw(rndc reload));
     verbose("done\n");
-
-    shell("/data/mysociety/bin/deploy-logger", "Deployed DNS");
 
 done:
     $ret = 0;
