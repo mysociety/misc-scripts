@@ -45,6 +45,8 @@ COMMAND is one of:
         Deploy new config for current server from /data/servers/...
     vhost VHOST
         Deploy latest version of VHOST, e.g. www.pledgebank.com.
+    test VHOST
+        Run test script on VHOST, e.g. testharness.pet.mysociety.org
 
     dns
         Update the DNS configuration on the current host.
@@ -90,6 +92,17 @@ case $COMMAND in
         if [ "$VHOST" = "services.mysociety.org" -a $( hostname ) = bitter ]; then
             /data/vhost/services.mysociety.org/mysociety/services/DaDem/bin/setup-dademcron
         fi
+        ;;
+
+    test) 
+        VHOST=$1
+        shift || die "specify a virtual host"
+        # update code
+        /data/mysociety/bin/deploy-vhost $VHOST "$@"
+        # kill any FastCGI processes holding database open
+        #apachectl graceful
+        # launch test script
+        /data/mysociety/bin/test-site $VHOST
         ;;
 
     dns)

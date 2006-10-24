@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: test-site,v 1.1 2006-10-19 08:04:51 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: test-site,v 1.2 2006-10-24 09:37:58 francis Exp $';
 
 package main;
 
@@ -58,13 +58,16 @@ my $hostname = `hostname`;
 chomp($hostname);
 die "'$hostname' is not a vhost for '$vhost'" if !grep { m/^$hostname$/ } @{$conf->{'servers'}};
 
+# Launch test script, and check for errors
 chdir($vhost_dir."/mysociety");
 chdir(dirname($conf->{test_script}));
 shell("./".basename($conf->{test_script}), "--verbose=$verbose");
-print "Error level: $?";
+if ($?) {
+    die "Failed test, " . $conf->{test_script} . " returned $?";
+}
 
-# Log
-#shell("/data/mysociety/bin/deploy-logger", "Tested vhost $vhost");
+# Log success of test
+#shell("/data/mysociety/bin/deploy-logger", "Tested vhost $vhost successfully");
 
 
 
