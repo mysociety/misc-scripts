@@ -2,15 +2,16 @@
 #
 # psql-schema-compare:
 # Compare a schema in a text file with the schema in a live database.
+# Drops tables testharness_mail and testharness_sms first (these are
+# temporary tables made by test scripts, not really in the schema).
 # 
 # Parameters are:
 # $1 - schema SQL file
 # $2 - unix user who can access the live db
 # $3 - pgsql db name
 # $4 - pgsql db user
-# $5 - pgsql db pass
-# $6 - pgsql db host
-# $7 - pgsql db port
+# $5 - pgsql db host
+# $6 - pgsql db port
 #
 # If the schemas differ, prints a message to standard error and exits with 1.
 # If they are the same, quietly exits with code 0.
@@ -35,8 +36,11 @@ su $PSQL_SCHEMATEST_USER -c "psql --file=$1 -q schematest" 2>&1 | grep -v "will 
 su $PSQL_SCHEMATEST_USER -c "pg_dump --schema-only --schema=public -s schematest" | egrep -v "^--|SET SESSION AUTHORIZATION|\\connect - |GRANT ALL|REVOKE ALL|START WITH 1" | grep -v "SET search_path = public, pg_catalog;" | sed "s/,$//;" | grep -v '^[ \t]*$' > $CVS_SCHEMA_FILE
 
 # ... the live database dump
-export PGPASSWORD=$5
-su $2 -c "pg_dump --schema-only --schema=public -U $4 --host $6 --port $7 $3" | egrep -v "^--|SET SESSION AUTHORIZATION|\\connect - |GRANT ALL|REVOKE ALL|START WITH 1" | grep -v "SET search_path = public, pg_catalog;" | sed "s/,$//;" | grep -v '^[ \t]*$' > $CURRENT_SCHEMA_FILE
+# first drop testharness tables (which are made by test scripts) if they exist
+su $2 -c "psql -c -U $4 --host $5 --port $6 $3 -c 'drop table testharness_mail'" 2>&1 | egrep -v "does not exist|DROP TABLE" || echo -n
+su $2 -c "psql -c -U $4 --host $5 --port $6 $3 -c 'drop table testharness_sms'" 2>&1 | egrep -v "does not exist|DROP TABLE" || echo -n
+# now make the dump
+su $2 -c "pg_dump --schema-only --schema=public -U $4 --host $5 --port $6 $3" | egrep -v "^--|SET SESSION AUTHORIZATION|\\connect - |GRANT ALL|REVOKE ALL|START WITH 1" | grep -v "SET search_path = public, pg_catalog;" | sed "s/,$//;" | grep -v '^[ \t]*$' > $CURRENT_SCHEMA_FILE
 
 # Note:  Using sort here is completely evil.  It is because
 # older verions of pg_dump don't output the tables in a stable
@@ -53,7 +57,7 @@ cat $CURRENT_SCHEMA_FILE | sort > $CURRENT_SCHEMA_FILE.sorted
 if ! diff -w $CURRENT_SCHEMA_FILE.sorted $CVS_SCHEMA_FILE.sorted
 then
 	warn "Schema in CVS differs from that in pgsql database, you need to update it"
-	warn "host: $6 port: $7 database: $3; user: $4 schema: $1"
+	warn "host: $5 port: $6 database: $3; user: $4 schema: $1"
 	warn "CVS sorted: $CVS_SCHEMA_FILE.sorted; current sorted: $CURRENT_SCHEMA_FILE.sorted"
 	warn "CVS schema: $CVS_SCHEMA_FILE; current schema: $CURRENT_SCHEMA_FILE"
 	exit 1

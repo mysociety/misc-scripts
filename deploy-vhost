@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.50 2006-10-13 14:03:17 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.51 2006-10-26 07:38:44 francis Exp $';
 
 package main;
 
@@ -291,12 +291,16 @@ foreach my $psql_conf_prefix (keys %{$conf->{'psql_schemas'}}) {
 	my $psql_name = mySociety::Config::get($psql_conf_prefix.'_DB_NAME');
 	die "$psql_conf_prefix not configured in conf/general file" if !$psql_name;
 	my $psql_user = mySociety::Config::get($psql_conf_prefix.'_DB_USER');
-	my $psql_pass = mySociety::Config::get($psql_conf_prefix.'_DB_PASS');
+	#my $psql_pass = mySociety::Config::get($psql_conf_prefix.'_DB_PASS');
 	
 	chdir $mysociety_dir;
 	shell("cvs", "-Q", "update", "$psql_schema");
 	chdir $mysociety_bin;
-	shell("./psql-schema-compare", $mysociety_dir.'/'.$psql_schema, $conf->{'user'}, $psql_name, $psql_user, $psql_pass, $psql_host, $psql_port);
+    # It isn't safe to pass the password over the command line as that can be
+    # seen by other processes, instead put it in in ~/.pgpass (see
+    # mysociety/bin/generate-pgpass). And no, PGPASSWORD isn't safer, as on
+    # some systems the environment can be seen in other processes.
+	shell("./psql-schema-compare", $mysociety_dir.'/'.$psql_schema, $conf->{'user'}, $psql_name, $psql_user, $psql_host, $psql_port);
 }
 
 # Create httpd configuration stanza
