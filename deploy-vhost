@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.51 2006-10-26 07:38:44 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.52 2006-10-26 09:35:04 francis Exp $';
 
 package main;
 
@@ -118,21 +118,26 @@ shell("chown", "-h", "$user_uid:$user_gid", "$vhost_dir/docs"); # perl's chown d
 my $cvsroot;
 if ($conf->{'cvs_user'} eq "") {
     $cvsroot = "cvs.mysociety.org:/usr/local/cvs";
-} else {
-    $cvsroot = ($conf->{'cvs_user'} eq 'anon' ?
-        ':pserver:anonymous@cvs.mysociety.org:/repos' :
-        $conf->{'cvs_user'} . "\@cvs.mysociety.org:/usr/local/cvs");
+} elsif ($conf->{'cvs_user'} eq 'anon') {
+    $cvsroot = ':pserver:anonymous@cvs.mysociety.org:/repos';
     # for some reason, CVS gives a warning if there is no .cvspass file during 
     # anoncvs client use, so we make an empty file
     if (! -e "$user_home_dir/.cvspass") {
         system("su $conf->{'user'} -c \"touch ~$conf->{'user'}/.cvspass\"");
     }
     # note that anoncvs is now freshly updated automatically by anoncvs-wrapper
+} else {
+    $cvsroot = $conf->{'cvs_user'} . "\@cvs.mysociety.org:/usr/local/cvs";
 }
 foreach my $cvs_dir (@{$conf->{'cvs_dirs'}}) {
     my $d = "$vhost_dir/mysociety/$cvs_dir/CVS";
 	if (! -d $d) {
-		shell("su", "-", $conf->{'user'}, "cd \"$vhost_dir\" && cvs -Q -d \"$cvsroot\" co mysociety/$cvs_dir");
+        if ($conf->{'cvs_user'} eq "") {
+            shell("cd \"$vhost_dir\" && cvs -Q -d \"$cvsroot\" co mysociety/$cvs_dir".
+                 " && chown -R ".$conf->{'user'}.":".$conf->{'user'}." mysociety");
+       } else {
+            shell("su", "-", $conf->{'user'}, "cd \"$vhost_dir\" && cvs -Q -d \"$cvsroot\" co mysociety/$cvs_dir");
+        }
 	} else {
         my $current_root = read_file("$d/Root");
         $current_root =~ s/\s*$//;
@@ -346,7 +351,12 @@ chown($user_uid, $user_gid, "$vhost_dir/docs/down.html");
 # Update from CVS
 foreach my $cvs_dir (@{$conf->{'cvs_dirs'}}) {
 	die "unexpectedly missing cvs directory in update stage" if (! -d "$vhost_dir/mysociety/$cvs_dir/CVS");
-    shell("su", "-", $conf->{'user'}, "cd \"$vhost_dir/mysociety/$cvs_dir\" && cvs -Q update -dP");
+    if ($conf->{'cvs_user'} eq "") {
+        shell("cd \"$vhost_dir/mysociety/$cvs_dir\" && cvs -Q update -dP && 
+            chown -R ".$conf->{'user'}.":".$conf->{'user'}." ../");
+    } else {
+        shell("su", "-", $conf->{'user'}, "cd \"$vhost_dir/mysociety/$cvs_dir\" && cvs -Q update -dP");
+    }
 }
 
 # Run any extra executables
