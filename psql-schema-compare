@@ -2,8 +2,6 @@
 #
 # psql-schema-compare:
 # Compare a schema in a text file with the schema in a live database.
-# Drops tables testharness_mail and testharness_sms first (these are
-# temporary tables made by test scripts, not really in the schema).
 # 
 # Parameters are:
 # $1 - schema SQL file
@@ -38,10 +36,6 @@ su $PSQL_SCHEMATEST_USER -c "psql --file=$1 -q schematest" 2>&1 | grep -v "will 
 su $PSQL_SCHEMATEST_USER -c "pg_dump --schema-only --schema=public -s schematest" | egrep -v "^--|SET SESSION AUTHORIZATION|\\connect - |GRANT ALL|REVOKE ALL|START WITH 1" | grep -v "SET search_path = public, pg_catalog;" | sed "s/,$//;" | grep -v '^[ \t]*$' > $CVS_SCHEMA_FILE
 
 # ... the live database dump
-# first drop testharness tables (which are made by test scripts) if they exist
-su $2 -c "psql -c -U $4 --host $5 --port $6 $3 -c 'drop table testharness_mail'" 2>&1 | egrep -v "does not exist|DROP TABLE" || echo -n
-su $2 -c "psql -c -U $4 --host $5 --port $6 $3 -c 'drop table testharness_sms'" 2>&1 | egrep -v "does not exist|DROP TABLE" || echo -n
-# now make the dump
 su $2 -c "pg_dump --schema-only --schema=public -U $4 --host $5 --port $6 $3" | egrep -v "^--|SET SESSION AUTHORIZATION|\\connect - |GRANT ALL|REVOKE ALL|START WITH 1" | grep -v "SET search_path = public, pg_catalog;" | sed "s/,$//;" | grep -v '^[ \t]*$' > $CURRENT_SCHEMA_FILE
 
 # Note:  Using sort here is completely evil.  It is because
