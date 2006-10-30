@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.52 2006-10-26 09:35:04 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.53 2006-10-30 11:52:09 francis Exp $';
 
 package main;
 
@@ -186,7 +186,6 @@ print FH <<END;
 \$https = '$conf->{'https'}';
 \$fastcgi = '$conf->{'fastcgi'}';
 \$randomly = '/data/mysociety/bin/randomly -p 0.5'; # for crontab
-\$only_one = "[ \\\$(hostname) = 'bitter' ] &&"; # for crontab
 END
 
 print FH Dumper($conf->{conf_dir});
