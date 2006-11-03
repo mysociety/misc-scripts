@@ -1,0 +1,107 @@
+#!/usr/bin/perl -w
+#
+# doit:
+#
+# Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
+# Email: chris@mysociety.org; WWW: http://www.mysociety.org/
+#
+
+my $rcsid = ''; $rcsid .= '$Id: doit,v 1.1 2006-11-03 14:48:54 chris Exp $';
+
+use strict;
+
+package Oops;
+
+use Error;
+
+@Oops::ISA = qw(Error::Simple);
+
+package main;
+
+use FindBin;
+use lib "$FindBin::Bin/../../perllib";
+
+use Cwd;
+use Error qw(:try);
+use File::stat;
+use IO::Dir;
+use mySociety::Util;
+
+my $cvstop = "$FindBin::Bin/../../";
+my $seeddir = $FindBin::Bin;
+
+sub Mkdir ($) {
+    my $dir = shift;
+    throw Oops("$dir: mkdir: $!") if (!mkdir($dir, 0755));
+}
+
+sub System (@) {
+    system(@_);
+    throw Oops(mySociety::Util::describe_waitval($?, join(' ', @_))) if ($?);
+}
+
+sub Install ($$) {
+    my ($src, $dst) = @_;
+    my $st = stat($src)
+        or throw Oops("$src: stat: $!");
+    System('install', '-m', sprintf('%03o', $st->mode() & 0777), $src, $dst);
+}
+
+my $exit = 1;
+my $distdir;
+try {
+    $distdir = mySociety::Util::tempdir()
+        or throw Oops("unable to create temporary directory: $!");
+
+    foreach (qw(t lib lib/Geo)) {
+        Mkdir("$distdir/$_");
+    }
+
+    foreach (qw(Makefile.PL README CHANGES t/simple.t)) {
+        Install("$seeddir/$_", "$distdir/$_");
+    }
+
+    Install("$cvstop/perllib/Geo/HelmertTransform.pm", "$distdir/lib/Geo");
+
+
+    my $thisdir = getcwd() or throw Oops("getcwd: $!");
+    chdir($distdir) or throw Oops("$distdir: chdir: $!");
+
+    System("find . -type f > MANIFEST");
+        # Lazy -- could also "make manifest", but that would include the
+        # Makefile too, which we don't want.
+
+    System(qw(perl Makefile.PL));
+    System(qw(make dist));
+
+    chdir($thisdir) or throw Oops("$thisdir: chdir: $!");
+    
+    # Find the tarfile that has created and copy it back here.
+    my $d = new IO::Dir($distdir)
+        or throw Oops("$distdir: opendir: $!");   
+
+    my $done = 0;
+    while (my $file = $d->read()) {
+        if ($file =~ /\.tar\.gz$/) {
+            Install("$distdir/$file", ".");
+            print "distribution is $file\n";
+            $done = 1;
+            last;
+        }
+    }
+
+    throw Oops("couldn't find distribution tarball in temp dir")
+        if (!$done);
+    
+    $exit = 0;
+} catch Oops with {
+    my $E = shift;
+    print STDERR "doit: ", $E->text(), "\n";
+} otherwise {
+    my $E = shift;
+    print STDERR "doit: unexpected exception: $E\n";
+} finally {
+    mySociety::Util::tempdir_cleanup($distdir) if ($distdir);
+};
+
+exit($exit);
