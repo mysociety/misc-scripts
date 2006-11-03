@@ -1,12 +1,16 @@
 #!/usr/bin/perl -w
 #
 # doit:
+# Generate a CPAN-friendly distribution of Geo::HelmertTransform.
+#
+# XXX consider generating CHANGES from the CVS login messages for the module.
+# Generalise this script for other CPAN modules.
 #
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: doit,v 1.1 2006-11-03 14:48:54 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: doit,v 1.2 2006-11-03 14:51:35 chris Exp $';
 
 use strict;
 
