@@ -10,7 +10,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: doit,v 1.2 2006-11-03 14:51:35 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: doit,v 1.3 2006-11-04 11:22:45 chris Exp $';
 
 use strict;
 
@@ -71,7 +71,7 @@ try {
     my $thisdir = getcwd() or throw Oops("getcwd: $!");
     chdir($distdir) or throw Oops("$distdir: chdir: $!");
 
-    System("find . -type f > MANIFEST");
+    System("find . -type f | sed 's#^\./##' | > MANIFEST");
         # Lazy -- could also "make manifest", but that would include the
         # Makefile too, which we don't want.
 
