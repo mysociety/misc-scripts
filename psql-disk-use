@@ -1,0 +1,28 @@
+#!/bin/bash
+#
+# psql-disk-use:
+# Show how much disk space each database takes up.
+# 
+# Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
+# Email: francis@mysociety.org; WWW: http://www.mysociety.org/
+#
+
+set -e
+
+IDMAP=`tempfile`
+DUFILE=`tempfile`
+DBDIR=`grep POSTGRES_DATA /etc/postgresql/postmaster.conf | sed "s/\"//g;" | cut -d "=" -f 2`
+
+# Get mapping between disk ids and names of databases
+cat <<END | su postgres psql template1 | egrep -v "Output format|rows\)|datid" | sort -n | sed "s/|/ /" > $IDMAP
+\pset format unaligned
+select datid,datname from pg_stat_database
+END
+
+# Get disk space used up by each id
+cd $DBDIR/base
+du -hs * | sed "s/\t/ /g;" | sort -n +1 >$DUFILE
+
+# Merge them together
+join -1 1 -2 2 -t " " -o 1.2,2.1 $IDMAP $DUFILE | sort +0
+
