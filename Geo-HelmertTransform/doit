@@ -10,7 +10,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: doit,v 1.3 2006-11-04 11:22:45 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: doit,v 1.4 2006-11-06 09:00:48 chris Exp $';
 
 use strict;
 
@@ -36,10 +36,12 @@ my $seeddir = $FindBin::Bin;
 
 sub Mkdir ($) {
     my $dir = shift;
+    print STDERR "MKDIR $dir\n";
     throw Oops("$dir: mkdir: $!") if (!mkdir($dir, 0755));
 }
 
 sub System (@) {
+    print STDERR "RUN ", join(' ', @_), "\n";
     system(@_);
     throw Oops(mySociety::Util::describe_waitval($?, join(' ', @_))) if ($?);
 }
@@ -48,6 +50,7 @@ sub Install ($$) {
     my ($src, $dst) = @_;
     my $st = stat($src)
         or throw Oops("$src: stat: $!");
+    print STDERR "INSTALL $dst\n";
     System('install', '-m', sprintf('%03o', $st->mode() & 0777), $src, $dst);
 }
 
@@ -71,7 +74,7 @@ try {
     my $thisdir = getcwd() or throw Oops("getcwd: $!");
     chdir($distdir) or throw Oops("$distdir: chdir: $!");
 
-    System("find . -type f | sed 's#^\./##' | > MANIFEST");
+    System("find . -type f | sed 's#^\./##' > MANIFEST");
         # Lazy -- could also "make manifest", but that would include the
         # Makefile too, which we don't want.
 
