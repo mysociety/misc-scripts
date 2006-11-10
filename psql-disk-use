@@ -9,6 +9,9 @@
 
 set -e
 
+trap '[ x$DUFILE != x ] && rm $DUFILE ; [ x$IDMAP != x ] && rm $IDMAP' EXIT
+
+# XXX tempfile usage is not safe here
 IDMAP=`tempfile`
 DUFILE=`tempfile`
 DBDIR=`grep POSTGRES_DATA /etc/postgresql/postmaster.conf | sed "s/\"//g;" | cut -d "=" -f 2`
