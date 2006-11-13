@@ -18,7 +18,7 @@ DUFILE=`tempfile`
 DBDIR=`grep POSTGRES_DATA /etc/postgresql/postmaster.conf | sed "s/\"//g;" | cut -d "=" -f 2`
 
 # Get mapping between disk ids and names of databases
-cat <<END | su postgres psql template1 | egrep -v "Output format|rows\)|datid" | sort -n | sed "s/|/ /" > $IDMAP
+cat <<END | psql template1 | egrep -v "Output format|rows\)|datid" | sort -n | sed "s/|/ /" > $IDMAP
 \pset format unaligned
 select datid,datname from pg_stat_database
 END
