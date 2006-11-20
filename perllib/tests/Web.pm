@@ -8,7 +8,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Web.pm,v 1.7 2006-10-17 23:21:56 francis Exp $
+# $Id: Web.pm,v 1.8 2006-11-20 07:18:43 francis Exp $
 #
 
 package Web;
@@ -36,6 +36,9 @@ my @pages = qw(
         http://www.hearfromyourmp.com/
         http://www.hearfromyourmp.com/league
         http://www.hearfromyourmp.com/view/message/91
+
+        http://petitions.pm.gov.uk/
+        http://petitions.pm.gov.uk/huntingactrepeal/
 
         https://secure.mysociety.org/
         https://secure.mysociety.org/cvstrac/
