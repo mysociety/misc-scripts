@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: PET.pm,v 1.1 2006-11-20 15:30:26 francis Exp $
+# $Id: PET.pm,v 1.2 2006-11-20 15:33:47 francis Exp $
 #
 
 package PET;
@@ -54,8 +54,8 @@ sub test () {
             time() - dbh()->selectrow_array('
                         select extract(epoch from signtime)
                         from signer
-                        order by signtime desc
                         where emailsent = \'confirmed\'
+                        order by signtime desc
                         limit 1');
 
     # XXX work this out for E-Petitions, at at night vs. day
