@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: cvs-mirror,v 1.6 2006-09-20 21:23:11 chris Exp $
+# $Id: cvs-mirror,v 1.7 2006-12-07 08:33:11 francis Exp $
 #
 
 if [ x$1 = x-h -o x$1 = x--help ] ; then
@@ -33,7 +33,7 @@ lock_repos () {
     repos=$1
     i=0
     # http://ximbiot.com/cvs/manual/cvs-1.11.21/cvs_2.html#SEC17
-    while [ $i -lt 10 ] ; do
+    while [ $i -lt 30 ] ; do
         if mkdir "$repos/#cvs.lock" 2> /dev/null ; then
             locks="$repos/#cvs.lock $locks"
 
