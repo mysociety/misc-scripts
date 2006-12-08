@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: FYR.pm,v 1.8 2006-09-13 13:04:18 francis Exp $
+# $Id: FYR.pm,v 1.9 2006-12-08 11:47:34 francis Exp $
 #
 
 package FYR;
@@ -108,11 +108,11 @@ sub test () {
     printf("last fax was sent %d minutes ago; %d pending\n",
         int($last_fax_age / 60), $n_ready_faxes)
             if ($time ge '08:20' && $time le '20:00'
-                && $n_ready_faxes > 0 && $last_fax_age > 1200);
+                && $n_ready_faxes > 0 && $last_fax_age > 3600);
 
     printf("last email was sent %d minutes ago; %d pending\n",
         int($last_email_age / 60), $n_ready_emails)
-            if ($n_ready_emails > 0 && $last_email_age > 1200);
+            if ($n_ready_emails > 0 && $last_email_age > 3600);
 
     # XXX maybe ought to check for messages being confirmed.
 
