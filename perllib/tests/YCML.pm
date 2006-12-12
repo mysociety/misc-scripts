@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: YCML.pm,v 1.6 2006-09-09 00:25:02 francis Exp $
+# $Id: YCML.pm,v 1.7 2006-12-12 11:42:06 francis Exp $
 #
 
 package YCML;
@@ -56,7 +56,7 @@ sub test () {
     my $time = POSIX::strftime('%H:%M', localtime());
 
     my $age_threshold = 6 * 3600;
-    $age_threshold = 12 * 3600 if ($time lt '09:00' || $time gt '22:00');
+    $age_threshold = 12 * 3600 if ($time lt '10:00' || $time gt '22:00');
 
     my $last_signup_age =
             time() - dbh()->selectrow_array('
