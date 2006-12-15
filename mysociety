@@ -14,17 +14,18 @@ cvs -Q update serverclass
 if [ ! -e /data/servers/serverclass ] ; then
     die "/data/servers/serverclass: No such file or directory"
 fi
-ARCHETYPE=`echo $HOST | cat - /data/servers/serverclass | \
+ARCHETYPES=`echo $HOST | cat - /data/servers/serverclass | \
             sed 's/#.*//' | awk '{
                 if (NR == 1) hostname = $1; 
                 else if ($1 == hostname) print $2
             }'`
-if [ x$ARCHETYPE = x ] ; then
-    die "don't know archetype for this host ($HOST), add to /data/servers/serverclass"
+if [ "x$ARCHETYPES" = "x" ] ; then
+    die "don't know archetypes for this host ($HOST), add to /data/servers/serverclass"
 fi
+PRINCIPLE_ARCHETYPE=`echo $ARCHETYPES | sed "s/ /\n/" | tail --lines=1`
 
-# Obtain list of other servers in same archetype
-SAME_ARCHETYPE=`echo $ARCHETYPE | cat - /data/servers/serverclass | \
+# Obtain list of other servers in same principle archetype
+SAME_ARCHETYPE=`echo $PRINCIPLE_ARCHETYPE | cat - /data/servers/serverclass | \
     sed 's/#.*//' | awk '{
         if (NR == 1) classname = $1; 
         else if ($2 == classname) print $1
@@ -44,14 +45,14 @@ COMMAND is one of:
     config
         Deploy new config for current server from /data/servers/...
     vhost VHOST
-        Deploy latest version of VHOST, e.g. www.pledgebank.com.
+        Deploy latest version of VHOST, e.g. www.pledgebank.com
     test VHOST
         Run test script on VHOST, e.g. testharness.pet.mysociety.org
 
     dns
-        Update the DNS configuration on the current host.
+        Update the DNS configuration on the current host
     email
-        Update the exim virtual mail configuration on the current host.
+        Update the exim virtual mail configuration on the current host
 
     update
         "cvs update" all of /data/servers and /data/mysociety
@@ -61,7 +62,7 @@ COMMAND is one of:
         "cvs diff -u" all of /data/servers and /data/mysociety
 
     class COMMAND
-        Run a command on all machines in the class
+        Run a command on all machines in the same principle class as this one
 
 Extra parameters are passed through to underlying deploy-... script.
 END
@@ -76,11 +77,14 @@ set -e
 case $COMMAND in
     config)
         cd /data/servers
-        cvs -Q update -dP $ARCHETYPE $HOST.pl
-        /data/mysociety/bin/deploy-configuration /data/servers/$ARCHETYPE /data/servers/$HOST.pl "$@"
+        cvs -Q update -dP $HOST.pl
+        for ARCHETYPE in $ARCHETYPES
+        do
+            cvs -Q update -dP $ARCHETYPE
+            /data/mysociety/bin/deploy-configuration /data/servers/$ARCHETYPE /data/servers/$HOST.pl "$@"
+        done
         cp /data/servers/$HOST.pl "/etc/mysociety/config-settings.pl"
-
-        /data/mysociety/bin/deploy-logger "Deployed configuration for archetype \"$ARCHETYPE\" with settings \"$HOST.pl\""
+        /data/mysociety/bin/deploy-logger "Deployed configuration for archetypes \"$ARCHETYPES\" with settings \"$HOST.pl\""
         ;;
         
     vhost)
