@@ -27,7 +27,12 @@ END
 cd $DBDIR/base
 #du -hs * | sed "s/\t/ /g;" | sort -n +1 >$DUFILE
 
-for i in * ; do echo -n "$i " ; find $i -type f | xargs /root/mincore | awk '{ if ($3 > 0) { size += $3 / 1024.; incore += $2 / 1024.; } } END { printf "%.1f%% %.1fMB\n", 100. * incore / size, size / 1024.; }' ; done > $DUFILE
+for i in * ; do echo -n "$i " ; find $i -type f | xargs /root/mincore | awk '{ if ($3 > 0) { size += $3 / 1024.; incore += $2 / 1024.; } } END { printf "%.1f%% %.1fMB\n", 100. * incore / size, size / 1024.; }' ; done | sort -n > $DUFILE
+
+#echo "DUFILE $DUFILE"
+#cat $DUFILE
+#echo "IDMAP $IDMAP"
+#cat $IDMAP
 
 # Merge them together
 join -j 1 -t " " -o 1.2,2.2,2.3 $IDMAP $DUFILE | sort +0
