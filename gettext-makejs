@@ -4,6 +4,7 @@ use strict;
 my %langs = (
     'cy_GB' => 'cy',
     'de_DE' => 'de',
+    'en_GB' => 'en-gb',
     'it_IT' => 'it',
     'nl_NL' => 'nl',
     'es_ES' => 'es',
@@ -15,8 +16,12 @@ my %langs = (
     'fr_FR' => 'fr',
 );
 
-for (<locale/*.*-8/LC_MESSAGES/PledgeBank.po>) {
+for (<locale/*.UTF-8/LC_MESSAGES/PledgeBank*.po>) {
+    #print $_ . "\n";
     my ($lang) = /locale\/(.*?)\./;
+    my ($microsite) = /PledgeBank(.*?)\.po$/;
+    $microsite = ".".(lc $microsite) if $microsite;
+    #print $lang . " $microsite\n";
     open(FP, $_) or die $!;
     my $out = '';
     while (<FP>) {
@@ -55,7 +60,7 @@ for (<locale/*.*-8/LC_MESSAGES/PledgeBank.po>) {
     }
     close FP;
     $out = substr($out, 0, -2);
-    open (FP, ">pb/web/js/pb.$langs{$lang}.js") or die $!;
+    open (FP, ">pb/web/js/pb.$langs{$lang}${microsite}.js") or die $!;
     print FP <<EOF;
 /*
  * pb.$langs{$lang}.js
@@ -73,3 +78,4 @@ EOF
     print FP "\n}\n";
     close FP;
 }
+
