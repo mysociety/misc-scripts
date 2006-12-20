@@ -1,0 +1,52 @@
+#!/usr/bin/perl -w
+
+# Measure how much traffic is on each vhost
+
+use strict;
+use Data::Dumper;
+
+#ls -lH */logs/access_log
+
+# get count of lines in log files on all the vhosts
+sub get_log_counts {
+    my %logc;
+    my $shout = `wc -l /data/vhost/*/logs/access_log`;
+    my @lines = split("\n", $shout);
+    foreach (@lines) {
+        $_ =~ s/^\s+//;
+        $_ =~ s/\s+$//;
+        my ($linec, $vhost) = split(/\s/, $_);
+        $vhost =~ s#/data/vhost/##;
+        $vhost =~ s#/logs/access_log##;
+#        print $linec . $vhost."\n";
+        $logc{$vhost} = $linec;
+    }
+    return \%logc;
+}
+
+my $last_logc;
+while(1) {
+    my $logc = get_log_counts();
+    my @vhosts = keys %$logc;
+    # find change since last time
+    my %diff;
+    foreach (@vhosts) {
+        if ($last_logc->{$_}) {
+            $diff{$_} = $logc->{$_} - $last_logc->{$_};
+        } else {
+            $diff{$_} = 0;
+        }
+    }
+    # sort by delta
+    @vhosts = sort { $diff{$a} <=> $diff{$b} } @vhosts;
+    # display
+    foreach (@vhosts) {
+        print $diff{$_} . "\t" . $_ . "\n";
+    }
+    #print Dumper(\@vhosts);
+    $last_logc = $logc;
+    sleep 5;
+    print "\n";
+}
+
+
