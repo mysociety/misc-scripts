@@ -8,7 +8,7 @@ set -e
 # if new servers are added that serve any of the hosts.
 VHOSTS="www.mysociety.org www.mysociety.co.uk www.writetothem.com www.pledgebank.com www.hearfromyourmp.com petitions.pm.gov.uk"
 AWSTATS_SERVER=bitter
-OTHER_SERVERS="tea"
+OTHER_SERVERS="tea balti"
 
 # Global config
 CACHE_DIR=/var/cache/process-logfiles
@@ -27,9 +27,9 @@ do
     echo "\$awstats_vhost = \"$VHOST\"; \$awstats_vhost_aliases = \"$VHOST_ALIAS\";" | /data/mysociety/bin/mugly -O /etc/awstats/awstats.$VHOST.conf -p - /etc/awstats/awstats.template.conf
 done
 
-# Exit unless we're on bitter
-if [ $( hostname ) != bitter ] ; then
-    # echo "process-logfiles: exiting as not on bitter"
+# Exit unless we're on the awstats server
+if [ $( hostname ) != $AWSTATS_SERVER ] ; then
+    # echo "process-logfiles: exiting as not on $AWSTATS_SERVER"
     exit
 fi
 
