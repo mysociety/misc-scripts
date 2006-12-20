@@ -1,6 +1,7 @@
 #!/usr/bin/perl -w
 
-# Measure how much traffic is on each vhost
+# Measure how much traffic is on each vhost, by counting log file lines,
+# sorting them, and comparing it every few seconds.
 
 use strict;
 use Data::Dumper;
@@ -24,6 +25,7 @@ sub get_log_counts {
     return \%logc;
 }
 
+# main loop, print output every so many seconds
 my $last_logc;
 while(1) {
     my $logc = get_log_counts();
