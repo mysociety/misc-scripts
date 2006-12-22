@@ -8,7 +8,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Web.pm,v 1.8 2006-11-20 07:18:43 francis Exp $
+# $Id: Web.pm,v 1.9 2006-12-22 22:55:48 francis Exp $
 #
 
 package Web;
@@ -25,9 +25,15 @@ my @pages = qw(
         http://www.mysociety.org/moin.cgi
         http://www.mysociety.org/volunteertasks?skills=nontech
 
+        http://www.mysociety.co.uk/
+
         http://www.pledgebank.com/
         http://www.pledgebank.com/rights
         http://www.pledgebank.com/faq
+        http://promise.livesimply.org.uk/
+
+        http://www.theyworkforyou.com/
+        http://www.theyworkforyou.com/mp/tony_blair/sedgefield
 
         http://www.writetothem.com/
         http://www.writetothem.com/who?pc=CB4+1EP
@@ -36,6 +42,8 @@ my @pages = qw(
         http://www.hearfromyourmp.com/
         http://www.hearfromyourmp.com/league
         http://www.hearfromyourmp.com/view/message/91
+
+        http://www.downingstreetsays.com/
 
         http://petitions.pm.gov.uk/
         http://petitions.pm.gov.uk/huntingactrepeal/
