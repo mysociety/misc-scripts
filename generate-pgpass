@@ -11,7 +11,7 @@
 # Who can access what databases
 my $database_permissions_bitter_tea = {
     # All-seeing power
-    'root' => ['pb', 'ycml', 'rt', 'gaze', 'dadem', 'evel', 'mapit', 'ratty', 'fyr', 'pb-interface', 'pb-livesimply', 'pb-staging', 'mswww', 'track', 'list', 'pet', 'pet-testharness'],
+    'root' => ['pb', 'ycml', 'rt', 'gaze', 'dadem', 'evel', 'mapit', 'ratty', 'fyr', 'pb-interface', 'pb-livesimply', 'pb-o2', 'pb-staging', 'mswww', 'track', 'list', 'pet', 'pet-testharness'],
      
     # People
     'francis' => ['fyr','pb','ycml','mapit','dadem','ratty','evel','mswww'],
@@ -25,6 +25,7 @@ my $database_permissions_bitter_tea = {
     # Sites
     'pb' => ['pb','pb-staging','pb-interface'],
     'pb-livesimply' => ['pb-livesimply'],
+    'pb-o2' => ['pb-o2'],
     'ycml' => ['ycml','ycml-staging'],
     'fyr' => ['fyr','fyr-staging'],
     'pet' => ['pet','pet-staging'],
@@ -64,7 +65,7 @@ if ($server eq 'bitter' || $server eq 'tea') {
 	die "generate-pgpass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.37 2006-12-20 19:45:12 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.38 2006-12-23 10:43:13 matthew Exp $';
 
 use strict;
 require 5.8.0;
