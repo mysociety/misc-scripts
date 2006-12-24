@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Memory.pm,v 1.1 2006-03-24 18:28:14 chris Exp $
+# $Id: Memory.pm,v 1.2 2006-12-24 00:55:07 francis Exp $
 #
 
 package Memory;
@@ -19,6 +19,10 @@ use constant MIN_MEM_FRACTION => 0.01;
 use constant MIN_SWAP_FRACTION => 0.5;
 
 sub test () {
+    # XXX the format of /proc/meminfo seems to differ between 2.4 and 2.6
+    # series kernels (or some other configuration difference). This test
+    # is currently coded for 2.4 kernels.
+    
     my $f = new IO::File('/proc/meminfo', O_RDONLY);
     if (!$f) {
         print "/proc/meminfo: open: $!\n";
