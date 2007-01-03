@@ -5,19 +5,34 @@
 #
 # Arguments are the message to log, as in echo(1).
 #
-# $Id: deploy-logger,v 1.5 2006-10-03 09:03:15 francis Exp $
+# $Id: deploy-logger,v 1.6 2007-01-03 13:26:24 francis Exp $
 #
 
 HOST=`hostname`
-LOGFILE_PATH=/data/servers/state/$HOST/
+STATE_PATH=/data/servers/state
 LOGFILE=deploy-log
 DATELOG=`date +"%Y-%m-%d %X"`
 WHO=$SUDO_USER
 [ "$WHO" = "" ] && WHO=$USER
 
-cd $LOGFILE_PATH
+# Create and add to CVS if we're a new server
+if [ ! -e "$STATE_PATH/$HOST" ]
+then
+    cd $STATE_PATH
+    mkdir $HOST
+    cvs add $HOST
+fi
+cd $STATE_PATH/$HOST
+if [ ! -e "$LOGFILE" ]
+then
+    touch $LOGFILE
+    cvs add $LOGFILE
+fi
+
+# Add new entry to end of log file
 echo "$DATELOG $WHO-" "$@" >>$LOGFILE
 
+# Commit it
 cvs -Q commit -m "deploy-logger: $@" $LOGFILE | grep -v "Mailing the commit message to"
 
 exit 0 # otherwise it exits with code of grep
