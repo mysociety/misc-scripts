@@ -22,10 +22,10 @@ ARCHETYPES=`echo $HOST | cat - /data/servers/serverclass | \
 if [ "x$ARCHETYPES" = "x" ] ; then
     die "don't know archetypes for this host ($HOST), add to /data/servers/serverclass"
 fi
-PRINCIPLE_ARCHETYPE=`echo $ARCHETYPES | sed "s/ /\n/" | tail --lines=1`
+PRINCIPAL_ARCHETYPE=`echo $ARCHETYPES | sed "s/ /\n/" | tail --lines=1`
 
-# Obtain list of other servers in same principle archetype
-SAME_ARCHETYPE=`echo $PRINCIPLE_ARCHETYPE | cat - /data/servers/serverclass | \
+# Obtain list of other servers in same principal archetype
+SAME_ARCHETYPE=`echo $PRINCIPAL_ARCHETYPE | cat - /data/servers/serverclass | \
     sed 's/#.*//' | awk '{
         if (NR == 1) classname = $1; 
         else if ($2 == classname) print $1
@@ -62,7 +62,7 @@ COMMAND is one of:
         "cvs diff -u" all of /data/servers and /data/mysociety
 
     class COMMAND
-        Run a command on all machines in the same principle class as this one
+        Run a command on all machines in the same principal class as this one
 
 Extra parameters are passed through to underlying deploy-... script.
 END
