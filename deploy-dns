@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.19 2006-10-23 08:49:46 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.20 2007-01-04 17:37:24 francis Exp $';
 
 use strict;
 
@@ -294,7 +294,8 @@ EOF
     # there are any such before we get to this stage.
     my @cmd = qw(/data/mysociety/bin/deploy-configuration
                 --no-check-existing
-                --target /var/named/master);
+                --target /var/named/master
+                --save-file /var/lib/deploy-dns.tar);
     push(@cmd, "--verbose") if ($be_verbose);
     push(@cmd, qw(/data/servers/dns /dev/null));
     verbose("args to deploy-configuration: ", join(" ", @cmd), "\n");

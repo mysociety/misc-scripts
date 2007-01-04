@@ -20,7 +20,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.46 2007-01-03 13:26:24 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.47 2007-01-04 17:37:24 francis Exp $';
 
 package Oops;
 
@@ -62,7 +62,7 @@ my $default_dir_mode = 0750;
 
 my $mugly_bin = "$FindBin::Bin/mugly";
 
-my $save_file = "/var/lib/deploy-configuration.tar";
+my $save_file;
 
 sub System (@) {
     system(@_);
@@ -551,6 +551,7 @@ sub compare_installed_files ($$$) {
     foreach my $f ($tar->list_files([qw(prefix name type uid gid mode linkname devmajor devminor)])) {
         my $name = "$f->{prefix}/$f->{name}";
         my $st = lstat("$dir/$name");
+        verbose("CHECKING $dir/$name\n");
         my @what;
         if (!$st) {
             if ($!{ENOENT}) {
@@ -653,6 +654,9 @@ try {
 
     throw Oops("--check-new does not make sense with --check-existing")
         if ($only_check_existing && $only_check_new);
+
+    throw Oops("--save-file required, e.g. /var/lib/deploy-configuration.tar")
+        if (!$save_file);
 
     throw Oops("can't find executable mugly (tried $mugly_bin)")
         unless ($only_check_existing || -x $mugly_bin);
@@ -831,9 +835,8 @@ SETTINGS; do not check the existing files or install the new ones.
 
 =item --save-file TARFILE
 
-Save the newly-installed configuration files in TARFILE, rather than the
-default location (/var/lib/deploy-configuration.tar); also read the previous
-files from that location.
+Save the newly-installed configuration files in TARFILE and read the previous
+files from that location. Required unless doing --no-check-existing.
 
 =item --mugly-path PATH
 

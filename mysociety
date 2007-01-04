@@ -78,10 +78,25 @@ case $COMMAND in
     config)
         cd /data/servers
         cvs -Q update -dP $HOST.pl
+        # first, check existing configurations (so you see all errors from an archetype)
+        if [ "$1" != "--no-check-existing" ] # XXX should check all parameters
+        then
+            FAILED=no
+            for ARCHETYPE in $ARCHETYPES
+            do
+                cvs -Q update -dP $ARCHETYPE
+                /data/mysociety/bin/deploy-configuration --check-existing --save-file=/var/lib/deploy-configuration-$ARCHETYPE.tar /data/servers/$ARCHETYPE /data/servers/$HOST.pl "$@" || FAILED=yes
+            done
+            if [ "$FAILED" = "yes" ]
+            then
+                echo "check failed for at least one archetype, not installing files"
+                exit
+            fi
+        fi
+        # now, install everything
         for ARCHETYPE in $ARCHETYPES
         do
-            cvs -Q update -dP $ARCHETYPE
-            /data/mysociety/bin/deploy-configuration /data/servers/$ARCHETYPE /data/servers/$HOST.pl "$@"
+            /data/mysociety/bin/deploy-configuration --save-file=/var/lib/deploy-configuration-$ARCHETYPE.tar /data/servers/$ARCHETYPE /data/servers/$HOST.pl "$@"
         done
         cp /data/servers/$HOST.pl "/etc/mysociety/config-settings.pl"
         /data/mysociety/bin/deploy-logger "Deployed configuration for archetypes \"$ARCHETYPES\" with settings \"$HOST.pl\""
