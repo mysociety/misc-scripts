@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.53 2006-10-30 11:52:09 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.54 2007-01-06 21:41:49 francis Exp $';
 
 package main;
 
@@ -201,14 +201,6 @@ print FH "\$redirects = \$VAR1;\n";
 print FH Dumper($conf->{'aliases'});
 print FH "\$aliases = \$VAR1;\n";
 print FH <<END;
-
-sub pgpw {
-    \$_ = shift;
-    \$_ = `$mysociety_bin/pgpw \$_`;
-    s/\\s+\$//;
-    return \$_;
-}
-
 
 # ---------------------------------------------------------
 # Settings from here on are copied from:

@@ -76,8 +76,22 @@ set -e
 
 case $COMMAND in
     config)
+        # update and make the settings file
+        SETTINGS_FILE=/etc/mysociety/config-settings.pl
         cd /data/servers
         cvs -Q update -dP $HOST.pl
+        cp /data/servers/$HOST.pl $SETTINGS_FILE
+        cat >>$SETTINGS_FILE <<END
+
+            sub pgpw {
+                \$_ = shift;
+                \$_ = \`/data/mysociety/bin/pgpw \$_\`;
+                s/\\s+\$//;
+                return \$_;
+            }
+            
+END
+
         # first, check existing configurations (so you see all errors from an archetype)
         if [ "$1" != "--no-check-existing" ] # XXX should check all parameters
         then
@@ -85,7 +99,7 @@ case $COMMAND in
             for ARCHETYPE in $ARCHETYPES
             do
                 cvs -Q update -dP $ARCHETYPE
-                /data/mysociety/bin/deploy-configuration --check-existing --save-file=/var/lib/deploy-configuration-$ARCHETYPE.tar /data/servers/$ARCHETYPE /data/servers/$HOST.pl "$@" || FAILED=yes
+                /data/mysociety/bin/deploy-configuration --check-existing --save-file=/var/lib/deploy-configuration-$ARCHETYPE.tar /data/servers/$ARCHETYPE $SETTINGS_FILE "$@" || FAILED=yes
             done
             if [ "$FAILED" = "yes" ]
             then
@@ -96,9 +110,8 @@ case $COMMAND in
         # now, install everything
         for ARCHETYPE in $ARCHETYPES
         do
-            /data/mysociety/bin/deploy-configuration --save-file=/var/lib/deploy-configuration-$ARCHETYPE.tar /data/servers/$ARCHETYPE /data/servers/$HOST.pl "$@"
+            /data/mysociety/bin/deploy-configuration --save-file=/var/lib/deploy-configuration-$ARCHETYPE.tar /data/servers/$ARCHETYPE $SETTINGS_FILE "$@"
         done
-        cp /data/servers/$HOST.pl "/etc/mysociety/config-settings.pl"
         /data/mysociety/bin/deploy-logger "Deployed configuration for archetypes \"$ARCHETYPES\" with settings \"$HOST.pl\""
         ;;
         
