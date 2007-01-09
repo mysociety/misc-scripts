@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.57 2007-01-09 19:17:58 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.58 2007-01-09 21:10:20 louise Exp $';
 
 package main;
 
@@ -288,7 +288,6 @@ foreach my $conf_dir (@{$conf->{conf_dir}}) {
             # any given conf file, as long as it's in one of them
             if ($psql_name){
                 
-                print STDERR "checking $psql_name using $conf_file";
                 if (exists($unchecked_schemas{$psql_conf_prefix})){ 
                     delete $unchecked_schemas{$psql_conf_prefix};
                 }
