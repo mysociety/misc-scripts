@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.54 2007-01-06 21:41:49 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.55 2007-01-09 18:59:05 louise Exp $';
 
 package main;
 
@@ -229,6 +229,9 @@ foreach my $daemon (keys %{$conf->{'daemons'}}) {
     system("update-rc.d $daemon defaults | grep -v \"System startup links for .* already exist\"");
 }
 
+# Make a list of all the psql schemas to be checked
+my %unchecked_schemas = map {$_ => 1} keys %{$conf->{'psql_schemas'}};
+
 # Generate conf/general file from its template file
 foreach my $conf_dir (@{$conf->{conf_dir}}) {
     my $conf_file = "$vhost_dir/mysociety/$conf_dir/general"; # destination file
@@ -274,29 +277,41 @@ foreach my $conf_dir (@{$conf->{conf_dir}}) {
         # now we use this configuration
         mySociety::Config::set_file($conf_file);
         umask($old_umask);
+        
+        
+        # Check pgsql databases are up to date
+        foreach my $psql_conf_prefix (keys %{$conf->{'psql_schemas'}}) {
+            my $psql_schema = $conf->{'psql_schemas'}->{$psql_conf_prefix};
+            my $psql_name = mySociety::Config::get($psql_conf_prefix.'_DB_NAME');
+
+            # It's OK for the configuration info for a DB to be absent from
+            # any given conf file, as long as it's in one of them
+            if ($psql_name){
+                
+                if (exists($unchecked_schemas{$psql_conf_prefix})){ 
+                    delete $unchecked_schemas{$psql_conf_prefix};
+                }
+
+                my $psql_host = mySociety::Config::get($psql_conf_prefix.'_DB_HOST', 'localhost');
+                my $psql_port = mySociety::Config::get($psql_conf_prefix.'_DB_PORT', 5432);
+                my $psql_user = mySociety::Config::get($psql_conf_prefix.'_DB_USER');
+	
+                chdir $mysociety_dir;
+                shell("cvs", "-Q", "update", "$psql_schema");
+                chdir $mysociety_bin;
+                # It isn't safe to pass the password over the command line as that can be
+                # seen by other processes, instead put it in in ~/.pgpass (see
+                # mysociety/bin/generate-pgpass). And no, PGPASSWORD isn't safer, as on
+                # some systems the environment can be seen in other processes.
+                shell("./psql-schema-compare", $mysociety_dir.'/'.$psql_schema, $conf->{'user'}, $psql_name, $psql_user, $psql_host, $psql_port);
+            }
+        }
     }
 }
 
-# Check pgsql databases are up to date
-# XXX this is broken for multiple conf_dir too.
-foreach my $psql_conf_prefix (keys %{$conf->{'psql_schemas'}}) {
-	my $psql_schema = $conf->{'psql_schemas'}->{$psql_conf_prefix};
-
-	my $psql_host = mySociety::Config::get($psql_conf_prefix.'_DB_HOST', 'localhost');
-	my $psql_port = mySociety::Config::get($psql_conf_prefix.'_DB_PORT', 5432);
-	my $psql_name = mySociety::Config::get($psql_conf_prefix.'_DB_NAME');
-	die "$psql_conf_prefix not configured in conf/general file" if !$psql_name;
-	my $psql_user = mySociety::Config::get($psql_conf_prefix.'_DB_USER');
-	#my $psql_pass = mySociety::Config::get($psql_conf_prefix.'_DB_PASS');
-	
-	chdir $mysociety_dir;
-	shell("cvs", "-Q", "update", "$psql_schema");
-	chdir $mysociety_bin;
-    # It isn't safe to pass the password over the command line as that can be
-    # seen by other processes, instead put it in in ~/.pgpass (see
-    # mysociety/bin/generate-pgpass). And no, PGPASSWORD isn't safer, as on
-    # some systems the environment can be seen in other processes.
-	shell("./psql-schema-compare", $mysociety_dir.'/'.$psql_schema, $conf->{'user'}, $psql_name, $psql_user, $psql_host, $psql_port);
+# exit if there are any schemas not covered by a config
+foreach my $unchecked_schema (keys %unchecked_schemas) {
+    die "$unchecked_schema not configured in conf/general file(s)";
 }
 
 # Create httpd configuration stanza
