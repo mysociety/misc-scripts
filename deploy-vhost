@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.55 2007-01-09 18:59:05 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.56 2007-01-09 19:08:15 louise Exp $';
 
 package main;
 
@@ -282,7 +282,7 @@ foreach my $conf_dir (@{$conf->{conf_dir}}) {
         # Check pgsql databases are up to date
         foreach my $psql_conf_prefix (keys %{$conf->{'psql_schemas'}}) {
             my $psql_schema = $conf->{'psql_schemas'}->{$psql_conf_prefix};
-            my $psql_name = mySociety::Config::get($psql_conf_prefix.'_DB_NAME');
+            my $psql_name = mySociety::Config::get($psql_conf_prefix.'_DB_NAME', 0);
 
             # It's OK for the configuration info for a DB to be absent from
             # any given conf file, as long as it's in one of them
