@@ -26,14 +26,15 @@ set -e
 # XXX use of mktemp here not safe; should make a temporary directory
 CVS_SCHEMA_FILE=`mktemp /tmp/ms-deploy-cvsschema.XXXXXX`
 CURRENT_SCHEMA_FILE=`mktemp /tmp/ms-deploy-currentschema.XXXXXX`
-PSQL_SCHEMATEST_USER=postgres
+POSTGRES=postgres
+SCHEMATEST=schematest_`hostname`
 
-# load file schema into a temporary place to dump it
-# in the same format as ...
-su $PSQL_SCHEMATEST_USER -c "dropdb -q schematest" || warn "schematest already dropped, continuing"
-su $PSQL_SCHEMATEST_USER -c "createdb -q schematest"
-su $PSQL_SCHEMATEST_USER -c "psql --file=$1 -q schematest" 2>&1 | grep -v "will create implicit" && echo -n 
-su $PSQL_SCHEMATEST_USER -c "pg_dump --schema-only --schema=public -s schematest" | egrep -v "^--|SET SESSION AUTHORIZATION|\\connect - |GRANT ALL|REVOKE ALL|START WITH 1" | grep -v "SET search_path = public, pg_catalog;" | sed "s/,$//;" | grep -v '^[ \t]*$' > $CVS_SCHEMA_FILE
+# load file schema into a temporary place to dump it in the same format as ...
+ssh $5 su $POSTGRES -c \""dropdb -q $SCHEMATEST"\" || warn "$SCHEMATEST already dropped, continuing"
+ssh $5 su $POSTGRES -c \""createdb -q $SCHEMATEST"\"
+cat $1 | ssh $5 su $POSTGRES -c \""psql --file=- -q $SCHEMATEST"\" 2>&1 | grep -v "will create implicit" && echo -n 
+ssh $5 su $POSTGRES -c \""pg_dump --schema-only --schema=public -s $SCHEMATEST"\" | egrep -v "^--|SET SESSION AUTHORIZATION|\\connect - |GRANT ALL|REVOKE ALL|START WITH 1" | grep -v "SET search_path = public, pg_catalog;" | sed "s/,$//;" | grep -v '^[ \t]*$' > $CVS_SCHEMA_FILE
+ssh $5 su $POSTGRES -c \""dropdb -q $SCHEMATEST"\"
 
 # ... the live database dump
 su $2 -c "pg_dump --schema-only --schema=public -U $4 --host $5 --port $6 $3" | egrep -v "^--|SET SESSION AUTHORIZATION|\\connect - |GRANT ALL|REVOKE ALL|START WITH 1" | grep -v "SET search_path = public, pg_catalog;" | sed "s/,$//;" | grep -v '^[ \t]*$' > $CURRENT_SCHEMA_FILE
