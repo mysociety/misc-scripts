@@ -6,7 +6,7 @@
 # Copyright (c) 2004 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: backup-stuff,v 1.20 2007-01-20 18:35:14 francis Exp $
+# $Id: backup-stuff,v 1.21 2007-01-20 19:25:16 francis Exp $
 #
 
 set -e
@@ -31,7 +31,7 @@ fi
 # Delete every database backup older than 6 months
 deleteweekly="fyr"
 oneweekback=$( date +%Y%m%dT%H%M%S --date='1 week ago')
-oneyearback=$( date +%Y%m%dT%H%M%S --date='6 months ago')
+sixmonthsback=$( date +%Y%m%dT%H%M%S --date='6 months ago')
 for X in _data_backups_dailydb_????????T??????; do
     # Delete older than a week
     if [[ "$X" < "_data_backups_dailydb_$oneweekback" ]]; then
@@ -43,12 +43,11 @@ for X in _data_backups_dailydb_????????T??????; do
         done
         chmod u-w $X
     fi
-    # Delete older than a year
-    if [[ "$X" < "_data_backups_dailydb_$oneyearback" ]]; then
-        echo "delete yearly: $X"
+    # Delete older than six months
+    if [[ "$X" < "_data_backups_dailydb_$sixmonthsback" ]]; then
+        echo "delete six monthly: $X"
         chmod u+w $X
         rm -fr $X
-        chmod u-w $X
     fi
 done
 
