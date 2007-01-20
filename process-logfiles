@@ -8,7 +8,7 @@ set -e
 # if new servers are added that serve any of the hosts.
 VHOSTS="www.mysociety.org www.mysociety.co.uk www.writetothem.com www.pledgebank.com www.hearfromyourmp.com petitions.pm.gov.uk"
 AWSTATS_SERVER=bitter
-OTHER_SERVERS="tea balti"
+OTHER_SERVERS="tea balti water whisky"
 
 # Global config
 CACHE_DIR=/var/cache/process-logfiles
