@@ -6,7 +6,7 @@
 # Copyright (c) 2004 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: backup-stuff,v 1.19 2007-01-06 11:47:37 francis Exp $
+# $Id: backup-stuff,v 1.20 2007-01-20 18:35:14 francis Exp $
 #
 
 set -e
@@ -28,10 +28,10 @@ else
 fi
 
 # Delete old backups of some databases weekly for privacy
-# Delete every database backup older than a year
+# Delete every database backup older than 6 months
 deleteweekly="fyr"
 oneweekback=$( date +%Y%m%dT%H%M%S --date='1 week ago')
-oneyearback=$( date +%Y%m%dT%H%M%S --date='1 year ago')
+oneyearback=$( date +%Y%m%dT%H%M%S --date='6 months ago')
 for X in _data_backups_dailydb_????????T??????; do
     # Delete older than a week
     if [[ "$X" < "_data_backups_dailydb_$oneweekback" ]]; then
@@ -51,8 +51,6 @@ for X in _data_backups_dailydb_????????T??????; do
         chmod u-w $X
     fi
 done
-
-# TODO: Maybe delete year / two year old file backups as well
 
 # Get daily copy of backups from server
 for thing in /data/backups/dailydb /data/backups/dailyfiles; do
