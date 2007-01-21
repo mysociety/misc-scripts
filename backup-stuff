@@ -6,7 +6,7 @@
 # Copyright (c) 2004 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: backup-stuff,v 1.21 2007-01-20 19:25:16 francis Exp $
+# $Id: backup-stuff,v 1.22 2007-01-21 12:11:38 francis Exp $
 #
 
 set -e
@@ -14,13 +14,15 @@ PATH=/software/bin:$PATH
 
 RSYNC_RSH=ssh
 export RSYNC_RSH
-rsyncopts=-raq
+# --delete is to delete files no longer in the backup, but in previous copy we
+# use to speed up backup
+rsyncopts="-raq --delete"
 
 if tty 2>&1 > /dev/null ; then
     function debug () {
         echo "backup-cvs:" "$@" 1>&2
     }
-    rsyncopts=-rav
+    rsyncopts="-rav --delete"
 else
     function debug () {
         :
@@ -50,6 +52,15 @@ for X in _data_backups_dailydb_????????T??????; do
         rm -fr $X
     fi
 done
+# .. and old backups of files
+for X in _data_backups_dailyfiles_????????T??????; do
+    # Delete older than six months
+    if [[ "$X" < "_data_backups_dailyfiles_$sixmonthsback" ]]; then
+        echo "delete six monthly: $X"
+        chmod u+w $X
+        rm -fr $X
+    fi
+done
 
 # Get daily copy of backups from server
 for thing in /data/backups/dailydb /data/backups/dailyfiles; do
@@ -70,6 +81,7 @@ for thing in /data/backups/dailydb /data/backups/dailyfiles; do
 
     trap "echo 'backup of $thing failed' 1>&2 ; rm -rf $target; exit 1" EXIT
 
+    # make copy of previous backup to speed things up
     if [ x$latest != x ] ; then
         cp -al $latest $target
     else
