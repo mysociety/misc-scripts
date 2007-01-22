@@ -9,6 +9,7 @@ set -e
 VHOSTS="www.mysociety.org www.mysociety.co.uk www.writetothem.com www.pledgebank.com www.hearfromyourmp.com petitions.pm.gov.uk"
 AWSTATS_SERVER=bitter
 OTHER_SERVERS="tea balti water whisky"
+OTHER_SECURE_MYSOCIETY_ORG="tea"
 
 # Global config
 CACHE_DIR=/var/cache/process-logfiles
@@ -50,8 +51,8 @@ do
     LOG_FILES=`find $CACHE_DIR -type f | grep "/$VHOST-.*/" | grep -v $TODAY`
     /usr/bin/mergelog $LOG_FILES | $AWSTATS -update -config=$VHOST >/dev/null
 
-    # Copy awstats output to other servers
-    for SERVER in $OTHER_SERVERS
+    # Copy awstats output to other servers which serve secure.mysociety.org
+    for SERVER in $OTHER_SECURE_MYSOCIETY_ORG
     do
         rsync --rsh="ssh" --archive $AWSTATS_OUTPUT_DIR/ $SERVER:$AWSTATS_OUTPUT_DIR
     done
