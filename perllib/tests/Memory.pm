@@ -1,12 +1,12 @@
 #!/usr/bin/perl
 #
 # Memory.pm:
-# Test for available memory.
+# Test to make sure undue amount of swap aren't being used.
 #
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Memory.pm,v 1.2 2006-12-24 00:55:07 francis Exp $
+# $Id: Memory.pm,v 1.3 2007-01-23 11:50:41 francis Exp $
 #
 
 package Memory;
@@ -15,17 +15,15 @@ use strict;
 
 use IO::File;
 
-use constant MIN_MEM_FRACTION => 0.01;
-use constant MIN_SWAP_FRACTION => 0.5;
+use constant MIN_SWAP_FRACTION => 0.75; # % of swap that must be free
 
 sub test () {
-    # XXX the format of /proc/meminfo seems to differ between 2.4 and 2.6
-    # series kernels (or some other configuration difference). This test
-    # is currently coded for 2.4 kernels.
+    # The format of /proc/meminfo differs between 2.4 and 2.6 series kernels
+    # (or some other configuration difference). So we use /proc/swaps instead.
     
-    my $f = new IO::File('/proc/meminfo', O_RDONLY);
+    my $f = new IO::File('/proc/swaps', O_RDONLY);
     if (!$f) {
-        print "/proc/meminfo: open: $!\n";
+        print "/proc/swaps: open: $!\n";
         return;
     }
     $f->getline();
@@ -34,29 +32,22 @@ sub test () {
     my $mem;
     $mem = $f->getline();
     if (!$mem) {
-        print "/proc/meminfo: read: $!\n";
+        print "/proc/swaps: read: $!\n";
         return;
     }
     chomp($mem);
-    my ($label, $total, $used, $free, $shared, $buffers, $cached) = split(/\s+/, $mem);
-    if ($free / $total < MIN_MEM_FRACTION) {
-        printf "memory: only %d / %dMB (%.1f%% < %.1f%%) free\n",
-                $free / (1024 * 1024), $total / (1024 * 1024),
-                100 * $free / $total,
-                100 * MIN_MEM_FRACTION;
-    }
-    $mem = $f->getline();
-    if (!$mem) {
-        print "/proc/meminfo: read: $!\n";
-        return;
-    }
-    chomp($mem);
-    ($label, $total, $used, $free, $shared, $buffers, $cached) = split(/\s+/, $mem);
+    my ($device, $type, $total, $used, $priority) = split(/\s+/, $mem);
+    my $free = ($total - $used);
     if ($free / $total < MIN_SWAP_FRACTION) {
         printf "swap: only %d / %dMB (%.1f%% < %.1f%%) free\n",
                 $free / (1024 * 1024), $total / (1024 * 1024),
                 100 * $free / $total,
                 100 * MIN_SWAP_FRACTION;
+    }
+
+    # check there are no more swap devices
+    if ($f->getline()) {
+        printf "swap: there are multiple swap devices\n";
     }
 }
 
