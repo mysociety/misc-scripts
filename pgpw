@@ -15,7 +15,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: pgpw,v 1.2 2005-12-15 21:50:25 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: pgpw,v 1.3 2007-01-23 14:12:52 francis Exp $';
 
 use strict;
 
@@ -50,7 +50,7 @@ foreach my $file ($ENV{PGSECRET}, '/etc/mysociety/postgres_secret', '/usr/local/
 }
 
 if (!defined($secret)) {
-    print STDERR "pgpw: no secret file found\n";
+    print STDERR "pgpw: no secret file found e.g. /etc/mysociety/postgres_secret\n";
     exit(1);
 }
 
