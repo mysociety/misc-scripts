@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: PostgreSQL.pm,v 1.7 2006-08-24 22:53:27 francis Exp $
+# $Id: PostgreSQL.pm,v 1.8 2007-01-23 09:15:57 francis Exp $
 #
 
 package PostgreSQL;
@@ -15,7 +15,7 @@ use strict;
 
 use DBI;
 
-my @postgresql_servers = qw(svcs.tea.int.ukcod.org.uk svcs.bitter.int.ukcod.org.uk);
+my @postgresql_servers = qw(svcs.tea.int.ukcod.org.uk svcs.bitter.int.ukcod.org.uk svcs.peas.int.ukcod.org.uk);
 my $postgresql_port = 5432;
 
 sub test() {
