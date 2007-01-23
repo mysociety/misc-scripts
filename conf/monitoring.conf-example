@@ -13,7 +13,7 @@
  * Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
  * Email: francis@mysociety.org; WWW: http://www.mysociety.org
  *
- * $Id: monitoring.conf-example,v 1.3 2007-01-23 12:30:02 francis Exp $
+ * $Id: monitoring.conf-example,v 1.4 2007-01-23 12:32:10 francis Exp $
  * 
  */
 
@@ -32,6 +32,7 @@ define('OPTION_MONITOR_PSQL_USER', 'postgres');
 define('OPTION_MONITOR_PSQL_PASS', '');
 
 // Some tests are only run from a few servers
-define('OPTION_RUN_FEWER_SERVERS_TESTS', 1
+define('OPTION_RUN_FEWER_SERVERS_TESTS', 1);
+
 
 ?>
