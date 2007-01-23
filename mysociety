@@ -31,6 +31,13 @@ SAME_ARCHETYPE=`echo $PRINCIPAL_ARCHETYPE | cat - /data/servers/serverclass | \
         else if ($2 == classname) print $1
     }'`
 
+# Obtain list of other servers in base archetype
+BASE_ARCHETYPE=`echo base | cat - /data/servers/serverclass | \
+    sed 's/#.*//' | awk '{
+        if (NR == 1) classname = $1; 
+        else if ($2 == classname) print $1
+    }'`
+
 # Error reporting
 die () {
     echo "mysociety:" "$@" 1>&2
@@ -63,6 +70,8 @@ COMMAND is one of:
 
     class COMMAND
         Run a command on all machines in the same principal class as this one
+    base COMMAND
+        Run a command on all machines (which are in the base class)
 
 Extra parameters are passed through to underlying deploy-... script.
 END
@@ -168,6 +177,14 @@ END
 
     class)
         for X in $SAME_ARCHETYPE
+        do
+            echo " -- on $X..."
+            ssh $X "$@" || echo " -- ...failed"
+        done
+        ;;
+
+    base)
+        for X in $BASE_ARCHETYPE
         do
             echo " -- on $X..."
             ssh $X "$@" || echo " -- ...failed"
