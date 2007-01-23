@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: DNS.pm,v 1.1 2006-03-27 12:05:18 chris Exp $
+# $Id: DNS.pm,v 1.2 2007-01-23 17:24:05 francis Exp $
 #
 
 package DNS;
@@ -24,6 +24,8 @@ my @records = (
     );
 
 sub test () {
+    return if !mySociety::Config::get('RUN_EXTRA_SERVERS_TESTS');
+
     foreach my $dnsserver (@dnsservers) {
         my $dns = new Net::DNS::Resolver(
                         nameservers => [$dnsserver],
