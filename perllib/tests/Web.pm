@@ -8,7 +8,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Web.pm,v 1.9 2006-12-22 22:55:48 francis Exp $
+# $Id: Web.pm,v 1.10 2007-01-23 12:30:03 francis Exp $
 #
 
 package Web;
@@ -65,6 +65,8 @@ use constant GET_BODY_TIME_MAX => 10;
 use constant TOTAL_TIME_MAX => 20;
 
 sub test () {
+    return if !mySociety::Config::get('RUN_FEWER_SERVERS_TESTS');
+
     local $SIG{ALRM} = sub { die "timeout"; };
     foreach my $page (@pages) {
         my ($hostname, $path) = ($page =~ m#^https?://([^/]+)(/.*)$#);
