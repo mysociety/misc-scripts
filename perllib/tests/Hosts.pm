@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Hosts.pm,v 1.3 2007-01-23 12:30:03 francis Exp $
+# $Id: Hosts.pm,v 1.4 2007-01-23 15:19:09 francis Exp $
 #
 
 package Hosts;
@@ -35,7 +35,7 @@ my @hostlist = qw(
 use constant NPINGS => 10;
 
 sub test () {
-    return if !mySociety::Config::get('RUN_FEWER_SERVERS_TESTS');
+    return if !mySociety::Config::get('RUN_EXTRA_SERVERS_TESTS');
 
     my $P = new Net::Ping('icmp', 1);
     foreach my $hostname (@hostlist) {

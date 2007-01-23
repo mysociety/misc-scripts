@@ -5,7 +5,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: SSH.pm,v 1.3 2007-01-23 12:30:03 francis Exp $
+# $Id: SSH.pm,v 1.4 2007-01-23 15:19:09 francis Exp $
 #
 
 package SSH;
@@ -32,7 +32,7 @@ my @hostlist = qw(
     );
 
 sub test () {
-    return if !mySociety::Config::get('RUN_FEWER_SERVERS_TESTS');
+    return if !mySociety::Config::get('RUN_EXTRA_SERVERS_TESTS');
 
     foreach my $host (@hostlist) {
         my $s = new IO::Socket::INET(PeerHost => $host, PeerPort => 22);

@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: PostgreSQL.pm,v 1.9 2007-01-23 12:30:03 francis Exp $
+# $Id: PostgreSQL.pm,v 1.10 2007-01-23 15:19:09 francis Exp $
 #
 
 package PostgreSQL;
@@ -19,7 +19,7 @@ my @postgresql_servers = qw(svcs.tea.int.ukcod.org.uk svcs.bitter.int.ukcod.org.
 my $postgresql_port = 5432;
 
 sub test() {
-    return if !mySociety::Config::get('RUN_FEWER_SERVERS_TESTS');
+    return if !mySociety::Config::get('RUN_EXTRA_SERVERS_TESTS');
 
     my $user = mySociety::Config::get('MONITOR_PSQL_USER');
     my $pass = mySociety::Config::get('MONITOR_PSQL_PASS');
