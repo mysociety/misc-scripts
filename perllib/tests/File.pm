@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: File.pm,v 1.2 2006-03-27 11:09:27 chris Exp $
+# $Id: File.pm,v 1.3 2007-01-23 15:14:15 francis Exp $
 #
 
 package File;
@@ -32,7 +32,7 @@ sub test () {
         chomp($line);
         my ($dev, $mnt, $type, $flags, $a, $b) = split(/\s+/, $line);
         # Exclude filesystems to which we wouldn't expect to be able to write.
-        push(@dirs, $mnt) unless ($type =~ /^(proc|devpts|usbfs)$/);
+        push(@dirs, $mnt) unless ($type =~ /^(proc|devpts|usbfs|sysfs)$/);
     }
     if ($f->error()) {
         print "/etc/mtab: read: $!\n";
