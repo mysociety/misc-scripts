@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Memory.pm,v 1.4 2007-01-24 16:31:13 francis Exp $
+# $Id: Memory.pm,v 1.5 2007-01-24 16:34:01 francis Exp $
 #
 
 package Memory;
@@ -39,7 +39,7 @@ sub test () {
     my ($device, $type, $total, $used, $priority) = split(/\s+/, $mem);
     my $free = ($total - $used);
     if ($free / $total < MIN_SWAP_FRACTION) {
-        printf "swap: only %d / %dKB (%.1f%% < %.1f%%) free\n",
+        printf "swap: only %d / %d MB (%.1f%% < %.1f%%) free\n",
                 $free / (1024), $total / (1024),
                 100 * $free / $total,
                 100 * MIN_SWAP_FRACTION;
