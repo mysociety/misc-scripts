@@ -160,7 +160,7 @@ END
         cd /data/mysociety
         cvs -Q update -dP
         cd /data/mysociety/utils
-        make
+        make --quiet
         ;;
 
     commit)
