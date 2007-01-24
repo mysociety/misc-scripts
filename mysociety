@@ -112,7 +112,7 @@ END
                 cd /data/servers/$ARCHETYPE
                 find . -type f | grep -v CVS | sed "s/.ugly//g" >> $ALLFILES
             done
-            cat $ALLFILES | sort | uniq -c | sort -n | egrep -v "^      1 " > $ALLFILES.sort
+            cat $ALLFILES | sort | uniq -c | sort -n | egrep -v "^      1 " > $ALLFILES.sort || echo -n
             if [ -s $ALLFILES.sort ]
             then
                 echo -n "these files appear in more than one archetype out of '"
@@ -124,7 +124,6 @@ END
             fi
             rm -f $ALLFILES $ALLFILES.sort
             # test for local changes
-            echo $ARCHETYPES
             for ARCHETYPE in $ARCHETYPES
             do
                 cvs -Q update -dP $ARCHETYPE
@@ -137,8 +136,6 @@ END
                 exit
             fi
         fi
-        echo "xiiting"
-        exit
         # now, install everything
         for ARCHETYPE in $ARCHETYPES
         do
