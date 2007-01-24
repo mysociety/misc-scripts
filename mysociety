@@ -159,6 +159,8 @@ END
         cvs -Q update -dP
         cd /data/mysociety
         cvs -Q update -dP
+        cd /data/mysociety/utils
+        make
         ;;
 
     commit)
