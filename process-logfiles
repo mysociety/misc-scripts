@@ -49,7 +49,7 @@ do
 
     # Process all the log files
     LOG_FILES=`find $CACHE_DIR -type f | grep "/$VHOST-.*/" | grep -v $TODAY`
-    /usr/bin/mergelog $LOG_FILES | $AWSTATS -update -config=$VHOST >/dev/null
+    /usr/bin/zmergelog $LOG_FILES | $AWSTATS -update -config=$VHOST >/dev/null
 
     # Copy awstats output to other servers which serve secure.mysociety.org
     for SERVER in $OTHER_SECURE_MYSOCIETY_ORG
