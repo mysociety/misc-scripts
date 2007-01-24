@@ -105,17 +105,40 @@ END
         if [ "$1" != "--no-check-existing" ] # XXX should check all parameters
         then
             FAILED=no
+            # see if any file will be used twice, from different archetypes
+            ALLFILES=`tempfile`
+            for ARCHETYPE in $ARCHETYPES
+            do
+                cd /data/servers/$ARCHETYPE
+                find . -type f | grep -v CVS | sed "s/.ugly//g" >> $ALLFILES
+            done
+            cat $ALLFILES | sort | uniq -c | sort -n | egrep -v "^      1 " > $ALLFILES.sort
+            if [ -s $ALLFILES.sort ]
+            then
+                echo -n "these files appear in more than one archetype out of '"
+                echo -n $ARCHETYPES
+                echo "': "
+                cat $ALLFILES.sort
+                rm -f $ALLFILES $ALLFILES.sort
+                exit
+            fi
+            rm -f $ALLFILES $ALLFILES.sort
+            # test for local changes
+            echo $ARCHETYPES
             for ARCHETYPE in $ARCHETYPES
             do
                 cvs -Q update -dP $ARCHETYPE
                 /data/mysociety/bin/deploy-configuration --check-existing --save-file=/var/lib/deploy-configuration-$ARCHETYPE.tar /data/servers/$ARCHETYPE $SETTINGS_FILE "$@" || FAILED=yes
             done
+            # if failed, exit
             if [ "$FAILED" = "yes" ]
             then
                 echo "check failed for at least one archetype, not installing files"
                 exit
             fi
         fi
+        echo "xiiting"
+        exit
         # now, install everything
         for ARCHETYPE in $ARCHETYPES
         do
