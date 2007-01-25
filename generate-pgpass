@@ -19,7 +19,7 @@ my $database_permissions_bitter_tea = {
     'matthew' => ['fyr','pb','ycml','mapit','dadem','ratty','evel','pb-staging','ycml-staging','fyr-staging', 'track', 'pet-staging', 'pet'],
     'etienne' => ['pb-staging','ycml-staging'],
     'timsk' => ['pb-staging', 'pb'],
-    'louise' => ['mswww-staging','mswww','news-staging', 'fyr-staging', 'donate-staging', 'news', 'ratty-testharness'],
+    'louise' => ['mswww-staging','mswww','news-staging', 'fyr-staging', 'donate-staging', 'news'],
     'adam' => ['fyr','pb','mapit','dadem','ratty','evel','fyr-staging'],
 
     # Sites
@@ -46,6 +46,7 @@ my $database_permissions_balti = {
      
     # People
     'matthew' => ['bci-matthew'],
+    'louise' => ['ratty-testharness'],['fyr-testharness'],
 
     # Sites
     'pb-testharness' => ['pb-testharness'],
@@ -77,7 +78,7 @@ if ($server eq 'bitter' || $server eq 'tea') {
 	die "generate-pgpass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.43 2007-01-25 09:07:38 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.44 2007-01-25 09:38:49 louise Exp $';
 
 use strict;
 require 5.8.0;
