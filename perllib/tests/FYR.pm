@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: FYR.pm,v 1.9 2006-12-08 11:47:34 francis Exp $
+# $Id: FYR.pm,v 1.10 2007-01-26 12:26:05 francis Exp $
 #
 
 package FYR;
@@ -95,6 +95,14 @@ sub test () {
 
     my $time = POSIX::strftime('%H:%M', localtime());
 
+    # 50 and 100 are about a day's worth - this could happen if, for example,
+    # we need more fax servers. (Faxes are sent in creation order, so there is
+    # no problem of messages timing out before this warning is reached.)
+    printf("there are %d ready but unsent faxes\n", $n_ready_faxes)
+            if ($n_ready_faxes > 50);
+    printf("there are %d ready but unsent emails\n", $n_ready_emails)
+            if ($n_ready_emails > 100);
+ 
     # Most FYR messages are sent between 0900h and 2200h local time. Check that
     # a message has been submitted within 45 minutes during peak hours or
     # within 6 hours during off hours.
