@@ -22,7 +22,7 @@
 # => stack + data + share = size + reserved
 # So private RAM to that instance is roughly stack + data
 #
-# $Id: memshot,v 1.1 2007-01-27 04:28:47 francis Exp $
+# $Id: memshot,v 1.2 2007-01-27 04:31:59 francis Exp $
 
 # TODO: Later, maybe use (2.6 kernels only):
 # http://search.cpan.org/src/OPI/Linux-Smaps-0.01/README ?
@@ -47,7 +47,7 @@ sub analyse_process($) {
     # sum up into the totals hash
     if ($data && $stack) { # kernel processes have neither
         my $private = $data + $stack;
-        $totals->{"$user:$name"} .= $private . " ";
+        $totals->{"$user:$name"} += $private;
     }
 
     return;
