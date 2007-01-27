@@ -1,0 +1,71 @@
+#!/usr/bin/perl -w
+#
+# memshot - Counts up "private" memory used in kB, aggregated by process name
+# and user.
+#
+# Output is simple space separated value file, first field the user:name,
+# second field the amount of "private" memory in total used by all processes
+# with that user:name.
+#
+# By "private" memory, means the "stack" plus the "data". That is roughly the
+# memory which is not shared with any other process. XXX this could all be
+# nonsense and needs checking.
+#
+# This from code in kernel procfs source:
+# data = total - share - stack;
+# size = total - reserved
+#
+# Hence:
+#    share = total - stack - data
+#    total = size + reserved
+# => share = size + reserved - stack - data
+# => stack + data + share = size + reserved
+# So private RAM to that instance is roughly stack + data
+#
+# $Id: memshot,v 1.1 2007-01-27 04:28:47 francis Exp $
+
+# TODO: Later, maybe use (2.6 kernels only):
+# http://search.cpan.org/src/OPI/Linux-Smaps-0.01/README ?
+
+use strict;
+use Data::Dumper;
+
+my $totals;
+sub analyse_process($) {
+    my ($pid) = @_;
+
+    # read information about process memory/name/uid from /proc
+    my $fname = "/proc/$pid/status";
+    open(RD, $fname) or die "not found $fname";
+    my ($data, $stack, $name, $user);
+    while (<RD>) {
+        $data = $1 if (m/VmData:\s+(\d+) kB/);
+        $stack = $1 if (m/VmStk:\s+(\d+) kB/);
+        $name = $1 if (m/Name:\s+(.+)$/);
+        $user = getpwuid($1) if (m/Uid:\s+(\d+)\s+/); # XXX what are other 3 entries on this line?
+    }
+    # sum up into the totals hash
+    if ($data && $stack) { # kernel processes have neither
+        my $private = $data + $stack;
+        $totals->{"$user:$name"} .= $private . " ";
+    }
+
+    return;
+}
+
+# Loop through all processes
+my @procs = glob("/proc/*");
+foreach (@procs) {
+    s#/proc/##;
+    if (m/^\d+$/) {
+        analyse_process($_);
+    }
+}
+
+# Sort and print out results
+my @proctypes = keys %$totals;
+@proctypes = sort { $totals->{$b} <=> $totals->{$a} } @proctypes;
+foreach (@proctypes) {
+    print $_ . " " . $totals->{$_} . "\n";
+}
+
