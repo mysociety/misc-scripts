@@ -1,0 +1,20 @@
+#!/bin/bash
+#
+# update-index:
+# Create Debian repository index files.
+#
+# $Id: debian-vhost-update,v 1.1 2007-01-29 12:52:32 francis Exp $
+#
+
+if [ "`hostname`" != 'bitter' ]
+then
+    echo "Run on bitter only"
+    exit
+fi
+
+cd /data/vhost/debian.mysociety.org/docs
+dpkg-scanpackages binary /dev/null | gzip -9c > binary/Packages.gz.new \
+    && mv binary/Packages.gz.new binary/Packages.gz || rm binary/Packages.gz.new
+dpkg-scansources source /dev/null | gzip -9c > source/Sources.gz.new \
+    && mv source/Sources.gz.new source/Sources.gz || rm source/Sources.gz.new
+
