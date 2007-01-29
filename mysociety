@@ -22,7 +22,7 @@ ARCHETYPES=`echo $HOST | cat - /data/servers/serverclass | \
 if [ "x$ARCHETYPES" = "x" ] ; then
     die "don't know archetypes for this host ($HOST), add to /data/servers/serverclass"
 fi
-PRINCIPAL_ARCHETYPE=`echo $ARCHETYPES | sed "s/ /\n/" | tail --lines=1`
+PRINCIPAL_ARCHETYPE=`echo $ARCHETYPES | sed "s/ /\n/g" | tail --lines=1`
 
 # Obtain list of other servers in same principal archetype
 SAME_ARCHETYPE=`echo $PRINCIPAL_ARCHETYPE | cat - /data/servers/serverclass | \
