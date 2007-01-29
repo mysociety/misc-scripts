@@ -6,7 +6,7 @@
 # Copyright (c) 2004 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: backup-stuff,v 1.22 2007-01-21 12:11:38 francis Exp $
+# $Id: backup-stuff,v 1.23 2007-01-29 11:06:31 francis Exp $
 #
 
 set -e
@@ -47,7 +47,7 @@ for X in _data_backups_dailydb_????????T??????; do
     fi
     # Delete older than six months
     if [[ "$X" < "_data_backups_dailydb_$sixmonthsback" ]]; then
-        echo "delete six monthly: $X"
+        #echo "delete six monthly: $X"
         chmod u+w $X
         rm -fr $X
     fi
@@ -56,7 +56,7 @@ done
 for X in _data_backups_dailyfiles_????????T??????; do
     # Delete older than six months
     if [[ "$X" < "_data_backups_dailyfiles_$sixmonthsback" ]]; then
-        echo "delete six monthly: $X"
+        #echo "delete six monthly: $X"
         chmod u+w $X
         rm -fr $X
     fi
