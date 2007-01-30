@@ -47,7 +47,9 @@ do
         fi
     done
 
-    # Process all the log files
+    # Process all the log files, except for today's (because you want to be sure all
+    # the files from all the servers have rotated, so everything is available to
+    # be merged together in order)
     LOG_FILES=`find $CACHE_DIR -type f | grep "/$VHOST-.*/" | grep -v $TODAY`
     /usr/bin/zmergelog $LOG_FILES | $AWSTATS -update -config=$VHOST >/dev/null
 
