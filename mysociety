@@ -3,7 +3,7 @@
 # Bash script because it uses temporary named pipes <(cmd)
 
 SCRIPT_COMMAND=mysociety
-. ../shlib/deployfns
+. /data/mysociety/shlib/deployfns
 
 # Obtain hostname
 HOST=`hostname`
