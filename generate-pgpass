@@ -11,12 +11,12 @@
 # Who can access what databases
 my $database_permissions_bitter_tea = {
     # All-seeing power
-    'root' => ['pb', 'ycml', 'rt', 'gaze', 'dadem', 'evel', 'mapit', 'ratty', 'fyr', 'pb-interface', 'pb-livesimply', 'pb-o2', 'pb-staging', 'mswww', 'track', 'list', 'pet', 'pet-testharness', 'donate', 'news'],
+    'root' => ['pb', 'ycml', 'rt', 'gaze', 'dadem', 'evel', 'mapit', 'ratty', 'fyr', 'pb-interface', 'pb-livesimply', 'pb-o2', 'pb-staging', 'mswww', 'track', 'list', 'pet', 'pet-testharness', 'donate', 'news', 'bci'],
      
     # People
     'francis' => ['fyr','pb','ycml','mapit','dadem','ratty','evel','mswww'],
     'chris' => ['fyr','pb','ycml','chris','mapit','dadem','ratty','evel', 'track', 'pb-staging'],
-    'matthew' => ['fyr','pb','ycml','mapit','dadem','ratty','evel','pb-staging','ycml-staging','fyr-staging', 'track', 'pet-staging', 'pet'],
+    'matthew' => ['fyr','pb','ycml','mapit','dadem','ratty','evel','pb-staging','ycml-staging','fyr-staging', 'track', 'pet-staging', 'pet', 'bci'],
     'etienne' => ['pb-staging','ycml-staging'],
     'timsk' => ['pb-staging', 'pb'],
     'louise' => ['mswww-staging','mswww','news-staging', 'fyr-staging', 'donate-staging', 'news'],
@@ -34,7 +34,7 @@ my $database_permissions_bitter_tea = {
     'mswww' => ['mswww'],
     'mswww-staging' => ['mswww-staging'],
     'mssecure' => ['donate'],
-    
+    'bci' => ['bci'],
 
     # Services
     'msservices' => ['mapit','dadem','ratty','evel', 'news'],
@@ -79,7 +79,7 @@ if ($server eq 'bitter' || $server eq 'tea') {
 	die "generate-pgpass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.48 2007-01-25 17:01:11 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.49 2007-02-02 11:43:19 matthew Exp $';
 
 use strict;
 require 5.8.0;
