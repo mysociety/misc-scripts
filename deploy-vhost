@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.58 2007-01-09 21:10:20 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.59 2007-02-05 01:05:30 francis Exp $';
 
 package main;
 
@@ -371,8 +371,10 @@ foreach my $exec_extra (@{$conf->{'exec_extras'}}) {
     shell("su", $conf->{'user'}, "$exec_extra");
 }
 
-# Prompt apache to reread files
-shell("apachectl", "graceful");
+# Prompt apache to reread files, on machines which have apache
+if (-e "/usr/sbin/apachectl") {
+    shell("apachectl", "graceful");
+}
 
 # Up notice
 unlink("$vhost_dir/docs/down.html") or die "couldn't unlink down.html";
