@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Hosts.pm,v 1.4 2007-01-23 15:19:09 francis Exp $
+# $Id: Hosts.pm,v 1.5 2007-02-12 08:28:01 francis Exp $
 #
 
 package Hosts;
@@ -28,8 +28,6 @@ my @hostlist = qw(
 
         whisky.ukcod.org.uk
         water.ukcod.org.uk
-
-        cerulean.beasts.org
     );
 
 use constant NPINGS => 10;
