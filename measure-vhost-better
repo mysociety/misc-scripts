@@ -1,0 +1,70 @@
+#!/usr/bin/perl -w
+
+# Measure how much traffic is on each vhost, by counting log file lines,
+# sorting them, and comparing it every few seconds.
+
+use strict;
+
+use FindBin;
+use lib "$FindBin::Bin/../perllib";
+
+use Data::Dumper;
+use mySociety::Logfile;
+use Clone;
+
+#ls -lH */logs/access_log
+
+my $sleep_poll = 5; # seconds
+
+# get count of lines in log files on all the vhosts
+my $logobjs;
+my $logoffsets;
+my $logcount;
+sub get_log_counts {
+    opendir(D, "/data/vhost") or die "couldn't open /data/vhost";
+    while (my $vhost = readdir(D)) {
+        next if $vhost eq ".." || $vhost eq ".";
+        my $logfile = "/data/vhost/$vhost/logs/access_log";
+        next if ! -s "$logfile";
+        #print $logfile . "\n";
+        if (!$logobjs->{$vhost}) {
+            $logobjs->{$vhost} = new mySociety::Logfile($logfile);
+            $logoffsets->{$vhost} = $logobjs->{$vhost}->lastline();
+        }
+        $logobjs->{$vhost}->_update();
+        while ($logobjs->{$vhost}->nextline($logoffsets->{$vhost})) {
+            $logoffsets->{$vhost} = $logobjs->{$vhost}->nextline($logoffsets->{$vhost});
+            $logcount->{$vhost}++;
+        }
+    }
+    closedir(D);
+    return $logcount;
+}
+
+# main loop, print output every so many seconds
+my $last_logc;
+while(1) {
+    my $logc = get_log_counts();
+    my @vhosts = keys %$logc;
+    # find change since last time
+    my %diff;
+    foreach (@vhosts) {
+        if ($last_logc->{$_}) {
+            $diff{$_} = $logc->{$_} - $last_logc->{$_};
+        } else {
+            $diff{$_} = 0;
+        }
+    }
+    # sort by delta
+    @vhosts = sort { $diff{$a} <=> $diff{$b} } @vhosts;
+    # display
+    foreach (@vhosts) {
+        print $diff{$_} / $sleep_poll. "\t" . $_ . "\n";
+    }
+    #print Dumper(\@vhosts);
+    $last_logc = Clone::clone($logc);
+    sleep $sleep_poll;
+    print "\n";
+}
+
+
