@@ -4,25 +4,41 @@
 # sorting them, and comparing it every few seconds.
 
 use strict;
+
+use FindBin;
+use lib "$FindBin::Bin/../perllib";
+
 use Data::Dumper;
+use mySociety::Logfile;
+use Clone;
 
 #ls -lH */logs/access_log
 
+my $sleep_poll = 5; # seconds
+
 # get count of lines in log files on all the vhosts
+my $logobjs;
+my $logoffsets;
+my $logcount;
 sub get_log_counts {
-    my %logc;
-    my $shout = `wc -l /data/vhost/*/logs/access_log`;
-    my @lines = split("\n", $shout);
-    foreach (@lines) {
-        $_ =~ s/^\s+//;
-        $_ =~ s/\s+$//;
-        my ($linec, $vhost) = split(/\s/, $_);
-        $vhost =~ s#/data/vhost/##;
-        $vhost =~ s#/logs/access_log##;
-#        print $linec . $vhost."\n";
-        $logc{$vhost} = $linec;
+    opendir(D, "/data/vhost") or die "couldn't open /data/vhost";
+    while (my $vhost = readdir(D)) {
+        next if $vhost eq ".." || $vhost eq ".";
+        my $logfile = "/data/vhost/$vhost/logs/access_log";
+        next if ! -s "$logfile";
+        #print $logfile . "\n";
+        if (!$logobjs->{$vhost}) {
+            $logobjs->{$vhost} = new mySociety::Logfile($logfile);
+            $logoffsets->{$vhost} = $logobjs->{$vhost}->lastline();
+        }
+        $logobjs->{$vhost}->_update();
+        while ($logobjs->{$vhost}->nextline($logoffsets->{$vhost})) {
+            $logoffsets->{$vhost} = $logobjs->{$vhost}->nextline($logoffsets->{$vhost});
+            $logcount->{$vhost}++;
+        }
     }
-    return \%logc;
+    closedir(D);
+    return $logcount;
 }
 
 # main loop, print output every so many seconds
@@ -43,11 +59,11 @@ while(1) {
     @vhosts = sort { $diff{$a} <=> $diff{$b} } @vhosts;
     # display
     foreach (@vhosts) {
-        print $diff{$_} . "\t" . $_ . "\n";
+        print $diff{$_} / $sleep_poll. "\t" . $_ . "\n";
     }
     #print Dumper(\@vhosts);
-    $last_logc = $logc;
-    sleep 5;
+    $last_logc = Clone::clone($logc);
+    sleep $sleep_poll;
     print "\n";
 }
 
