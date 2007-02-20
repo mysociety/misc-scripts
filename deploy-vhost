@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.59 2007-02-05 01:05:30 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.60 2007-02-20 00:52:49 francis Exp $';
 
 package main;
 
@@ -58,7 +58,7 @@ our ($vhosts, $sites);
 require "$servers_dir/vhosts.pl";
 
 # Check command line parameters, look up in config file
-die "Specify virtual host name as only parameter" if scalar(@ARGV) != 1;
+die "Specify virtual host name as first parameter, deploy/stop as second parameter" if scalar(@ARGV) != 2;
 my $vhost = $ARGV[0];
 my $vhost_conf = $vhosts->{$vhost};
 die "vhost '$vhost' is not in vhosts.pl" if !$vhost_conf;
@@ -67,6 +67,8 @@ die "site not specified for '$vhost' in vhosts.pl" if !$site;
 my $site_conf = $sites->{$site};
 die "site '$site' is not in vhosts.pl" if !$site_conf;
 my $vhost_dir = "/data/vhost/$vhost";
+my $action = $ARGV[1];
+die "Specify 'deploy' or 'stop' as second parameter" if $action ne "deploy" && $action ne "stop";
 
 # Merge vhost and site configs together
 my $conf;
@@ -353,6 +355,9 @@ close FH;
 unlink("$vhost_dir/docs/down.html");
 rename("$vhost_dir/docs/.down.html.new", "$vhost_dir/docs/down.html") or die "failed to rename to down.html";
 chown($user_uid, $user_gid, "$vhost_dir/docs/down.html");
+
+# If just doing "down" then exit
+exit if $action eq "stop";
 
 # Update from CVS
 foreach my $cvs_dir (@{$conf->{'cvs_dirs'}}) {

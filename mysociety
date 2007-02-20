@@ -154,7 +154,7 @@ END
         VHOST=$1
         shift || die "specify a virtual host"
         # deploy vhost
-        /data/mysociety/bin/deploy-vhost $VHOST "$@"
+        /data/mysociety/bin/deploy-vhost $VHOST deploy "$@"
         # special code to set up dademcron user and cron job
         if [ "$VHOST" = "services.mysociety.org" -a $( hostname ) = bitter ]; then
             /data/vhost/services.mysociety.org/mysociety/services/DaDem/bin/setup-dademcron
