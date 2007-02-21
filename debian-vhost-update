@@ -3,7 +3,7 @@
 # update-index:
 # Create Debian repository index files.
 #
-# $Id: debian-vhost-update,v 1.2 2007-01-31 18:48:05 francis Exp $
+# $Id: debian-vhost-update,v 1.3 2007-02-21 18:52:10 francis Exp $
 #
 
 if [ "`hostname`" != 'bitter' ]
@@ -15,13 +15,13 @@ fi
 cd /data/vhost/debian.mysociety.org/docs
 
 # Let you just dump things in docs, and move them to right place
-touch dummy.deb dummy.dsc dummy.tar.gz dummy.changes
+touch dummy.deb dummy.diff.gz dummy.dsc dummy.tar.gz dummy.changes
 # Move .deb files into binary
 mv *.deb binary/
 # Move others into source
-mv *.dsc *.tar.gz *.changes source/
+mv *.diff.gz *.dsc *.tar.gz *.changes source/
 # Clean up (can't work out a way to not try to move non-expanding globs otherwise)
-rm -f binary/dummy.deb source/dummy.dsc source/dummy.tar.gz source/dummy.changes
+rm -f binary/dummy.deb source/dummy.diff.gz source/dummy.dsc source/dummy.tar.gz source/dummy.changes
 
 # Generate new package lists
 dpkg-scanpackages binary /dev/null | gzip -9c > binary/Packages.gz.new \
