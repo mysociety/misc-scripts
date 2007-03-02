@@ -167,7 +167,7 @@ END
         # update code (which also does apachectl graceful, so killing
         # any FastCGI processes holding the database open, so the test script
         # can drop and reload the database)
-        /data/mysociety/bin/deploy-vhost $VHOST "$@"
+        /data/mysociety/bin/deploy-vhost $VHOST deploy "$@"
         # launch test script
         VERBOSE=1 /data/mysociety/bin/test-site $VHOST
         ;;
