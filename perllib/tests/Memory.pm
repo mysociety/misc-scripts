@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Memory.pm,v 1.5 2007-01-24 16:34:01 francis Exp $
+# $Id: Memory.pm,v 1.6 2007-03-22 09:05:49 francis Exp $
 #
 
 package Memory;
@@ -15,7 +15,7 @@ use strict;
 
 use IO::File;
 
-use constant MIN_SWAP_FRACTION => 0.75; # % of swap that must be free
+use constant MIN_SWAP_FRACTION => 0.50; # % of swap that must be free
 
 sub test () {
     # The format of /proc/meminfo differs between 2.4 and 2.6 series kernels
