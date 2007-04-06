@@ -11,7 +11,7 @@
 # Who can access what databases
 my $database_permissions_bitter_tea = {
     # All-seeing power
-    'root' => ['pb', 'ycml', 'rt', 'gaze', 'dadem', 'evel', 'mapit', 'ratty', 'fyr', 'pb-interface', 'pb-livesimply', 'pb-o2', 'pb-staging', 'mswww', 'track', 'list', 'pet', 'pet-testharness', 'donate', 'news', 'bci'],
+    'root' => ['pb', 'ycml', 'rt', 'gaze', 'dadem', 'evel', 'mapit', 'ratty', 'fyr', 'pb-interface', 'pb-livesimply', 'pb-o2', 'pb-staging', 'mswww', 'track', 'list', 'pet', 'pet-testharness', 'donate', 'news', 'bci', 'dress'],
      
     # People
     'francis' => ['fyr','pb','ycml','mapit','dadem','ratty','evel','mswww'],
@@ -79,7 +79,7 @@ if ($server eq 'bitter' || $server eq 'tea') {
 	die "generate-pgpass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.51 2007-02-21 18:53:09 maint Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.52 2007-04-06 14:52:00 francis Exp $';
 
 use strict;
 require 5.8.0;
