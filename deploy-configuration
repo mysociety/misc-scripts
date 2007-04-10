@@ -20,7 +20,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.48 2007-04-10 15:38:55 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.49 2007-04-10 15:46:24 francis Exp $';
 
 package Oops;
 
@@ -346,7 +346,7 @@ sub process_directory ($$$) {
                 symlink($target, "$outdir/$name") or throw Oops("$outdir/$name: symlink: $!");
                 $havefile{$name} = "$name.symlink";
                 $is_symlink = 1;
-                unlink("$indir/$name") if $mugly;
+                unlink("$indir/$name.symlink") if $mugly;
             } elsif ($name =~ /.\.mknod$/) {
                 # File specifies a block or character device or a named pipe.
                 my $f = new IO::File("$indir/$name")
@@ -797,6 +797,12 @@ These files are run through with the mugly macro processor to produce an
 output file without the ".ugly" suffix. mugly is invoked with "-p SETTINGS"
 preceding the named file, so that variable assignments etc. made in that file
 are available.
+
+=item *.symlink.ugly
+
+Makes symbolic links just like *.symlink, only the file is first processed with
+mugly as for *.ugly files. This lets you have variables in the symbolic link
+target.
 
 =item _perm
 
