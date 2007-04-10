@@ -20,7 +20,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.47 2007-01-04 17:37:24 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.48 2007-04-10 15:38:55 francis Exp $';
 
 package Oops;
 
@@ -317,7 +317,15 @@ sub process_directory ($$$) {
             $havefile{$name} = $name;
             push(@subdirs, $name);
         } elsif (S_ISREG($s->mode())) {
-            if ($name =~ /.\.symlink$/) {
+            if ($name =~ /.\.symlink$/ || $name =~ /.\.symlink\.ugly$/) {
+                # Do any template processing on symlink target
+                my $mugly = 0;
+                if ($name =~ /\.ugly$/) {
+                    $name =~ s/\.ugly$//;
+                    # make temporary file with .symlink extension
+                    System($mugly_bin, '-O', "$indir/$name", "-p", $settings, "$indir/$name.ugly");
+                    $mugly = 1; # remember to unlink to symlink file later
+                }
                 # File specifies a symlink which should be created.
                 my $f = new IO::File("$indir/$name")
                     or throw Oops("$indir/$name: open: $!");
@@ -338,6 +346,7 @@ sub process_directory ($$$) {
                 symlink($target, "$outdir/$name") or throw Oops("$outdir/$name: symlink: $!");
                 $havefile{$name} = "$name.symlink";
                 $is_symlink = 1;
+                unlink("$indir/$name") if $mugly;
             } elsif ($name =~ /.\.mknod$/) {
                 # File specifies a block or character device or a named pipe.
                 my $f = new IO::File("$indir/$name")
