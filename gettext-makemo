@@ -8,7 +8,7 @@
 # Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: gettext-makemo,v 1.9 2006-10-15 23:45:17 francis Exp $
+# $Id: gettext-makemo,v 1.10 2007-04-11 14:08:36 francis Exp $
 
 if [ ! -d locale ]
 then
@@ -24,7 +24,7 @@ fi
 
 # count number of times Subject: appears in original, times two
 # XXX this needs fixing to do it for each translation domain separately
-SUBJECT_COUNT_ORIG=`grep '^"Subject:' locale/PledgeBank.po locale/PledgeBank.po | egrep -v "^#" | wc --lines`
+SUBJECT_COUNT_ORIG=`grep '^"Subject: ' locale/PledgeBank.po locale/PledgeBank.po | egrep -v "^#" | wc --lines`
 
 for X in locale/*.UTF-8
 do
@@ -38,10 +38,10 @@ do
             MO=${PO/.po/.mo}
             [ "$1" != "--quiet" ] && echo -n "$X $PO: " 
             msgfmt -c $MSGFMT_PARAMS -o $MO $PO
-            SUBJECT_COUNT=`grep '^"Subject:' $PO  | egrep -v "^#" | wc --lines`
+            SUBJECT_COUNT=`grep '^"Subject: ' $PO  | egrep -v "^#" | wc --lines`
             if [ "$SUBJECT_COUNT" != "$SUBJECT_COUNT_ORIG" ] 
             then
-                echo "WARNING: Email 'Subject:' lines have probably been translated in $X' (got $SUBJECT_COUNT, $SUBJECT_COUNT_ORIG expected)"
+                echo "WARNING: Email 'Subject: ' lines have probably been translated in $X' (got $SUBJECT_COUNT, $SUBJECT_COUNT_ORIG expected)"
             fi
         done
 
