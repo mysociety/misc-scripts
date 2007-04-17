@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.20 2007-01-04 17:37:24 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.21 2007-04-17 22:31:08 francis Exp $';
 
 use strict;
 
@@ -107,11 +107,12 @@ sub test_zonefile ($) {
     my $file = shift;
 
     my $newtext = read_file($file) || throw Oops("$file: $!");
-    my $f = new IO::File("/var/named/master/$file", O_RDONLY);
-    throw Oops("/var/named/master/$file: $!") if (!$f && !$!{ENOENT});
+    my $oldfile = "/var/named/master/$file";
+    my $f = new IO::File($oldfile, O_RDONLY);
+    throw Oops("$oldfile: $!") if (!$f && !$!{ENOENT});
     my $oldtext;
     if ($f) {
-        $oldtext = read_file($f) || throw Oops("/var/named/master/$file: $!");
+        $oldtext = read_file($f) || throw Oops("$oldfile: $!");
         $f->close();
     }
 
@@ -138,7 +139,7 @@ sub test_zonefile ($) {
         verbose("OK\n");
         my $oldserial = $rrset->[0]->serial();
         verbose("  old serial = $oldserial; new serial = $newserial\n");
-        return "new serial number, '$newserial', is not larger than old serial number, '$oldserial', but the files differ"
+        return "new serial number, '$newserial' (in $file), is not larger than old serial number, '$oldserial' (in $oldfile), but the files differ"
             unless ($newserial gt $oldserial);
     } elsif (!defined($rrset)) {
         print STDERR "deploy-dns: WARNING: current $file is syntactically invalid\n";
