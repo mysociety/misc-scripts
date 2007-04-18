@@ -60,7 +60,7 @@ COMMAND is one of:
     vhost VHOST
         Deploy latest version of VHOST, e.g. www.pledgebank.com
     test VHOST
-        Run test script on VHOST, e.g. testharness.pet.mysociety.org
+        Deploy, then run test script on VHOST, e.g. testharness.pet.mysociety.org
 
     dns
         Update the DNS configuration on the current host
