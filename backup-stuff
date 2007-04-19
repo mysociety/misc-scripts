@@ -6,7 +6,7 @@
 # Copyright (c) 2004 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: backup-stuff,v 1.23 2007-01-29 11:06:31 francis Exp $
+# $Id: backup-stuff,v 1.24 2007-04-19 10:58:55 francis Exp $
 #
 
 set -e
@@ -79,7 +79,8 @@ for thing in /data/backups/dailydb /data/backups/dailyfiles; do
         exec $0 "$@"
     fi
 
-    trap "echo 'backup of $thing failed' 1>&2 ; rm -rf $target; exit 1" EXIT
+    # this is a bit daft, as small errors lose any backup there was
+    #trap "echo 'backup of $thing failed' 1>&2 ; rm -rf $target; exit 1" EXIT
 
     # make copy of previous backup to speed things up
     if [ x$latest != x ] ; then
@@ -90,6 +91,6 @@ for thing in /data/backups/dailydb /data/backups/dailyfiles; do
 
     rsync $rsyncopts readbackups@bitter.ukcod.org.uk:$thing/. $target/.
 
-    trap '' EXIT
+    #trap '' EXIT
 done
 
