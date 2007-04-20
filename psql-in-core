@@ -29,7 +29,7 @@ do
         echo "version $VERSION"
 
         # Get mapping between disk ids and names of databases
-        cat <<END | su postgres psql $PORT template1 | egrep -v "Output format|rows\)|datid" | sort -n | sed "s/|/ /" > $IDMAP
+        cat <<END | su postgres "psql $PORT template1" | egrep -v "Output format|rows\)|datid" | sort -n | sed "s/|/ /" > $IDMAP
         \pset format unaligned
         select datid,datname from pg_stat_database
 END
