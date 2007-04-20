@@ -18,13 +18,18 @@ DUFILE=`tempfile`
 
 for VERSION in 7.4 8.1
 do
+    PORT=""
+    if [ "$VERSION" == "8.1" ]
+    then
+        PORT="-p 5433"
+    fi
     DBDIR=`readlink --canonicalize /etc/postgresql/$VERSION/main/pgdata`
     if [ -e "$DBDIR" ]
     then
         echo "version $VERSION"
 
         # Get mapping between disk ids and names of databases
-        cat <<END | su postgres psql template1 | egrep -v "Output format|rows\)|datid" | sort -n | sed "s/|/ /" > $IDMAP
+        cat <<END | su postgres psql $PORT template1 | egrep -v "Output format|rows\)|datid" | sort -n | sed "s/|/ /" > $IDMAP
         \pset format unaligned
         select datid,datname from pg_stat_database
 END
