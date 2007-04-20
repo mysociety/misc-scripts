@@ -15,25 +15,27 @@ trap '[ x$DUFILE != x ] && rm $DUFILE ; [ x$IDMAP != x ] && rm $IDMAP' EXIT
 # XXX tempfile usage is not safe here
 IDMAP=`tempfile`
 DUFILE=`tempfile`
-DBDIR=`grep POSTGRES_DATA /etc/postgresql/postmaster.conf | sed "s/\"//g;" | cut -d "=" -f 2`
 
-# Get mapping between disk ids and names of databases
-cat <<END | su postgres psql template1 | egrep -v "Output format|rows\)|datid" | sort -n | sed "s/|/ /" > $IDMAP
-\pset format unaligned
-select datid,datname from pg_stat_database
+for VERSION in 7.4 8.1
+do
+    DBDIR=`readlink --canonicalize /etc/postgresql/$VERSION/main/pgdata`
+    if [ -e "$DBDIR" ]
+    then
+        echo "version $VERSION"
+
+        # Get mapping between disk ids and names of databases
+        cat <<END | su postgres psql template1 | egrep -v "Output format|rows\)|datid" | sort -n | sed "s/|/ /" > $IDMAP
+        \pset format unaligned
+        select datid,datname from pg_stat_database
 END
 
-# Get disk space used up by each id
-cd $DBDIR/base
-#du -hs * | sed "s/\t/ /g;" | sort -n +1 >$DUFILE
+        # Get disk space used up by each id
+        cd $DBDIR/base
+        #du -hs * | sed "s/\t/ /g;" | sort -n +1 >$DUFILE
 
-for i in * ; do echo -n "$i " ; find $i -type f | xargs /data/mysociety/utils/mincore | awk '{ if ($3 > 0) { size += $3 / 1024.; incore += $2 / 1024.; } } END { printf "%.1f%% %.1fMB\n", 100. * incore / size, size / 1024.; }' ; done | sort -n > $DUFILE
+        for i in * ; do echo -n "$i " ; find $i -type f | xargs /data/mysociety/utils/mincore | awk '{ if ($3 > 0) { size += $3 / 1024.; incore += $2 / 1024.; } } END { printf "%.1f%% %.1fMB\n", 100. * incore / size, size / 1024.; }' ; done | sort -n > $DUFILE
 
-#echo "DUFILE $DUFILE"
-#cat $DUFILE
-#echo "IDMAP $IDMAP"
-#cat $IDMAP
-
-# Merge them together
-join -j 1 -t " " -o 1.2,2.2,2.3 $IDMAP $DUFILE | sort +0
-
+        # Merge them together
+        join -j 1 -t " " -o 1.2,2.2,2.3 $IDMAP $DUFILE | sort +0
+    fi
+done
