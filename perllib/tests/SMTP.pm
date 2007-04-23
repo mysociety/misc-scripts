@@ -9,20 +9,26 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: SMTP.pm,v 1.2 2006-03-24 21:21:07 chris Exp $
+# $Id: SMTP.pm,v 1.3 2007-04-23 08:38:52 francis Exp $
 #
 
 package SMTP;
 
 use strict;
 
+use POSIX qw(EINPROGRESS EALREADY);
 use Net::SMTP;
 
 sub test () {
     my $smtp = new Net::SMTP('localhost', Timeout => 5);
     if (!$smtp) {
-        print "unable to connect to local SMTP server: $!\n";
-        return;
+        # XXX Sometimes get "Operation now in progress" on water/whisky, not
+        # sure why. Maybe a timing thing on quiet servers. Anyway, we don't
+        # care.
+        if ($! != EINPROGRESS && $! != EALREADY) {
+            print "unable to connect to local SMTP server: $!\n";
+            return;
+        }
     }
 }
 
