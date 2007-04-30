@@ -16,11 +16,12 @@ my $database_permissions_bitter_tea = {
     # People
     'francis' => ['fyr','pb','ycml','mapit','dadem','ratty','evel','mswww'],
     'chris' => ['fyr','pb','ycml','chris','mapit','dadem','ratty','evel', 'track', 'pb-staging'],
-    'matthew' => ['fyr','pb','ycml','mapit','dadem','ratty','evel','pb-staging','ycml-staging','fyr-staging', 'track', 'pet-staging', 'pet', 'bci'],
+    'matthew' => ['fyr','pb','ycml','mapit','dadem','ratty','evel','pb-staging','ycml-staging','fyr-staging', 'track', 'pet-staging', 'pet', 'bci', 'dress'],
     'etienne' => ['pb-staging','ycml-staging'],
     'timsk' => ['pb-staging', 'pb'],
     'louise' => ['mswww-staging','mswww','news-staging', 'fyr-staging', 'donate-staging', 'news', 'fyr'],
     'adam' => ['fyr','pb','mapit','dadem','ratty','evel','fyr-staging'],
+    'debbi' => ['bci']
 
     # Sites
     'pb' => ['pb','pb-staging','pb-interface'],
@@ -79,7 +80,7 @@ if ($server eq 'bitter' || $server eq 'tea') {
 	die "generate-pgpass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.53 2007-04-17 22:31:40 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.54 2007-04-30 14:25:59 matthew Exp $';
 
 use strict;
 require 5.8.0;
