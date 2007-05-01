@@ -8,7 +8,7 @@
 # Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: gettext-extract,v 1.12 2007-01-08 16:32:08 matthew Exp $
+# $Id: gettext-extract,v 1.13 2007-05-01 10:10:47 francis Exp $
 
 if [ ! -e ../mysociety ]
 then
@@ -50,6 +50,9 @@ xgettext --add-comments=TRANS --language=PHP --from-code=utf-8 -o $PO phplib/*.p
 
 # Extract from Python and JS (which seems to work if I tell it it's Python)
 xgettext --add-comments=TRANS --language=Python --from-code=utf-8 --join-existing -o $PO pb/web/poster.cgi pb/web/pb.js
+
+# Extract from Perl
+xgettext --add-comments=TRANS --language=Perl --keyword=_ --from-code=utf-8 --join-existing -o $PO pb/web/graph.cgi  
 
 # Fix headers
 TEMP=`tempfile`
