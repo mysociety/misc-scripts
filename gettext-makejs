@@ -16,6 +16,7 @@ my %langs = (
     'pl_PL' => 'pl',
     'et_EE' => 'et',
     'fr_FR' => 'fr',
+    'zh_CN' => 'zh'
 );
 
 for (<locale/*.UTF-8/LC_MESSAGES/PledgeBank*.po>) {
