@@ -6,7 +6,7 @@ set -e
 
 # Edit these three to add more hosts, if the server running awstats changes, or
 # if new servers are added that serve any of the hosts.
-VHOSTS="www.mysociety.org www.mysociety.co.uk www.writetothem.com www.pledgebank.com promise.livesimply.org.uk www.hearfromyourmp.com www.neighbourhoodfixit.com petitions.pm.gov.uk "
+VHOSTS="www.mysociety.org www.mysociety.co.uk www.writetothem.com www.pledgebank.com promise.livesimply.org.uk www.hearfromyourmp.com www.neighbourhoodfixit.com petitions.pm.gov.uk www.downingstreetsays.com"
 AWSTATS_SERVER=bitter
 OTHER_SERVERS="tea balti water whisky"
 OTHER_SECURE_MYSOCIETY_ORG="tea"
