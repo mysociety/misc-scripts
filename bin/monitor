@@ -9,7 +9,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: monitor,v 1.6 2006-06-12 16:41:14 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: monitor,v 1.7 2007-08-02 11:45:05 matthew Exp $';
 
 use strict;
 
@@ -32,7 +32,8 @@ BEGIN {
     die "specify config file as parameter" if !$config_file;
     mySociety::Config::set_file($config_file);
 }
-use mySociety::Util qw(describe_waitval open_log print_log send_email);
+use mySociety::EmailUtil qw(send_email);
+use mySociety::SystemMisc qw(describe_waitval open_log print_log);
 
 my $testsdir = "$FindBin::Bin/../perllib/tests";
 my $interval = mySociety::Config::get('MONITOR_INTERVAL');
@@ -225,7 +226,7 @@ $rcsid
 EOF
 
     my $r = send_email($email, 'root', $email_recipient);
-    if ($r != mySociety::Util::EMAIL_SUCCESS) {
+    if ($r != mySociety::EmailUtil::EMAIL_SUCCESS) {
         print_log('err', "failed to send email");
     }
     exit(0);
