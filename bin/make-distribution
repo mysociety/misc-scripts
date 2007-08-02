@@ -16,7 +16,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: make-distribution,v 1.2 2005-12-16 15:06:33 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: make-distribution,v 1.3 2007-08-02 11:45:00 matthew Exp $';
 
 use strict;
 
@@ -25,7 +25,7 @@ use lib "$FindBin::Bin/../../perllib";
 
 use Cwd;
 
-use mySociety::Util;
+use mySociety::TempFiles;
 
 sub System (@) {
     print STDERR "+ ", join(' ', @_), "\n";
@@ -42,7 +42,7 @@ if (!-d $skeleton) {
     die "'$skeleton' is not an existing directory";
 }
 
-my $d = mySociety::Util::tempdir();
+my $d = mySociety::TempFiles::tempdir();
 $SIG{__DIE__} = sub { system("rm", "-rf", $d); die(@_); };
 
 # Now we need to copy things into the temporary directory, with various
