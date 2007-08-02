@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.60 2007-02-20 00:52:49 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.61 2007-08-02 11:45:00 matthew Exp $';
 
 package main;
 
@@ -20,7 +20,7 @@ my $mysociety_bin = $FindBin::Bin;
 my $servers_dir = "$FindBin::Bin/../../servers";
 my $mysociety_dir = "$FindBin::Bin/../../mysociety";
 
-use mySociety::Util qw(shell);
+use mySociety::SystemMisc qw(shell);
 use mySociety::Config;
 
 use Cwd;

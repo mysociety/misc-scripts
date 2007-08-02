@@ -20,7 +20,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.49 2007-04-10 15:46:24 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.50 2007-08-02 11:45:00 matthew Exp $';
 
 package Oops;
 
@@ -51,7 +51,8 @@ use Pod::Usage;
 use POSIX qw(getuid mkfifo);
 use Unix::Mknod qw(major minor makedev mknod);
 
-use mySociety::Util;
+use mySociety::SystemMisc;
+use mySociety::TempFiles;
 
 umask(0000);
 
@@ -66,7 +67,7 @@ my $save_file;
 
 sub System (@) {
     system(@_);
-    throw Oops("$_[0]: " . mySociety::Util::describe_waitval($?, "system"))
+    throw Oops("$_[0]: " . mySociety::SystemMisc::describe_waitval($?, "system"))
         if ($?);
 }
 
@@ -592,7 +593,7 @@ sub compare_installed_files ($$$) {
                     if ($major != $f->{devmajor} || $minor != $f->{devminor});
             } elsif ($f->{type} == Archive::Tar::Constant::FILE && $f->{type} == file_type_tar($st->mode())) {
                 # Compare the two files.
-                my ($tmph, $tmpn) = mySociety::Util::named_tempfile();
+                my ($tmph, $tmpn) = mySociety::TempFiles::named_tempfile();
                 try {
                     $tmph->print($tar->get_content($name))
                         || throw Oops("$tmpn: write: $!");
@@ -715,7 +716,7 @@ try {
     if ($retval == 0 && !$only_check_existing) {
         verbose("installing files from $tree with settings from $settings\n");
         verbose("building tree of new configuration files...\n");
-        $tempdir = mySociety::Util::tempdir();
+        $tempdir = mySociety::TempFiles::tempdir();
         verbose("temporary directory is $tempdir\n");
         process_directory($tree, $tempdir, $settings);
 
@@ -754,7 +755,7 @@ try {
     print STDERR "deploy-configuration: ", $E->text(), "\n";
     $retval ||= 1;
 } finally {
-    mySociety::Util::tempdir_cleanup($tempdir) if ($tempdir);
+    mySociety::TempFiles::tempdir_cleanup($tempdir) if ($tempdir);
 };
 
 exit($retval);

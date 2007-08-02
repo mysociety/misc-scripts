@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: test-site,v 1.4 2006-10-26 09:51:08 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: test-site,v 1.5 2007-08-02 11:45:00 matthew Exp $';
 
 package main;
 
@@ -20,7 +20,7 @@ my $mysociety_bin = $FindBin::Bin;
 my $servers_dir = "$FindBin::Bin/../../servers";
 my $mysociety_dir = "$FindBin::Bin/../../mysociety";
 
-use mySociety::Util qw(shell);
+use mySociety::SystemMisc qw(shell);
 use mySociety::Config;
 
 use Data::Dumper;

@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.21 2007-04-17 22:31:08 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.22 2007-08-02 11:45:00 matthew Exp $';
 
 use strict;
 
@@ -28,7 +28,8 @@ use Error qw(:try);
 use File::Slurp qw(read_file);
 use Getopt::Long;
 use IO::File;
-use mySociety::Util qw(create_file_to_replace describe_waitval shell);
+use mySociety::SystemMisc qw(describe_waitval shell);
+use mySociety::TempFiles qw(create_file_to_replace);
 # we use ::Fast not for speed, but because it works and the regular one
 # doesn't.
 use Net::DNS::ZoneFile::Fast;

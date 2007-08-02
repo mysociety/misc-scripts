@@ -80,7 +80,7 @@ if ($server eq 'bitter' || $server eq 'tea') {
 	die "generate-pgpass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.57 2007-07-30 16:49:04 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.58 2007-08-02 11:45:00 matthew Exp $';
 
 use strict;
 require 5.8.0;
@@ -89,14 +89,14 @@ use FindBin;
 use lib "$FindBin::Bin/../perllib";
 use POSIX;
 
-use mySociety::Util;
+use mySociety::TempFiles;
 
 foreach my $user (keys %$database_permissions) {
     my @x = getpwnam($user) or die "$user: getpwnam: $!";
     my ($user_login, $user_pass, $user_uid, $user_gid) = @x;
     my $user_home = $x[7];
 
-    my ($tmpn, $tmph) = mySociety::Util::create_file_to_replace("$user_home/.pgpass") or die "open: $!";
+    my ($tmpn, $tmph) = mySociety::TempFiles::create_file_to_replace("$user_home/.pgpass") or die "open: $!";
     $tmph->print("# DO NOT EDIT - edit and rerun generate-pgpass instead\n");
 
     my $databases = $database_permissions->{$user};
