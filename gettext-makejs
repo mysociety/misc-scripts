@@ -8,6 +8,7 @@ my %langs = (
     'en_GB' => 'en-gb',
     'it_IT' => 'it',
     'nl_NL' => 'nl',
+    'nl_BE' => 'nl-be',
     'es_ES' => 'es',
     'pt_BR' => 'pt-br',
     'ru_RU' => 'ru',
