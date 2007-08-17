@@ -6,7 +6,7 @@ set -e
 
 # Edit these three to add more hosts, if the server running awstats changes, or
 # if new servers are added that serve any of the hosts.
-VHOSTS="www.mysociety.org www.mysociety.co.uk www.ukcod.org.uk www.writetothem.com www.pledgebank.com promise.livesimply.org.uk www.hearfromyourmp.com www.neighbourhoodfixit.com www.fixmystreet.com petitions.pm.gov.uk www.downingstreetsays.com"
+VHOSTS="www.mysociety.org www.mysociety.co.uk www.ukcod.org.uk www.writetothem.com www.pledgebank.com promise.livesimply.org.uk www.hearfromyourmp.com www.fixmystreet.com petitions.pm.gov.uk www.downingstreetsays.com"
 AWSTATS_SERVER=bitter
 OTHER_SERVERS="tea balti water whisky"
 OTHER_SECURE_MYSOCIETY_ORG="tea"
@@ -50,7 +50,7 @@ do
     # Process all the log files, except for today's (because you want to be sure all
     # the files from all the servers have rotated, so everything is available to
     # be merged together in order)
-    LOG_FILES=`find $CACHE_DIR -type f | grep "/$VHOST-.*/" | grep -v $TODAY`
+    LOG_FILES=`find $CACHE_DIR -type f | grep "/$VHOST-.*/" | grep -v $TODAY` || (echo "No log files found for $VHOST, probably remove it from process-logfiles")
     /usr/bin/zmergelog $LOG_FILES | $AWSTATS -update -config=$VHOST >/dev/null
 
     # Copy awstats output to other servers which serve secure.mysociety.org
