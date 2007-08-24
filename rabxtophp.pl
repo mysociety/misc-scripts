@@ -5,7 +5,7 @@
 # PHP include file for talking to that RABX interface.
 #
 
-my $rcsid = ''; $rcsid .= '$Id: rabxtophp.pl,v 1.9 2006-11-29 18:59:29 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: rabxtophp.pl,v 1.10 2007-08-24 12:27:31 matthew Exp $';
 
 use strict;
 
@@ -52,12 +52,12 @@ sub process_functions {
             my @call_args;
             do {
                 my $param = $_;
-                next if $param eq "..."; # func_get_args and PHPs flexible syntax covers this
+                next if $param eq "..."; # func_get_args and PHP's flexible syntax covers this
                 $optional = 1 if $param =~ m/\[/;
-                my $without_optmarks = $param;
-                $without_optmarks =~ s/[\[\]]//g;
-                push @opt_args, "\$" . lc($without_optmarks) . ($optional ? " = null" : ""); 
-                push @call_args, "\$" . lc($without_optmarks);
+                my $without_punc = $param;
+                $without_punc =~ s/[\[\]()]//g;
+                push @opt_args, "\$" . lc($without_punc) . ($optional ? " = null" : ""); 
+                push @call_args, "\$" . lc($without_punc);
                 $optional = 0 if $param =~ m/\]/;
             } foreach @params;
             my $opt_list = join(", ", @opt_args);
