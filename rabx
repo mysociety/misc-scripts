@@ -6,7 +6,7 @@
 # Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 
-my $rcsid = ''; $rcsid .= '$Id: rabx,v 1.2 2005-09-14 18:05:46 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: rabx,v 1.3 2007-08-24 22:35:51 matthew Exp $';
 
 use strict;
 use RABX;
@@ -20,7 +20,10 @@ Make a remote function call to a specified RABX service.
     ./rabx URL FUNCTION [PARAMS ...]
     
 PARAMS are interpreted as separate scalar parameters to the function.
-The return value is displayed in the same format as Perl's Data::Dumper.
+If a PARAM contains a , it will be split on that and used as an array
+parameter. If it contains a => it will be split on that and , and used
+as a hash parameter. The return value is displayed in the same format as
+Perl's Data::Dumper.
 
 Examples:
 
@@ -34,6 +37,16 @@ my $url = shift @ARGV or die "Specify URL as first parameter";
 my $function = shift @ARGV or die "Specify function name as second parameter";
 
 my $rabx = new RABX::Client($url) or die "Failed to create RABX client for $url";
-my $result = $rabx->call($function, @ARGV);
+my @params;
+foreach (@ARGV) {
+    if (/=>/) {
+        push @params, { split /=>|,/ };
+    } elsif (/,/) {
+        push @params, [ split /,/ ];
+    } else {
+        push @params, $_;
+    }
+}
+my $result = $rabx->call($function, @params);
 print Dumper($result);
 
