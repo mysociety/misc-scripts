@@ -36,6 +36,7 @@ my $database_permissions_bitter_tea = {
     'mswww-staging' => ['mswww-staging'],
     'mssecure' => ['donate'],
     'bci' => ['bci'],
+    'bbcparlvid' => ['bbcparlvid'],
 
     # Services
     'msservices' => ['mapit','dadem','ratty','evel','news','track','gaze'],
@@ -80,7 +81,7 @@ if ($server eq 'bitter' || $server eq 'tea') {
 	die "generate-pgpass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.58 2007-08-02 11:45:00 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.59 2007-08-25 11:05:32 matthew Exp $';
 
 use strict;
 require 5.8.0;
