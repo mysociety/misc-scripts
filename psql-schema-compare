@@ -39,11 +39,11 @@ fi
 ssh $5 su $POSTGRES -c \""dropdb --port $6 -q $SCHEMATEST"\" 2>&1 | grep -v "does not exist" || echo -n
 ssh $5 su $POSTGRES -c \""createdb --port $6 -q $SCHEMATEST"\"
 cat $1 | ssh $5 su $POSTGRES -c \""psql --port $6 --file=- -q $SCHEMATEST"\" 2>&1 | grep -v "will create implicit" && echo -n 
-ssh $5 su $POSTGRES -c \""$PGDUMP --port $6 --schema-only --schema=public -s $SCHEMATEST"\" | egrep -v "^--|SET SESSION AUTHORIZATION|\\connect - |GRANT ALL|REVOKE ALL|START WITH 1" | grep -v "SET search_path = public, pg_catalog;" | sed "s/,$//;" | grep -v '^[ \t]*$' > $CVS_SCHEMA_FILE
+ssh $5 su $POSTGRES -c \""$PGDUMP --port $6 --schema-only --schema=public -s $SCHEMATEST"\" | egrep -v "^--|SET SESSION AUTHORIZATION|\\connect - |GRANT ALL|REVOKE ALL|START WITH 1|OWNER TO" | grep -v "SET search_path = public, pg_catalog;" | sed "s/,$//;" | grep -v '^[ \t]*$' > $CVS_SCHEMA_FILE
 ssh $5 su $POSTGRES -c \""dropdb --port $6 -q $SCHEMATEST"\"
 
 # ... the live database dump
-su $2 -c "$PGDUMP --schema-only --schema=public -U $4 --host $5 --port $6 $3" | egrep -v "^--|SET SESSION AUTHORIZATION|\\connect - |GRANT ALL|REVOKE ALL|START WITH 1" | grep -v "SET search_path = public, pg_catalog;" | sed "s/,$//;" | grep -v '^[ \t]*$' > $CURRENT_SCHEMA_FILE
+su $2 -c "$PGDUMP --schema-only --schema=public -U $4 --host $5 --port $6 $3" | egrep -v "^--|SET SESSION AUTHORIZATION|\\connect - |GRANT ALL|REVOKE ALL|START WITH 1|OWNER TO" | grep -v "SET search_path = public, pg_catalog;" | sed "s/,$//;" | grep -v '^[ \t]*$' > $CURRENT_SCHEMA_FILE
 
 # Note:  Using sort here is completely evil.  It is because
 # older verions of pg_dump don't output the tables in a stable
