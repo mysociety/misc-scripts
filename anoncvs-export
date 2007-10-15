@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: anoncvs-export,v 1.14 2007-05-14 10:40:13 francis Exp $
+# $Id: anoncvs-export,v 1.15 2007-10-15 11:38:12 francis Exp $
 #
 
 # set -x # debugging
@@ -63,7 +63,7 @@ rsync --delete -rlpt --exclude 'mysociety.db*' --exclude '.mysociety.db.*' --exc
     || die "failed in rsync"
 
 # Now change the ownership and permissions in the output repository.
-chown -R anoncvs:anoncvs $to
-chmod -R o-w $to
+chown --quiet -R anoncvs:anoncvs $to
+chmod --quiet -R o-w $to
 
 exit 0
