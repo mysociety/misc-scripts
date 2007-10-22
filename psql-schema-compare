@@ -45,25 +45,36 @@ ssh $5 su $POSTGRES -c \""dropdb --port $6 -q $SCHEMATEST"\"
 # ... the live database dump
 su $2 -c "$PGDUMP --schema-only --schema=public -U $4 --host $5 --port $6 $3" | egrep -v "^--|SET SESSION AUTHORIZATION|\\connect - |GRANT ALL|REVOKE ALL|START WITH 1|OWNER TO" | grep -v "SET search_path = public, pg_catalog;" | sed "s/,$//;" | grep -v '^[ \t]*$' > $CURRENT_SCHEMA_FILE
 
-# Note:  Using sort here is completely evil.  It is because
-# older verions of pg_dump don't output the tables in a stable
-# order.  The above code would get confused it a column was moved
-# from one table to another with no other changes.  Hopefully this
-# is unlikely.  More recent pgsql have a fixed pg_dump.  Or a Perl
-# script could be used to compare schemas.
-# If you hate this send us a patch ;)  Better actually release a
-# comprehensive schema comparing tool...
-cat $CVS_SCHEMA_FILE | sort > $CVS_SCHEMA_FILE.sorted
-cat $CURRENT_SCHEMA_FILE | sort > $CURRENT_SCHEMA_FILE.sorted
-
 # Compare them
-if ! diff -w $CURRENT_SCHEMA_FILE.sorted $CVS_SCHEMA_FILE.sorted
+if [ "$6" = "5433" ]
 then
-	warn "Schema in CVS differs from that in pgsql database, you need to update it"
-	warn "host: $5 port: $6 database: $3; user: $4 schema: $1"
-	warn "CVS sorted: $CVS_SCHEMA_FILE.sorted; current sorted: $CURRENT_SCHEMA_FILE.sorted"
-	warn "CVS schema: $CVS_SCHEMA_FILE; current schema: $CURRENT_SCHEMA_FILE"
-	exit 1
+    # For PostgreSQL 8.1 can just do diff of actual dumps
+    if ! diff -u $CURRENT_SCHEMA_FILE $CVS_SCHEMA_FILE
+    then
+        warn "Schema in CVS differs from that in pgsql 8.1 database, you need to update it"
+        warn "host: $5 port: $6 database: $3; user: $4 schema: $1"
+        warn "CVS schema: $CVS_SCHEMA_FILE; current schema: $CURRENT_SCHEMA_FILE"
+        exit 1
+    fi
+else
+    # Note:  Using sort here is completely evil.  It is because
+    # older verions of pg_dump (i.e. PostgreSQL 7.4) don't output the tables in
+    # a stable order.  The above code would get confused it a column was moved
+    # from one table to another with no other changes.  Hopefully this is
+    # unlikely.  More recent pgsql have a fixed pg_dump.  Or a Perl script
+    # could be used to compare schemas. If you hate this send us a patch ;)
+    # Better actually release a comprehensive schema comparing tool...
+    cat $CVS_SCHEMA_FILE | sort > $CVS_SCHEMA_FILE.sorted
+    cat $CURRENT_SCHEMA_FILE | sort > $CURRENT_SCHEMA_FILE.sorted
+
+    if ! diff -w $CURRENT_SCHEMA_FILE.sorted $CVS_SCHEMA_FILE.sorted
+    then
+        warn "Schema in CVS differs from that in pgsql 7.4 database, you need to update it"
+        warn "host: $5 port: $6 database: $3; user: $4 schema: $1"
+        warn "CVS sorted: $CVS_SCHEMA_FILE.sorted; current sorted: $CURRENT_SCHEMA_FILE.sorted"
+        warn "CVS schema: $CVS_SCHEMA_FILE; current schema: $CURRENT_SCHEMA_FILE"
+        exit 1
+    fi
 fi
 rm $CVS_SCHEMA_FILE $CURRENT_SCHEMA_FILE
 
