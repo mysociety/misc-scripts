@@ -35,28 +35,32 @@ then
     PGDUMP=/usr/lib/postgresql/8.1/bin/pg_dump
 fi
 
+# XXX SET default_with_oids - not sure why these are varying in dump, when they look off in all the databases, ignore for now.
+
 # load file schema into a temporary place to dump it in the same format as ...
 ssh $5 su $POSTGRES -c \""dropdb --port $6 -q $SCHEMATEST"\" 2>&1 | grep -v "does not exist" || echo -n
 ssh $5 su $POSTGRES -c \""createdb --port $6 -q $SCHEMATEST"\"
 cat $1 | ssh $5 su $POSTGRES -c \""psql --port $6 --file=- -q $SCHEMATEST"\" 2>&1 | grep -v "will create implicit" && echo -n 
-ssh $5 su $POSTGRES -c \""$PGDUMP --port $6 --schema-only --schema=public -s $SCHEMATEST"\" | egrep -v "^--|SET SESSION AUTHORIZATION|\\connect - |GRANT ALL|REVOKE ALL|START WITH 1|OWNER TO" | grep -v "SET search_path = public, pg_catalog;" | sed "s/,$//;" | grep -v '^[ \t]*$' > $CVS_SCHEMA_FILE
+ssh $5 su $POSTGRES -c \""$PGDUMP --port $6 --schema-only --schema=public -s $SCHEMATEST"\" | egrep -v "^--|SET SESSION AUTHORIZATION|\\connect - |GRANT ALL|REVOKE ALL|START WITH 1|OWNER TO|SET default_with_oids" | grep -v "SET search_path = public, pg_catalog;" | sed "s/,$//;" | grep -v '^[ \t]*$' > $CVS_SCHEMA_FILE
 ssh $5 su $POSTGRES -c \""dropdb --port $6 -q $SCHEMATEST"\"
 
 # ... the live database dump
-su $2 -c "$PGDUMP --schema-only --schema=public -U $4 --host $5 --port $6 $3" | egrep -v "^--|SET SESSION AUTHORIZATION|\\connect - |GRANT ALL|REVOKE ALL|START WITH 1|OWNER TO" | grep -v "SET search_path = public, pg_catalog;" | sed "s/,$//;" | grep -v '^[ \t]*$' > $CURRENT_SCHEMA_FILE
+su $2 -c "$PGDUMP --schema-only --schema=public -U $4 --host $5 --port $6 $3" | egrep -v "^--|SET SESSION AUTHORIZATION|\\connect - |GRANT ALL|REVOKE ALL|START WITH 1|OWNER TO|SET default_with_oids" | grep -v "SET search_path = public, pg_catalog;" | sed "s/,$//;" | grep -v '^[ \t]*$' > $CURRENT_SCHEMA_FILE
 
 # Compare them
-if [ "$6" = "5433" ]
-then
-    # For PostgreSQL 8.1 can just do diff of actual dumps
-    if ! diff -u $CURRENT_SCHEMA_FILE $CVS_SCHEMA_FILE
-    then
-        warn "Schema in CVS differs from that in pgsql 8.1 database, you need to update it"
-        warn "host: $5 port: $6 database: $3; user: $4 schema: $1"
-        warn "CVS schema: $CVS_SCHEMA_FILE; current schema: $CURRENT_SCHEMA_FILE"
-        exit 1
-    fi
-else
+#if [ "$6" = "5433" ]
+#then
+#    # For PostgreSQL 8.1 can just do diff of actual dumps
+# XXX Grrr - no it can't, even though the tables are in the right order, column
+# ordering screws it up.
+#    if ! diff -u $CURRENT_SCHEMA_FILE $CVS_SCHEMA_FILE
+#    then
+#        warn "Schema in CVS differs from that in pgsql 8.1 database, you need to update it"
+#        warn "host: $5 port: $6 database: $3; user: $4 schema: $1"
+#        warn "CVS schema: $CVS_SCHEMA_FILE; current schema: $CURRENT_SCHEMA_FILE"
+#        exit 1
+#    fi
+#else
     # Note:  Using sort here is completely evil.  It is because
     # older verions of pg_dump (i.e. PostgreSQL 7.4) don't output the tables in
     # a stable order.  The above code would get confused it a column was moved
@@ -75,7 +79,7 @@ else
         warn "CVS schema: $CVS_SCHEMA_FILE; current schema: $CURRENT_SCHEMA_FILE"
         exit 1
     fi
-fi
+#fi
 rm $CVS_SCHEMA_FILE $CURRENT_SCHEMA_FILE
 
 
