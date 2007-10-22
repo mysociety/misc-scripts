@@ -6,7 +6,7 @@
 # Copyright (c) 2004 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: backup-stuff,v 1.24 2007-04-19 10:58:55 francis Exp $
+# $Id: backup-stuff,v 1.25 2007-10-22 03:47:10 francis Exp $
 #
 
 set -e
@@ -29,34 +29,35 @@ else
     }
 fi
 
-# Delete old backups of some databases weekly for privacy
-# Delete every database backup older than 6 months
-deleteweekly="fyr"
-oneweekback=$( date +%Y%m%dT%H%M%S --date='1 week ago')
-sixmonthsback=$( date +%Y%m%dT%H%M%S --date='6 months ago')
+# Delete old backups of some databases on a fast cycle for privacy/space (one week)
+# Delete every database backup older than a slow cycle (3 months)
+deletefastcycle="fyr mapit evel"
+fastcycle=$( date +%Y%m%dT%H%M%S --date='1 week ago')
+slowcycle=$( date +%Y%m%dT%H%M%S --date='3 months ago')
 for X in _data_backups_dailydb_????????T??????; do
-    # Delete older than a week
-    if [[ "$X" < "_data_backups_dailydb_$oneweekback" ]]; then
-        #echo "delete weekly: $X"
+    # Delete older than fast cycle
+    if [[ "$X" < "_data_backups_dailydb_$fastcycle" ]]; then
+        #echo "delete fast cycle: $X"
         chmod u+w $X
-        for Y in $deleteweekly
+        for Y in $deletefastcycle
         do
+            #echo "deleting fast cycle: $X $Y"
             rm -f $X/$Y.*
         done
         chmod u-w $X
     fi
-    # Delete older than six months
-    if [[ "$X" < "_data_backups_dailydb_$sixmonthsback" ]]; then
-        #echo "delete six monthly: $X"
+    # Delete older than slow cycle
+    if [[ "$X" < "_data_backups_dailydb_$slowcycle" ]]; then
+        #echo "deleting slow cycle: $X"
         chmod u+w $X
         rm -fr $X
     fi
 done
 # .. and old backups of files
 for X in _data_backups_dailyfiles_????????T??????; do
-    # Delete older than six months
-    if [[ "$X" < "_data_backups_dailyfiles_$sixmonthsback" ]]; then
-        #echo "delete six monthly: $X"
+    # Delete older than slow cycle
+    if [[ "$X" < "_data_backups_dailyfiles_$slowcycle" ]]; then
+        #echo "delete slow cycle: $X"
         chmod u+w $X
         rm -fr $X
     fi
