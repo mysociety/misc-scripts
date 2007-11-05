@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: FYR.pm,v 1.10 2007-01-26 12:26:05 francis Exp $
+# $Id: FYR.pm,v 1.11 2007-11-05 10:20:02 francis Exp $
 #
 
 package FYR;
@@ -112,11 +112,18 @@ sub test () {
     printf("last message was submitted %d minutes ago\n",
         int($last_message_age / 60))
             if ($last_message_age > $message_threshold);
-    
+   
+    # "All the test currently does is see how many ready faxes there are that have
+    # had no delivery attempts (any fax soft error doesn't count as a delivery
+    # attempt, and any fatal error in efax we don't recognise is a soft error),
+    # and when the last one was sent. So this error will happen whenever there's
+    # an unknown problem sending a fax for more than an hour, as in the case
+    # below." - because of this I've upped the below from $n_ready_faxes > 0
+    # to $n_ready_faxes > 5
     printf("last fax was sent %d minutes ago; %d pending\n",
         int($last_fax_age / 60), $n_ready_faxes)
             if ($time ge '08:20' && $time le '20:00'
-                && $n_ready_faxes > 0 && $last_fax_age > 3600);
+                && $n_ready_faxes > 5 && $last_fax_age > 3600);
 
     printf("last email was sent %d minutes ago; %d pending\n",
         int($last_email_age / 60), $n_ready_emails)
