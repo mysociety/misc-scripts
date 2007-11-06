@@ -16,24 +16,18 @@ trap '[ x$DUFILE != x ] && rm $DUFILE ; [ x$IDMAP != x ] && rm $IDMAP' EXIT
 IDMAP=`tempfile`
 DUFILE=`tempfile`
 
-for VERSION in 4.1
-do
-    PORT=""
-    DBDIR=`grep datadir /etc/mysql/my.cnf | cut -d "=" -f 2 | sed "s/ //"`
-    if [ -e "$DBDIR" ]
+DBDIR=`grep datadir /etc/mysql/my.cnf | cut -d "=" -f 2 | sed "s/ //"`
+if [ -e "$DBDIR" ]
+then
+# Get disk space used up by each id
+cd $DBDIR
+
+for i in *
+do 
+    if [ -d "$i" ]
     then
-        echo "version $VERSION"
-
-        # Get disk space used up by each id
-        cd $DBDIR
-
-        for i in *
-        do 
-            if [ -d "$i" ]
-            then
-                echo -n "$i "
-                find $i -type f | xargs /data/mysociety/utils/mincore | awk '{ if ($3 > 0) { size += $3 / 1024.; incore += $2 / 1024.; } } END { printf "%.1f%% %.1fMB\n", (size > 0 ? 100. * incore / size : -0), size / 1024.; }'
-            fi
-        done
+	echo -n "$i "
+	find $i -type f | xargs /data/mysociety/utils/mincore | awk '{ if ($3 > 0) { size += $3 / 1024.; incore += $2 / 1024.; } } END { printf "%.1f%% %.1fMB\n", (size > 0 ? 100. * incore / size : -0), size / 1024.; }'
     fi
 done
+fi
