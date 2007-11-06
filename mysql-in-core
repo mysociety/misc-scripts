@@ -12,22 +12,39 @@ set -e
 
 trap '[ x$DUFILE != x ] && rm $DUFILE ; [ x$IDMAP != x ] && rm $IDMAP' EXIT
 
-# XXX tempfile usage is not safe here
-IDMAP=`tempfile`
-DUFILE=`tempfile`
+# XXX mktemp usage is not safe here
+IDMAP=`mktemp /tmp/$(basename $0).tmp.XXX`
+DUFILE=` mktemp /tmp/$(basename $0).tmp.XXX`
+MINCORE=$(pwd)/$(dirname $0)/../utils/mincore
 
-DBDIR=`grep datadir /etc/mysql/my.cnf | cut -d "=" -f 2 | sed "s/ //"`
+if [ ! -e "$MINCORE" ]
+then
+	echo "Please compile $MINCORE first"
+	exit
+fi
+
+# XXX there must be a better way of find the data directory - but the obvious
+# of grepping in /etc/my.cnf for datadir doesn't help as that value isn't
+# always there.
+DBDIR=/usr/local/mysql/data
+if [ ! -e "$DBDIR" ]; then DBDIR=/usr/data/mysql; fi
+if [ ! -e "$DBDIR" ]; then DBDIR=/data/mysql; fi
+
 if [ -e "$DBDIR" ]
 then
-# Get disk space used up by each id
-cd $DBDIR
+	# Get disk space used up by each id
+	cd $DBDIR
 
-for i in *
-do 
-    if [ -d "$i" ]
-    then
-	echo -n "$i "
-	find $i -type f | xargs /data/mysociety/utils/mincore | awk '{ if ($3 > 0) { size += $3 / 1024.; incore += $2 / 1024.; } } END { printf "%.1f%% %.1fMB\n", (size > 0 ? 100. * incore / size : -0), size / 1024.; }'
-    fi
-done
+	for i in *
+	do 
+	    if [ -d "$i" ]
+	    then
+		echo -n "$i "
+		find $i -type f | xargs $MINCORE | awk '{ if ($3 > 0) { size += $3 / 1024.; incore += $2 / 1024.; } } END { printf "%.1f%% %.1fMB\n", (size > 0 ? 100. * incore / size : -0), size / 1024.; }'
+	    fi
+	done
+else
+	echo "Can't find MySQL data directory"
 fi
+
+
