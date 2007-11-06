@@ -1,0 +1,32 @@
+#!/bin/bash
+#
+# directory-in-core:
+# Estimate the fraction of the data in all files in a directory is currently in
+# core memory.
+# 
+# Copyright (c) 2007 UK Citizens Online Democracy. All rights reserved.
+# Email: francis@mysociety.org; WWW: http://www.mysociety.org/
+#
+
+set -e
+
+trap '[ x$DUFILE != x ] && rm $DUFILE ; [ x$IDMAP != x ] && rm $IDMAP' EXIT
+
+MINCORE=$(pwd)/$(dirname $0)/../utils/mincore
+if [ ! -e "$MINCORE" ]
+then
+	echo "Please compile $MINCORE first"
+	exit
+fi
+
+DIR=$1
+
+if [ -e "$DIR" ]
+then
+	echo -n "$DIR "
+	find $DIR -type f | xargs $MINCORE | awk '{ if ($3 > 0) { size += $3 / 1024.; incore += $2 / 1024.; } } END { printf "%.1f%% %.1fMB\n", (size > 0 ? 100. * incore / size : -0), size / 1024.; }'
+else
+	echo "Can't find directory $DIR"
+fi
+
+

@@ -1,22 +1,16 @@
 #!/bin/bash
 #
-# psql-in-core:
-# Estimate the fraction of the data in each PostgreSQL database that is
-# currently in core.
+# mysql-in-core:
+# Estimate the fraction of the data in each MySQL database that is currently in
+# core memory.
 # 
-# Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
-# Email: chris@mysociety.org; WWW: http://www.mysociety.org/
+# Copyright (c) 2007 UK Citizens Online Democracy. All rights reserved.
+# Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
 set -e
 
-trap '[ x$DUFILE != x ] && rm $DUFILE ; [ x$IDMAP != x ] && rm $IDMAP' EXIT
-
-# XXX mktemp usage is not safe here
-IDMAP=`mktemp /tmp/$(basename $0).tmp.XXX`
-DUFILE=` mktemp /tmp/$(basename $0).tmp.XXX`
 MINCORE=$(pwd)/$(dirname $0)/../utils/mincore
-
 if [ ! -e "$MINCORE" ]
 then
 	echo "Please compile $MINCORE first"
@@ -26,6 +20,9 @@ fi
 # XXX there must be a better way of find the data directory - but the obvious
 # of grepping in /etc/my.cnf for datadir doesn't help as that value isn't
 # always there.
+# This should help: mysqladmin variables | grep datadir
+# But it doesn't work on haggis. But it should be better so change to it if the
+# below cause a problem.
 DBDIR=/usr/local/mysql/data
 if [ ! -e "$DBDIR" ]; then DBDIR=/usr/data/mysql; fi
 if [ ! -e "$DBDIR" ]; then DBDIR=/data/mysql; fi
@@ -41,6 +38,9 @@ then
 	    then
 		echo -n "$i "
 		find $i -type f | xargs $MINCORE | awk '{ if ($3 > 0) { size += $3 / 1024.; incore += $2 / 1024.; } } END { printf "%.1f%% %.1fMB\n", (size > 0 ? 100. * incore / size : -0), size / 1024.; }'
+	    else
+		echo -n
+		#echo "Skipping $i, not a directory"
 	    fi
 	done
 else
