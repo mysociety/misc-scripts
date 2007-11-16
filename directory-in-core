@@ -12,7 +12,7 @@ set -e
 
 trap '[ x$DUFILE != x ] && rm $DUFILE ; [ x$IDMAP != x ] && rm $IDMAP' EXIT
 
-MINCORE=$(pwd)/$(dirname $0)/../utils/mincore
+MINCORE=$(dirname $(readlink -f $0))/../utils/mincore
 if [ ! -e "$MINCORE" ]
 then
 	echo "Please compile $MINCORE first"
