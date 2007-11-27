@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.61 2007-08-02 11:45:00 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.62 2007-11-27 15:59:44 francis Exp $';
 
 package main;
 
@@ -234,21 +234,25 @@ foreach my $daemon (keys %{$conf->{'daemons'}}) {
 # Make a list of all the psql schemas to be checked
 my %unchecked_schemas = map {$_ => 1} keys %{$conf->{'psql_schemas'}};
 
-# Generate conf/general file from its template file
+# Generate all conf files from conf/*-example template files e.g. conf/general
 foreach my $conf_dir (@{$conf->{conf_dir}}) {
-    my $conf_file = "$vhost_dir/mysociety/$conf_dir/general"; # destination file
-    if (-e "$conf_file-example") {
+    foreach my $glob (glob "$vhost_dir/mysociety/$conf_dir/*-example") {
+        $glob =~ m#^.*/(.*?)-example$#;
+        my $name_part = $1;
+
+        my $conf_file = "$vhost_dir/mysociety/$conf_dir/$name_part"; # destination file
+
         my $old_umask = umask(0077);
         # find source template (.ugly) file
-        my $conf_ugly_part = $conf_dir . "/general";
+        my $conf_ugly_part = $conf_dir . "/$name_part";
         $conf_ugly_part =~ s#/#_#g;
         my $conf_ugly_file = "$servers_dir/vhosts/$conf_ugly_part.ugly";
-        # update the conf/general template
+        # update the conf/general (or whatever) template
         chdir "$servers_dir/vhosts";
         shell("cvs", "-Q", "update", "$conf_ugly_part.ugly");
         # update example we'll be comparing against, to make sure no missing entries
         chdir $mysociety_dir;
-        shell("cvs", "-Q", "update", "$conf_dir/general-example");
+        shell("cvs", "-Q", "update", "$conf_dir/$name_part-example");
         # check destination file hasn't been separately modified
         my $make_conf = 1;
         if (-e $conf_file) {
@@ -262,9 +266,11 @@ foreach my $conf_dir (@{$conf->{conf_dir}}) {
         if ($make_conf) {
             # call mugly to generate from template
             shell("$mysociety_bin/mugly", "-O", "$conf_file.tmp", "-p", "$settings_file", "$conf_ugly_file");
-            # test contents of new configuration file before copying it over
-            chdir $mysociety_bin;
-            shell("$mysociety_bin/compareconfig.pl", "$conf_file.tmp", "$mysociety_dir/$conf_dir/general-example");
+            if ($name_part eq 'general') {
+                # test contents of new configuration file before copying it over
+                chdir $mysociety_bin;
+                shell("$mysociety_bin/compareconfig.pl", "$conf_file.tmp", "$mysociety_dir/$conf_dir/$name_part-example");
+            }
             # copy into place
             copy("$conf_file.tmp", "$conf_file.deployed");
             chown($user_uid, $user_gid, "$conf_file.deployed");
@@ -272,9 +278,11 @@ foreach my $conf_dir (@{$conf->{conf_dir}}) {
             chown($user_uid, $user_gid, "$conf_file");
             unlink("$conf_file.tmp") or die "couldn't unlink $conf_file.tmp";
         } else {
-            # test contents of configuration file before copying it over
-            chdir $mysociety_bin;
-            shell("$mysociety_bin/compareconfig.pl", "$conf_file", "$mysociety_dir/$conf_dir/general-example");
+            if ($name_part eq 'general') {
+                # test contents of configuration file before copying it over
+                chdir $mysociety_bin;
+                shell("$mysociety_bin/compareconfig.pl", "$conf_file", "$mysociety_dir/$conf_dir/$name_part-example");
+            }
         }
         # now we use this configuration
         mySociety::Config::set_file($conf_file);
@@ -297,7 +305,7 @@ foreach my $conf_dir (@{$conf->{conf_dir}}) {
                 my $psql_host = mySociety::Config::get($psql_conf_prefix.'_DB_HOST', 'localhost');
                 my $psql_port = mySociety::Config::get($psql_conf_prefix.'_DB_PORT', 5432);
                 my $psql_user = mySociety::Config::get($psql_conf_prefix.'_DB_USER');
-	
+    
                 chdir $mysociety_dir;
                 shell("cvs", "-Q", "update", "$psql_schema");
                 chdir $mysociety_bin;
