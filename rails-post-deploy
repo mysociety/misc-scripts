@@ -1,12 +1,14 @@
 #!/bin/sh
 #
 # make-rails-symlinks
-# For Ruby on Rails, run this in exec_extras in vhosts.pl
+# For Ruby on Rails, run this in exec_extras in vhosts.pl. It makes symlinks
+# from vendor to the server version of rails, and migrates the db to the most
+# recent version.
 #
 # Copyright (c) 2007 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: make-rails-symlinks,v 1.1 2007-11-27 11:35:04 francis Exp $
+# $Id: rails-post-deploy,v 1.1 2007-11-27 15:47:34 francis Exp $
 #
 
 # $1 should be the directory of the rails app
@@ -22,6 +24,8 @@ do
     rm -f $X
     ln -s /usr/share/rails/$X $X
 done
+rm -f rails
+ln -s . rails
 
 cd ..
 mkdir -p log
@@ -31,4 +35,6 @@ do
     touch $X
 done
 
+cd ..
+rake db:migrate
 
