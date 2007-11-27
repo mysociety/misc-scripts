@@ -1,0 +1,34 @@
+#!/bin/sh
+#
+# make-rails-symlinks
+# For Ruby on Rails, run this in exec_extras in vhosts.pl
+#
+# Copyright (c) 2007 UK Citizens Online Democracy. All rights reserved.
+# Email: francis@mysociety.org; WWW: http://www.mysociety.org/
+#
+# $Id: make-rails-symlinks,v 1.1 2007-11-27 11:35:04 francis Exp $
+#
+
+# $1 should be the directory of the rails app
+cd $1
+
+# make sure that there is an app directory, so are in a rails app tree
+cd app/..
+
+mkdir -p vendor
+cd vendor
+for X in actionmailer actionpack actionwebservice activerecord activesupport railties
+do
+    rm -f $X
+    ln -s /usr/share/rails/$X $X
+done
+
+cd ..
+mkdir -p log
+cd log
+for X in development.log fastcgi.crash.log production.log test.log
+do
+    touch $X
+done
+
+
