@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.62 2007-11-27 15:59:44 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.63 2007-11-29 00:06:31 francis Exp $';
 
 package main;
 
@@ -195,6 +195,8 @@ print FH "\$conf_dirs = \$VAR1;\n";
 print FH "\$admin_dir = '$conf->{'admin_dir'}';\n" if $conf->{'admin_dir'};
 print FH "\$admin_group = '$conf->{'admin_group'}';\n" if $conf->{'admin_group'};
 die "admin_group must be specified if admin_dir is" if $conf->{'admin_dir'} && !$conf->{'admin_group'};
+print FH "\$admin_uri = '$conf->{'admin_uri'}';\n" if $conf->{'admin_uri'};
+die "admin_group must be specified if admin_uri is" if $conf->{'admin_uri'} && !$conf->{'admin_group'};
 print FH "\$internal_access_only = '$conf->{'internal_access_only'}';\n" if $conf->{'internal_access_only'};
 print FH Dumper($conf->{'public_cache_dirs'});
 print FH "\$public_cache_dirs = \$VAR1;\n";
