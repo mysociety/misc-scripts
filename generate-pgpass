@@ -11,11 +11,11 @@
 # Who can access what databases
 my $database_permissions_bitter_tea = {
     # All-seeing power
-    'root' => ['pb', 'ycml', 'rt', 'gaze', 'dadem', 'evel', 'mapit', 'ratty', 'fyr', 'pb-interface', 'pb-livesimply', 'pb-o2', 'pb-staging', 'mswww', 'track', 'list', 'pet', 'pet-testharness', 'donate', 'news', 'bci', 'dress', 'bbcparlvid'],
+    'root' => ['pb', 'ycml', 'rt', 'gaze', 'dadem', 'evel', 'mapit', 'ratty', 'fyr', 'pb-interface', 'pb-livesimply', 'pb-o2', 'pb-staging', 'mswww', 'track', 'list', 'pet', 'pet-testharness', 'donate', 'news', 'bci', 'dress', 'bbcparlvid', 'ycml-cllr'],
      
     # People
     'francis' => ['fyr','pb','ycml','mapit','dadem','ratty','evel','pb-staging','ycml-staging','fyr-staging', 'track', 'pet-staging', 'pet', 'bci', 'dress'],
-    'matthew' => ['fyr','pb','ycml','mapit','dadem','ratty','evel','pb-staging','ycml-staging','fyr-staging', 'track', 'pet-staging', 'pet', 'bci', 'dress'],
+    'matthew' => ['fyr','pb','ycml','mapit','dadem','ratty','evel','pb-staging','ycml-staging','fyr-staging', 'track', 'pet-staging', 'pet', 'bci', 'dress', 'ycml-cllr'],
     'etienne' => ['pb-staging','ycml-staging', 'bbcparlvid'],
     'timsk' => ['pb-staging', 'pb'],
     'louise' => ['mswww-staging','mswww','news-staging', 'fyr-staging', 'donate-staging', 'news', 'fyr'],
@@ -27,6 +27,7 @@ my $database_permissions_bitter_tea = {
     'pb-livesimply' => ['pb-livesimply'],
     'pb-o2' => ['pb-o2'],
     'ycml' => ['ycml','ycml-staging'],
+    'ycml-cllr' => ['ycml-cllr'],
     'fyr' => ['fyr','fyr-staging'],
     'pet' => ['pet','pet-staging'],
     'dademcron' => ['fyr', 'fyr-staging', 'rt'],
@@ -50,6 +51,7 @@ my $database_permissions_balti = {
     'louise' => ['ratty-testharness','fyr-testharness','news-testharness'],
 
     # Sites
+    'ycml-testharness' => ['ycml-testharness'],
     'pb-testharness' => ['pb-testharness'],
     'pet-testharness' => ['pet-testharness'],
     'pb-livesimply' => ['pb-livesimply'],
@@ -80,7 +82,7 @@ if ($server eq 'bitter' || $server eq 'tea') {
 	die "generate-pgpass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.60 2007-10-06 16:19:41 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.61 2007-12-12 10:44:25 matthew Exp $';
 
 use strict;
 require 5.8.0;
