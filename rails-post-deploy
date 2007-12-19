@@ -8,7 +8,7 @@
 # Copyright (c) 2007 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: rails-post-deploy,v 1.3 2007-12-13 03:26:08 francis Exp $
+# $Id: rails-post-deploy,v 1.4 2007-12-19 12:15:25 francis Exp $
 #
 
 set -e
@@ -46,7 +46,7 @@ cd ..
 
 # if not staging, force production (via a hack in config/boot.rb which needs
 # applying to your rails app, see foi/config/boot.rb)
-if [ "$STAGING_SITE" = "0" ]
+if [ "$OPTION_STAGING_SITE" = "0" ]
 then
     echo "ENV['RAILS_ENV'] = 'production'" > config/rails_env.rb
 else
