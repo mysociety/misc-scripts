@@ -6,7 +6,7 @@
 # Copyright (c) 2004 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: backup-stuff,v 1.26 2007-11-03 11:54:54 francis Exp $
+# $Id: backup-stuff,v 1.27 2007-12-24 19:05:36 francis Exp $
 #
 
 set -e
@@ -30,10 +30,10 @@ else
 fi
 
 # Delete old backups of some databases on a fast cycle for privacy/space (one week)
-# Delete every database backup older than a slow cycle (3 months)
+# Delete every database backup older than a slow cycle (2 months)
 deletefastcycle="fyr mapit evel fawkes"
 fastcycle=$( date +%Y%m%dT%H%M%S --date='1 week ago')
-slowcycle=$( date +%Y%m%dT%H%M%S --date='3 months ago')
+slowcycle=$( date +%Y%m%dT%H%M%S --date='2 months ago')
 for X in _data_backups_dailydb_????????T??????; do
     # Delete older than fast cycle
     if [[ "$X" < "_data_backups_dailydb_$fastcycle" ]]; then
