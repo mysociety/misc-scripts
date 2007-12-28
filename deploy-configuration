@@ -20,7 +20,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.51 2007-08-14 07:26:22 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.52 2007-12-28 14:04:39 keith Exp $';
 
 package Oops;
 
@@ -744,7 +744,12 @@ try {
                 unlink($t);
                 throw Oops("$t: write: $!");
             };
-            $f->close() || throw Oops("$t: close: $!");
+            # New versions of Archive::Tar close the file when they write to it
+            # so check before we close. Can remove once we are all at Etch and above.
+            if ($f->opened())
+	    {
+		    $f->close() || throw Oops("$t: close: $!");
+	    }
             if (!rename($t, $save_file)) {
                 unlink($t);
                 throw Oops("$t: rename: $!");
