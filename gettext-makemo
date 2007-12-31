@@ -8,7 +8,7 @@
 # Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: gettext-makemo,v 1.10 2007-04-11 14:08:36 francis Exp $
+# $Id: gettext-makemo,v 1.11 2007-12-31 13:53:42 francis Exp $
 
 if [ ! -d locale ]
 then
@@ -43,6 +43,7 @@ do
             then
                 echo "WARNING: Email 'Subject: ' lines have probably been translated in $X' (got $SUBJECT_COUNT, $SUBJECT_COUNT_ORIG expected)"
             fi
+            cat $PO | ../../../bin/gettext-custom-validations
         done
 
         cd ../../../
