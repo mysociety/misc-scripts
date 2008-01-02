@@ -11,7 +11,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: psdbench,v 1.3 2007-10-17 09:59:19 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: psdbench,v 1.4 2008-01-02 10:53:02 matthew Exp $';
 
 use strict;
 require 5.8.0;
@@ -25,6 +25,8 @@ use Time::HiRes qw(time sleep);
 use constant HZ => 100.;
 
 my $url = shift(@ARGV);
+die "Supply a URL (without http://) as only argument" unless $url && $url !~ /^http:\/\//;
+
 my @users;
 while (@ARGV) {
     my $u = shift(@ARGV);
@@ -110,10 +112,12 @@ sub compare_proc_times ($$$) {
 
 # XXX hard-coded for the moment.
 sub do_request ($$) {
-    my $s = new IO::Socket::INET('localhost:80');
+    my ($url, $host) = @_;
+    my ($url_host, $path) = $url =~ m#^(.*?)/(.*)$#;
+    my $s = new IO::Socket::INET($host . ':80');
     $s->print(
-            "GET /100laptop HTTP/1.0\r\n",
-            "Host: www.pledgebank.com\r\n",
+            "GET /$path HTTP/1.0\r\n",
+            "Host: $url_host\r\n",
             "\r\n"
         );
     while (defined($s->getline())) { }
