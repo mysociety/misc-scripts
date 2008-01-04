@@ -8,10 +8,12 @@
 # Copyright (c) 2007 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: rails-post-deploy,v 1.4 2007-12-19 12:15:25 francis Exp $
+# $Id: rails-post-deploy,v 1.5 2008-01-04 01:29:19 francis Exp $
 #
 
 set -e
+
+MYSOCIETY_DIR=`pwd`
 
 # $1 should be the directory of the rails app
 cd $1
@@ -36,12 +38,9 @@ ln -s . rails
 
 # create initial log files
 cd ..
-mkdir -p log
+ln -s $MYSOCIETY_DIR/../logs log
 cd log
-for X in development.log fastcgi.crash.log production.log test.log
-do
-    touch $X
-done
+touch development.log fastcgi.crash.log production.log test.log
 cd ..
 
 # if not staging, force production (via a hack in config/boot.rb which needs
