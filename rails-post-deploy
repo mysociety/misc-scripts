@@ -8,7 +8,7 @@
 # Copyright (c) 2007 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: rails-post-deploy,v 1.5 2008-01-04 01:29:19 francis Exp $
+# $Id: rails-post-deploy,v 1.6 2008-01-04 11:24:37 francis Exp $
 #
 
 set -e
@@ -38,6 +38,7 @@ ln -s . rails
 
 # create initial log files
 cd ..
+rm -f log
 ln -s $MYSOCIETY_DIR/../logs log
 cd log
 touch development.log fastcgi.crash.log production.log test.log
