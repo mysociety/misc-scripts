@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.63 2007-11-29 00:06:31 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.64 2008-01-06 23:14:51 keith Exp $';
 
 package main;
 
@@ -138,7 +138,7 @@ foreach my $cvs_dir (@{$conf->{'cvs_dirs'}}) {
             shell("cd \"$vhost_dir\" && cvs -Q -d \"$cvsroot\" co mysociety/$cvs_dir".
                  " && chown -R ".$conf->{'user'}.":".$conf->{'user'}." mysociety");
        } else {
-            shell("su", "-", $conf->{'user'}, "cd \"$vhost_dir\" && cvs -Q -d \"$cvsroot\" co mysociety/$cvs_dir");
+            shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir\" && cvs -Q -d \"$cvsroot\" co mysociety/$cvs_dir");
         }
 	} else {
         my $current_root = read_file("$d/Root");
@@ -333,7 +333,7 @@ shell("$mysociety_bin/mugly", "-O", "/etc/apache/virtualhosts.d/$vhost.conf", "-
 if ($conf->{'email'}) {
     foreach my $email_user (keys %{$conf->{'email'}}) {
         my $email_pipeto = $conf->{'email'}->{$email_user};
-        shell("su", "-", $email_user, "echo \"|$vhost_dir/mysociety/$email_pipeto\" >~$email_user/.forward");
+        shell("su", "-", $email_user, "-c echo \"|$vhost_dir/mysociety/$email_pipeto\" >~$email_user/.forward");
         #print ".forward done\n";
     }
 }
@@ -376,14 +376,14 @@ foreach my $cvs_dir (@{$conf->{'cvs_dirs'}}) {
         shell("cd \"$vhost_dir/mysociety/$cvs_dir\" && cvs -Q update -dP && 
             chown -R ".$conf->{'user'}.":".$conf->{'user'}." ../");
     } else {
-        shell("su", "-", $conf->{'user'}, "cd \"$vhost_dir/mysociety/$cvs_dir\" && cvs -Q update -dP");
+        shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir/mysociety/$cvs_dir\" && cvs -Q update -dP");
     }
 }
 
 # Run any extra executables
 foreach my $exec_extra (@{$conf->{'exec_extras'}}) {
     chdir("$vhost_dir/mysociety");
-    shell("su", $conf->{'user'}, "$exec_extra");
+    shell("su", $conf->{'user'}, "-c $exec_extra");
 }
 
 # Prompt apache to reread files, on machines which have apache
