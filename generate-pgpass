@@ -65,6 +65,19 @@ my $database_permissions_balti = {
     'msservices-testharness' => ['mapit-testharness','dadem-testharness','ratty-testharness','evel-testharness','news-testharness'],
 };
 
+my $database_permissions_sponge = {
+    # All-seeing power
+    'root' => [],
+     
+    # People
+    'keith' => ['mswww-staging'],
+
+    # Sites
+    'mswww-staging' => ['mswww-staging'],
+
+    # Services
+};
+
 my $database_permissions_whisky_water_peas = {
     # All-seeing power
     'root' => [],
@@ -79,13 +92,15 @@ if ($server eq 'bitter' || $server eq 'tea') {
 	$database_permissions = $database_permissions_bitter_tea;
 } elsif ($server eq 'balti') {
 	$database_permissions = $database_permissions_balti;
+} elsif ($server eq 'sponge') {
+	$database_permissions = $database_permissions_sponge;
 } elsif ($server eq 'whisky' || $server eq 'water' || $server eq 'peas') {
 	$database_permissions = $database_permissions_whisky_water_peas;
 } else {
 	die "generate-pgpass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.66 2008-01-04 12:09:16 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.67 2008-01-17 15:23:12 keith Exp $';
 
 use strict;
 require 5.8.0;
