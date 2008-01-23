@@ -8,7 +8,7 @@
 # Copyright (c) 2007 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: rails-post-deploy,v 1.8 2008-01-04 11:31:33 francis Exp $
+# $Id: rails-post-deploy,v 1.9 2008-01-23 01:59:23 francis Exp $
 #
 
 set -e
@@ -25,16 +25,25 @@ cd app/..
 . ../shlib/deployfns
 read_conf config/general
 
+# see if rails is frozen or not
+if [ -d "rails" ]
+then
+    LN_PATH=rails
+else
+    rm -f rails
+    ln -s . rails
+    LN_PATH=/usr/share/rails
+fi
+
 # make symlinks to global rails installation
 mkdir -p vendor
 cd vendor
-for X in actionmailer actionpack actionwebservice activerecord activesupport railties
+for X in actionmailer actionpack activerecord activesupport railties
 do
     rm -f $X
-    ln -s /usr/share/rails/$X $X
+    ln -s $LN_PATH/$X $X
 done
-rm -f rails
-ln -s . rails
+rm -f actionwebservice
 
 # create initial log files
 cd ..
