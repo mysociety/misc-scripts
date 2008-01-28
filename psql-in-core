@@ -26,29 +26,29 @@ DUFILE=`tempfile`
 
 for VERSION in 7.4 8.1
 do
-    PORT=""
-    if [ "$VERSION" == "8.1" ]
+    if [ -e "/etc/postgresql/$VERSION/main/pgdata" ]
     then
-        PORT="-p 5433"
-    fi
-    DBDIR=`readlink --canonicalize /etc/postgresql/$VERSION/main/pgdata`
-    if [ -e "$DBDIR" ]
-    then
-        echo "version $VERSION"
+        PORT=`grep "port = " /etc/postgresql/$VERSION/main/postgresql.conf | sed "s/port = //"`
 
-        # Get mapping between disk ids and names of databases
-        cat <<END | su postgres -c "psql $PORT template1" | egrep -v "Output format|rows\)|datid" | sort -n | sed "s/|/ /" > $IDMAP
-        \pset format unaligned
-        select datid,datname from pg_stat_database
+        DBDIR=`readlink --canonicalize /etc/postgresql/$VERSION/main/pgdata`
+        if [ -e "$DBDIR" ]
+        then
+            echo "version $VERSION"
+
+            # Get mapping between disk ids and names of databases
+            cat <<END | su postgres -c "psql -p $PORT template1" | egrep -v "Output format|rows\)|datid" | sort -n | sed "s/|/ /" > $IDMAP
+            \pset format unaligned
+            select datid,datname from pg_stat_database
 END
 
-        # Get disk space used up by each id
-        cd $DBDIR/base
-        #du -hs * | sed "s/\t/ /g;" | sort -n +1 >$DUFILE
+            # Get disk space used up by each id
+            cd $DBDIR/base
+            #du -hs * | sed "s/\t/ /g;" | sort -n +1 >$DUFILE
 
-        for i in * ; do echo -n "$i " ; find $i -type f | xargs $MINCORE | awk '{ if ($3 > 0) { size += $3 / 1024.; incore += $2 / 1024.; } } END { printf "%.1f%% %.1fMB\n", 100. * incore / size, size / 1024.; }' ; done | sort -n > $DUFILE
+            for i in * ; do echo -n "$i " ; find $i -type f | xargs $MINCORE | awk '{ if ($3 > 0) { size += $3 / 1024.; incore += $2 / 1024.; } } END { printf "%.1f%% %.1fMB\n", 100. * incore / size, size / 1024.; }' ; done | sort -n > $DUFILE
 
-        # Merge them together
-        join -j 1 -t " " -o 1.2,2.2,2.3 $IDMAP $DUFILE | sort +0
+            # Merge them together
+            join -j 1 -t " " -o 1.2,2.2,2.3 $IDMAP $DUFILE | sort -k 1
+        fi
     fi
 done

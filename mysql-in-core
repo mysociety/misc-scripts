@@ -26,6 +26,7 @@ fi
 DBDIR=/usr/local/mysql/data
 if [ ! -e "$DBDIR" ]; then DBDIR=/usr/data/mysql; fi
 if [ ! -e "$DBDIR" ]; then DBDIR=/data/mysql; fi
+if [ ! -e "$DBDIR" ]; then DBDIR=/var/lib/mysql; fi
 
 if [ -e "$DBDIR" ]
 then
