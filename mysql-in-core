@@ -17,16 +17,9 @@ then
 	exit
 fi
 
-# XXX there must be a better way of find the data directory - but the obvious
-# of grepping in /etc/my.cnf for datadir doesn't help as that value isn't
-# always there.
-# This should help: mysqladmin variables | grep datadir
-# But it doesn't work on haggis. But it should be better so change to it if the
-# below cause a problem.
-DBDIR=/usr/local/mysql/data
-if [ ! -e "$DBDIR" ]; then DBDIR=/usr/data/mysql; fi
-if [ ! -e "$DBDIR" ]; then DBDIR=/data/mysql; fi
-if [ ! -e "$DBDIR" ]; then DBDIR=/var/lib/mysql; fi
+# The obvious method of grepping in /etc/my.cnf for datadir doesn't help as
+# that value isn't always there, so use mysqladmin instead.
+DBDIR=`mysqladmin variables | grep datadir | cut -d "|" -f 3 | sed "s/ //g"`
 
 if [ -e "$DBDIR" ]
 then
