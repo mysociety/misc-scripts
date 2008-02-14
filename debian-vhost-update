@@ -3,7 +3,7 @@
 # update-index:
 # Create Debian repository index files.
 #
-# $Id: debian-vhost-update,v 1.3 2007-02-21 18:52:10 francis Exp $
+# $Id: debian-vhost-update,v 1.4 2008-02-14 00:18:07 keith Exp $
 #
 
 if [ "`hostname`" != 'bitter' ]
@@ -14,18 +14,16 @@ fi
 
 cd /data/vhost/debian.mysociety.org/docs
 
-# Let you just dump things in docs, and move them to right place
-touch dummy.deb dummy.diff.gz dummy.dsc dummy.tar.gz dummy.changes
-# Move .deb files into binary
-mv *.deb binary/
-# Move others into source
-mv *.diff.gz *.dsc *.tar.gz *.changes source/
-# Clean up (can't work out a way to not try to move non-expanding globs otherwise)
-rm -f binary/dummy.deb source/dummy.diff.gz source/dummy.dsc source/dummy.tar.gz source/dummy.changes
+for i in `find dists -name "binary-*"`
+do
+	echo "Generating Packages.gz file for: $i"
+	dpkg-scanpackages $i /dev/null | gzip -9c > $i/Packages.gz.new && mv $i/Packages.gz.new $i/Packages.gz || rm $i/Packages.gz.new
+done
 
-# Generate new package lists
-dpkg-scanpackages binary /dev/null | gzip -9c > binary/Packages.gz.new \
-    && mv binary/Packages.gz.new binary/Packages.gz || rm binary/Packages.gz.new
-dpkg-scansources source /dev/null | gzip -9c > source/Sources.gz.new \
-    && mv source/Sources.gz.new source/Sources.gz || rm source/Sources.gz.new
+for i in `find dists -name source`
+do
+	echo "Generating Sources.gz file for: $i"
+	dpkg-scansources $i /dev/null | gzip -9c > $i/Sources.gz.new && mv $i/Sources.gz.new $i/Sources.gz || rm $i/Sources.gz.new
+done
+
 
