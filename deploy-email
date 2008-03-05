@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-email,v 1.14 2007-08-02 11:45:00 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-email,v 1.15 2008-03-05 00:07:01 adam Exp $';
 
 use strict;
 
@@ -253,6 +253,9 @@ try {
 
     # all done.
     verbose("all done");
+
+    # in which case, inform or log
+    shell("/data/mysociety/bin/deploy-logger Deployed Email");
 
 done:
     $ret = 0;
