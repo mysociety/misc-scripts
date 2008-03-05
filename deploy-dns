@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.23 2008-03-05 00:07:01 adam Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.24 2008-03-05 00:44:04 adam Exp $';
 
 use strict;
 
@@ -316,8 +316,9 @@ EOF
     shell(qw(rndc reload));
     verbose("done\n");
 
-    shell("/data/mysociety/bin/deploy-logger Deployed DNS");
 
+    # and before that's all banged out, log
+    shell('/data/mysociety/bin/deploy-logger', 'Deployed DNS'); 
 done:
     $ret = 0;
 
