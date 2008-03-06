@@ -8,7 +8,7 @@
 # Copyright (c) 2007 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: rails-post-deploy,v 1.9 2008-01-23 01:59:23 francis Exp $
+# $Id: rails-post-deploy,v 1.10 2008-03-06 14:30:32 francis Exp $
 #
 
 set -e
@@ -52,6 +52,15 @@ ln -s $MYSOCIETY_DIR/../logs log
 cd log
 touch development.log fastcgi.crash.log production.log test.log
 cd ..
+
+# and for solr logs, if present
+if [ -e vendor/plugins/acts_as_solr/solr ]
+then
+    cd vendor/plugins/acts_as_solr/solr
+    mkdir -p $MYSOCIETY_DIR/../logs/solr
+    ln -s $MYSOCIETY_DIR/../logs/solr logs
+    cd -
+fi
 
 # if not staging, force production (via a hack in config/boot.rb which needs
 # applying to your rails app, see foi/config/boot.rb)
