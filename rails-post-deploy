@@ -8,7 +8,7 @@
 # Copyright (c) 2007 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: rails-post-deploy,v 1.11 2008-03-06 14:35:10 francis Exp $
+# $Id: rails-post-deploy,v 1.12 2008-03-06 14:40:49 francis Exp $
 #
 
 set -e
@@ -59,6 +59,7 @@ then
     cd vendor/plugins/acts_as_solr/solr
     mkdir -p tmp
     mkdir -p $MYSOCIETY_DIR/../logs/solr
+    rm -f logs
     ln -s $MYSOCIETY_DIR/../logs/solr logs
     cd -
 fi
