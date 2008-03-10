@@ -8,10 +8,11 @@
 # Copyright (c) 2007 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: rails-post-deploy,v 1.13 2008-03-10 16:25:08 francis Exp $
+# $Id: rails-post-deploy,v 1.14 2008-03-10 16:32:01 francis Exp $
 #
 
 set -e
+#set -x # debug
 
 MYSOCIETY_DIR=`pwd`
 
@@ -22,8 +23,14 @@ cd $1
 cd app/..
 
 # read config file in for later (STAGING_SITE)
-. ../shlib/deployfns
-read_conf config/general
+if [ -e "config/general" ]
+then
+    . ../shlib/deployfns
+    read_conf config/general
+else
+    OPTION_DOMAIN=127.0.0.1:3000
+    OPTION_STAGING_SITE=1
+fi
 
 # see if rails is frozen or not
 if [ -d "rails" ]
