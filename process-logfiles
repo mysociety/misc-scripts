@@ -43,7 +43,7 @@ do
         # Check to see if server has the vhost, if so get its log files
         if rsync --rsh="ssh" $SERVER:/data/vhost/ | grep $VHOST >/dev/null
         then
-            rsync --rsh="ssh" --exclude "error_log*" --delete --archive $SERVER:/data/vhost/$VHOST/logs/ $CACHE_DIR/$VHOST-$SERVER/
+            rsync --rsh="ssh" --include 'access_log.*' --exclude '*' --delete --archive $SERVER:/data/vhost/$VHOST/logs/ $CACHE_DIR/$VHOST-$SERVER/
         fi
     done
 
