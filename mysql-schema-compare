@@ -1,0 +1,48 @@
+#!/bin/bash
+#
+# mysql-schema-compare:
+# Compare a schema in a text file with the schema in a live database.
+# 
+# Parameters are:
+# $1 - schema SQL file
+# $2 - unix user who can access the live db
+# $3 - mysql db name
+# $4 - mysql db user
+# $5 - mysql db host
+# $6 - mysql db port
+# You must put any password in ~/.my.cnf (the command line and environment are
+# insecure ways to transmit the password)
+#
+# If the schemas differ, prints a message to standard error and exits with 1.
+# If they are the same, quietly exits with code 0.
+#
+# Copyright (c) 2008 UK Citizens Online Democracy. All rights reserved.
+# Email: matthew@mysociety.org; WWW: http://www.mysociety.org/
+#
+
+set -e
+. /data/mysociety/shlib/deployfns
+
+# XXX use of mktemp here not safe; should make a temporary directory
+CVS_SCHEMA_FILE=`mktemp /tmp/ms-deploy-cvsschema.XXXXXX`
+CURRENT_SCHEMA_FILE=`mktemp /tmp/ms-deploy-currentschema.XXXXXX`
+
+MYSQLDUMP="/usr/bin/mysqldump --no-data --skip-opt --create-options"
+
+# ... the live database dump
+su $2 -c "$MYSQLDUMP --user $4 --host $5 --port $6 $3" 2>&1 | grep -v "\-\-databases\|^--\|/\*.*SET\|^\s*$" | sed "s/ ENGINE.*;/;/" > $CURRENT_SCHEMA_FILE
+
+grep -v "^--" $1 | grep -v "^\s*$" | sort > $CVS_SCHEMA_FILE.sorted
+cat $CURRENT_SCHEMA_FILE | sort > $CURRENT_SCHEMA_FILE.sorted
+
+if ! diff -w $CURRENT_SCHEMA_FILE.sorted $CVS_SCHEMA_FILE.sorted
+then
+    warn "Schema in CVS differs from that in MySQL database, you need to update it"
+    warn "host: $5 port: $6 database: $3; user: $4 schema: $1"
+    warn "CVS sorted: $CVS_SCHEMA_FILE.sorted; current sorted: $CURRENT_SCHEMA_FILE.sorted"
+    warn "CVS schema: $CVS_SCHEMA_FILE; current schema: $CURRENT_SCHEMA_FILE"
+    exit 1
+fi
+
+rm $CVS_SCHEMA_FILE $CURRENT_SCHEMA_FILE
+

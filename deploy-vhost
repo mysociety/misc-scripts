@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.64 2008-01-06 23:14:51 keith Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.65 2008-03-17 17:55:12 matthew Exp $';
 
 package main;
 
@@ -234,7 +234,7 @@ foreach my $daemon (keys %{$conf->{'daemons'}}) {
 }
 
 # Make a list of all the psql schemas to be checked
-my %unchecked_schemas = map {$_ => 1} keys %{$conf->{'psql_schemas'}};
+my %unchecked_schemas = map {$_ => 1} keys %{$conf->{'psql_schemas'}}, @{$conf->{mysql_schemas}};
 
 # Generate all conf files from conf/*-example template files e.g. conf/general
 foreach my $conf_dir (@{$conf->{conf_dir}}) {
@@ -316,6 +316,31 @@ foreach my $conf_dir (@{$conf->{conf_dir}}) {
                 # mysociety/bin/generate-pgpass). And no, PGPASSWORD isn't safer, as on
                 # some systems the environment can be seen in other processes.
                 shell("./psql-schema-compare", $mysociety_dir.'/'.$psql_schema, $conf->{'user'}, $psql_name, $psql_user, $psql_host, $psql_port);
+            }
+        }
+        
+        # Check MySQL databases are up to date
+        foreach my $mysql_schema (@{$conf->{'mysql_schemas'}}) {
+            my $mysql_name = mySociety::Config::get('DB_NAME', 0);
+
+            # It's OK for the configuration info for a DB to be absent from
+            # any given conf file, as long as it's in one of them
+            if ($mysql_name) {
+                
+                if (exists($unchecked_schemas{$mysql_schema})){ 
+                    delete $unchecked_schemas{$mysql_schema};
+                }
+
+                my $mysql_host = mySociety::Config::get('DB_HOST', 'localhost');
+                my $mysql_port = mySociety::Config::get('DB_PORT', 3306);
+                my $mysql_user = mySociety::Config::get('DB_USER');
+    
+                chdir $mysociety_dir;
+                shell("cvs", "-Q", "update", "$mysql_schema");
+                chdir $mysociety_bin;
+                # It isn't safe to pass the password over the command line or in the
+		# environment as that can be seen by other processes.
+                shell("./mysql-schema-compare", $mysociety_dir.'/'.$mysql_schema, $conf->{'user'}, $mysql_name, $mysql_user, $mysql_host, $mysql_port);
             }
         }
     }
