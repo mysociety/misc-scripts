@@ -1,0 +1,100 @@
+#!/usr/bin/perl -w
+#
+# generate-mypass:
+# Creates ~/.my.cnf files for users to whom it is convenient to give access to
+# databases. Overwrites any existing ~/.my.cnf file for the specified users.
+# Sets the root password to something good.
+#
+# Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
+# Email: francis@mysociety.org; WWW: http://www.mysociety.org/
+# 
+
+use DBI;
+
+# Who can access what databases - only one database per user for MySQL
+my $database_permissions_sponge = {
+    # All-seeing power
+    'root' => ['root'], # see hack below that sets default database to mysql, although user root
+     
+    # People
+    'francis' => ['twfy_staging'],
+    'matthew' => ['twfy_staging'],
+
+    # Sites
+    'twfy-live' => ['twfy'],
+
+    # Services
+};
+
+my $database_permissions;
+my $server = (uname())[1];
+if ($server eq 'sponge') {
+	$database_permissions = $database_permissions_sponge;
+} else {
+	die "generate-mypass not configured for server $server";
+}
+
+my $rcsid = ''; $rcsid .= '$Id: generate-mypass,v 1.1 2008-03-18 15:18:13 francis Exp $';
+
+use strict;
+require 5.8.0;
+
+use FindBin;
+use lib "$FindBin::Bin/../perllib";
+use POSIX;
+
+use mySociety::TempFiles;
+
+foreach my $user (keys %$database_permissions) {
+    my @x = getpwnam($user) or die "$user: getpwnam: $!";
+    my ($user_login, $user_pass, $user_uid, $user_gid) = @x;
+    my $user_home = $x[7];
+
+    my ($tmpn, $tmph) = mySociety::TempFiles::create_file_to_replace("$user_home/.my.cnf") or die "open: $!";
+    $tmph->print("# DO NOT EDIT - edit and rerun generate-mypass instead\n");
+
+    my $databases = $database_permissions->{$user};
+    if (scalar(@$databases) > 1) {
+        die "only one database per user supported in .my.cnf"
+    }
+    foreach my $database (@$databases) {
+        my $user = $database;
+        if ($database eq "root") {
+            $database = "mysql";
+        }
+        my $password = `$FindBin::Bin/pgpw $user`;
+        chomp $password;
+        my $text = <<END;
+[client]
+user = $user
+password = $password
+database = $database
+END
+        $tmph->print($text) || throw Oops("$tmpn: write: $!"); 
+    }
+    $tmph->close();
+
+    chmod 0400, $tmpn;
+    chown($user_uid, $user_gid, $tmpn);
+
+    my $dest = "$user_home/.my.cnf";
+    rename($tmpn, $dest);
+}
+
+# Connect as root to db, and set root password. Debian defaults to not having one.
+my $password = `$FindBin::Bin/pgpw root`;
+chomp $password;
+my $db = DBI->connect("dbi:mysql:database=mysql;host=localhost", "root", $password, 
+    { RaiseError => 0, AutoCommit => 1 });
+if (!$db) {
+    print "Ignore the warning above - happens first time run on a new machine, before mysql root password is set";
+    # Default debian root user has no password
+    $db = DBI->connect("dbi:mysql:database=mysql;host=localhost", "root", "",
+        { RaiseError => 0, AutoCommit => 1 });
+}
+if (!$db) {
+    die "failed to connect as root to db"
+}
+$db->do("update user set Password = PASSWORD(?) where User = 'root'", {}, $password);
+$db->do("flush privileges");
+
