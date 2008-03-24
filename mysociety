@@ -94,6 +94,8 @@ COMMAND is one of:
         Run a command on all machines in the same principal class as this one
     base COMMAND
         Run a command on all machines (which are in the base class)
+    debug
+    	Show debugging information for mysociety command
 
 Extra parameters are passed through to underlying deploy-... script.
 END
@@ -226,6 +228,17 @@ END
             ssh $X "$@" || echo " -- ...failed"
         done
         ;;
+
+    debug)
+	echo "HOST: $HOST"
+	echo "ARCHETYPES: $ARCHETYPES"
+	echo "ARCHETYPES_DIR: $ARCHETYPES_DIR"
+	echo "PRINCIPAL_ARCHETYPE: $PRINCIPAL_ARCHETYPE"
+	echo "SAME_ARCHETYPE: $SAME_ARCHETYPE"
+	echo "BASE_ARCHETYPE: $BASE_ARCHETYPE"
+	echo "BASE: $BASE"
+	;;
+
 
     base)
         for X in $BASE_ARCHETYPE
