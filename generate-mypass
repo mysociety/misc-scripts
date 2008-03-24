@@ -34,7 +34,7 @@ if ($server eq 'sponge') {
 	die "generate-mypass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-mypass,v 1.1 2008-03-18 15:18:13 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-mypass,v 1.2 2008-03-24 08:54:56 francis Exp $';
 
 use strict;
 require 5.8.0;
@@ -68,7 +68,7 @@ foreach my $user (keys %$database_permissions) {
 [client]
 user = $user
 password = $password
-database = $database
+; database = $database ; this upsets lots of the MySQL commands e.g. mysqladmin, mysqldump
 END
         $tmph->print($text) || throw Oops("$tmpn: write: $!"); 
     }
