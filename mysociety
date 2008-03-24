@@ -11,6 +11,22 @@ if [ x$HOST = x ] ; then
     die "can't establish hostname"
 fi
 
+# Set Debian version
+DEBIAN_VERSION="`lsb_release -s -c`"
+
+if [ "$HOST" = "sponge" ] ; then
+   DEBIAN_VERSION="sarge"
+fi
+
+if [ "$DEBIAN_VERSION" = "sarge" ] ; then
+    BASE="base"
+    ARCHETYPES_DIR=""
+else
+    BASE="base-$DEBIAN_VERSION"
+    ARCHETYPES_DIR="archetypes"
+fi
+
+
 # Obtain archetype
 cd /data/servers
 cvs -Q update serverclass
@@ -36,8 +52,8 @@ SAME_ARCHETYPE=`echo $PRINCIPAL_ARCHETYPE | cat - /data/servers/serverclass | \
         else if ($2 == classname) print $1
     }'`
 
-# Obtain list of other servers in base archetype
-BASE_ARCHETYPE=`echo base | cat - /data/servers/serverclass | \
+# Obtain list of other servers in BASE archetype
+BASE_ARCHETYPE=`echo $BASE | cat - /data/servers/serverclass | \
     sed 's/#.*//' | awk '
     BEGIN { ORS=" " } {
         if (NR == 1) classname = $1; 
@@ -115,7 +131,7 @@ END
             ALLFILES=`tempfile`
             for ARCHETYPE in $ARCHETYPES
             do
-                cd /data/servers/$ARCHETYPE
+                cd /data/servers/$ARCHETYPES_DIR/$ARCHETYPE
                 find . -type f | grep -v CVS | sed "s/.ugly//g" >> $ALLFILES
             done
             cat $ALLFILES | sort | uniq -c | sort -n | egrep -v "^      1 " > $ALLFILES.sort || echo -n
@@ -133,7 +149,7 @@ END
             for ARCHETYPE in $ARCHETYPES
             do
                 cvs -Q update -dP $ARCHETYPE
-                /data/mysociety/bin/deploy-configuration --check-existing --save-file=/var/lib/deploy-configuration-$ARCHETYPE.tar /data/servers/$ARCHETYPE $SETTINGS_FILE "$@" || FAILED=yes
+                /data/mysociety/bin/deploy-configuration --check-existing --save-file=/var/lib/deploy-configuration-$ARCHETYPE.tar /data/servers/$ARCHETYPES_DIR/$ARCHETYPE $SETTINGS_FILE "$@" || FAILED=yes
             done
             # if failed, exit
             if [ "$FAILED" = "yes" ]
@@ -145,7 +161,7 @@ END
         # now, install everything
         for ARCHETYPE in $ARCHETYPES
         do
-            /data/mysociety/bin/deploy-configuration --save-file=/var/lib/deploy-configuration-$ARCHETYPE.tar /data/servers/$ARCHETYPE $SETTINGS_FILE "$@"
+            /data/mysociety/bin/deploy-configuration --save-file=/var/lib/deploy-configuration-$ARCHETYPE.tar /data/servers/$ARCHETYPES_DIR/$ARCHETYPE $SETTINGS_FILE "$@"
         done
         /data/mysociety/bin/deploy-logger "Deployed configuration for archetypes \"$ARCHETYPES\" with settings \"$HOST.pl\""
         ;;
