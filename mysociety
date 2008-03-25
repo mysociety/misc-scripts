@@ -22,7 +22,7 @@ if [ "$DEBIAN_VERSION" = "3.1" ] ; then
     BASE="base"
     ARCHETYPES_DIR=""
 else
-    BASE="base-$DEBIAN_VERSION"
+    BASE="base-etch"
     ARCHETYPES_DIR="archetypes"
 fi
 
