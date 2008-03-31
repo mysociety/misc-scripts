@@ -75,6 +75,8 @@ COMMAND is one of:
         Deploy new config for current server from /data/servers/...
     vhost VHOST
         Deploy latest version of VHOST, e.g. www.pledgebank.com
+    vhost stop/update/start VHOST
+        Stop/update/start VHOST, e.g. www.pledgebank.com
     test VHOST
         Deploy, then run test script on VHOST, e.g. testharness.pet.mysociety.org
 
@@ -169,10 +171,17 @@ END
         ;;
         
     vhost)
+        COMMAND=deploy
         VHOST=$1
-        shift || die "specify a virtual host"
+        shift || die "specify a command or a virtual host"
+        if [ "$VHOST" == "stop" -o "$VHOST" == "update" -o "$VHOST" == "start" ]
+        then
+            COMMAND=$VHOST
+            VHOST=$1
+            shift || die "specify a virtual host"
+        fi
         # deploy vhost
-        /data/mysociety/bin/deploy-vhost $VHOST deploy "$@"
+        /data/mysociety/bin/deploy-vhost $VHOST $COMMAND "$@"
         # special code to set up dademcron user and cron job
         if [ "$VHOST" = "services.mysociety.org" -a $( hostname ) = bitter ]; then
             /data/vhost/services.mysociety.org/mysociety/services/DaDem/bin/setup-dademcron
