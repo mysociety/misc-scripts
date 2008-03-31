@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.65 2008-03-17 17:55:12 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.66 2008-03-31 11:50:59 francis Exp $';
 
 package main;
 
@@ -58,7 +58,7 @@ our ($vhosts, $sites);
 require "$servers_dir/vhosts.pl";
 
 # Check command line parameters, look up in config file
-die "Specify virtual host name as first parameter, deploy/stop as second parameter" if scalar(@ARGV) != 2;
+die "Specify virtual host name as first parameter, deploy/stop/update/start as second parameter" if scalar(@ARGV) != 2;
 my $vhost = $ARGV[0];
 my $vhost_conf = $vhosts->{$vhost};
 die "vhost '$vhost' is not in vhosts.pl" if !$vhost_conf;
@@ -68,7 +68,7 @@ my $site_conf = $sites->{$site};
 die "site '$site' is not in vhosts.pl" if !$site_conf;
 my $vhost_dir = "/data/vhost/$vhost";
 my $action = $ARGV[1];
-die "Specify 'deploy' or 'stop' as second parameter" if $action ne "deploy" && $action ne "stop";
+die "Specify 'deploy', 'stop', 'update' or 'start'as second parameter" if $action ne "deploy" && $action ne "stop" && $action ne "update" && $action ne "start";
 
 # Merge vhost and site configs together
 my $conf;
@@ -233,221 +233,260 @@ foreach my $daemon (keys %{$conf->{'daemons'}}) {
     system("update-rc.d $daemon defaults | grep -v \"System startup links for .* already exist\"");
 }
 
-# Make a list of all the psql schemas to be checked
-my %unchecked_schemas = map {$_ => 1} keys %{$conf->{'psql_schemas'}}, @{$conf->{mysql_schemas}};
-
-# Generate all conf files from conf/*-example template files e.g. conf/general
-foreach my $conf_dir (@{$conf->{conf_dir}}) {
-    foreach my $glob (glob "$vhost_dir/mysociety/$conf_dir/*-example") {
-        $glob =~ m#^.*/(.*?)-example$#;
-        my $name_part = $1;
-
-        my $conf_file = "$vhost_dir/mysociety/$conf_dir/$name_part"; # destination file
-
-        my $old_umask = umask(0077);
-        # find source template (.ugly) file
-        my $conf_ugly_part = $conf_dir . "/$name_part";
-        $conf_ugly_part =~ s#/#_#g;
-        my $conf_ugly_file = "$servers_dir/vhosts/$conf_ugly_part.ugly";
-        # update the conf/general (or whatever) template
-        chdir "$servers_dir/vhosts";
-        shell("cvs", "-Q", "update", "$conf_ugly_part.ugly");
-        # update example we'll be comparing against, to make sure no missing entries
-        chdir $mysociety_dir;
-        shell("cvs", "-Q", "update", "$conf_dir/$name_part-example");
-        # check destination file hasn't been separately modified
-        my $make_conf = 1;
-        if (-e $conf_file) {
-            # XXX detect errors
-            if (system("diff", "-u", "$conf_file.deployed", "$conf_file") != 0) {
-                print STDERR "Warning: $conf_file was changed directly since last update from\n";
-                print STDERR "template file $conf_ugly_file, so has not been updated.\n";
-                $make_conf = 0;
-            }
-        }
-        if ($make_conf) {
-            # call mugly to generate from template
-            shell("$mysociety_bin/mugly", "-O", "$conf_file.tmp", "-p", "$settings_file", "$conf_ugly_file");
-            if ($name_part eq 'general') {
-                # test contents of new configuration file before copying it over
-                chdir $mysociety_bin;
-                shell("$mysociety_bin/compareconfig.pl", "$conf_file.tmp", "$mysociety_dir/$conf_dir/$name_part-example");
-            }
-            # copy into place
-            copy("$conf_file.tmp", "$conf_file.deployed");
-            chown($user_uid, $user_gid, "$conf_file.deployed");
-            copy("$conf_file.tmp", "$conf_file");
-            chown($user_uid, $user_gid, "$conf_file");
-            unlink("$conf_file.tmp") or die "couldn't unlink $conf_file.tmp";
-        } else {
-            if ($name_part eq 'general') {
-                # test contents of configuration file before copying it over
-                chdir $mysociety_bin;
-                shell("$mysociety_bin/compareconfig.pl", "$conf_file", "$mysociety_dir/$conf_dir/$name_part-example");
-            }
-        }
-        # now we use this configuration
-        mySociety::Config::set_file($conf_file);
-        umask($old_umask);
-        
-        
-        # Check pgsql databases are up to date
-        foreach my $psql_conf_prefix (keys %{$conf->{'psql_schemas'}}) {
-            my $psql_schema = $conf->{'psql_schemas'}->{$psql_conf_prefix};
-            my $psql_name = mySociety::Config::get($psql_conf_prefix.'_DB_NAME', 0);
-
-            # It's OK for the configuration info for a DB to be absent from
-            # any given conf file, as long as it's in one of them
-            if ($psql_name){
-                
-                if (exists($unchecked_schemas{$psql_conf_prefix})){ 
-                    delete $unchecked_schemas{$psql_conf_prefix};
-                }
-
-                my $psql_host = mySociety::Config::get($psql_conf_prefix.'_DB_HOST', 'localhost');
-                my $psql_port = mySociety::Config::get($psql_conf_prefix.'_DB_PORT', 5432);
-                my $psql_user = mySociety::Config::get($psql_conf_prefix.'_DB_USER');
-    
-                chdir $mysociety_dir;
-                shell("cvs", "-Q", "update", "$psql_schema");
-                chdir $mysociety_bin;
-                # It isn't safe to pass the password over the command line as that can be
-                # seen by other processes, instead put it in in ~/.pgpass (see
-                # mysociety/bin/generate-pgpass). And no, PGPASSWORD isn't safer, as on
-                # some systems the environment can be seen in other processes.
-                shell("./psql-schema-compare", $mysociety_dir.'/'.$psql_schema, $conf->{'user'}, $psql_name, $psql_user, $psql_host, $psql_port);
-            }
-        }
-        
-        # Check MySQL databases are up to date
-        foreach my $mysql_schema (@{$conf->{'mysql_schemas'}}) {
-            my $mysql_name = mySociety::Config::get('DB_NAME', 0);
-
-            # It's OK for the configuration info for a DB to be absent from
-            # any given conf file, as long as it's in one of them
-            if ($mysql_name) {
-                
-                if (exists($unchecked_schemas{$mysql_schema})){ 
-                    delete $unchecked_schemas{$mysql_schema};
-                }
-
-                my $mysql_host = mySociety::Config::get('DB_HOST', 'localhost');
-                my $mysql_port = mySociety::Config::get('DB_PORT', 3306);
-                my $mysql_user = mySociety::Config::get('DB_USER');
-    
-                chdir $mysociety_dir;
-                shell("cvs", "-Q", "update", "$mysql_schema");
-                chdir $mysociety_bin;
-                # It isn't safe to pass the password over the command line or in the
-		# environment as that can be seen by other processes.
-                shell("./mysql-schema-compare", $mysociety_dir.'/'.$mysql_schema, $conf->{'user'}, $mysql_name, $mysql_user, $mysql_host, $mysql_port);
-            }
-        }
-    }
-}
-
-# exit if there are any schemas not covered by a config
-foreach my $unchecked_schema (keys %unchecked_schemas) {
-    die "$unchecked_schema not configured in conf/general file(s)";
-}
-
 # Create httpd configuration stanza
 shell("$mysociety_bin/mugly", "-O", "/etc/apache/virtualhosts.d/$vhost.conf", "-p", "$settings_file", "$servers_dir/vhosts/single-vhost.conf.ugly");
 
-# Make .forward files
-if ($conf->{'email'}) {
-    foreach my $email_user (keys %{$conf->{'email'}}) {
-        my $email_pipeto = $conf->{'email'}->{$email_user};
-        shell("su", "-", $email_user, "-c echo \"|$vhost_dir/mysociety/$email_pipeto\" >~$email_user/.forward");
-        #print ".forward done\n";
-    }
-}
+# Work out name of crontab
+my $cron_name = "vhost-$vhost";
+$cron_name =~ s/\./-/g;
+$cron_name = "/etc/cron.d/$cron_name";
 
 #####################################################################
 # Shut down services, update, start services
 
-# Stop daemons
-foreach my $daemon (keys %{$conf->{'daemons'}}) {
-    shell("/etc/init.d/$daemon", "stop");
+# XXX bit nasty that we have to always call this. Should split into separate
+# check and live update functions. But mainly harmless to update live config
+# so hey.
+update_config_and_schemas();
+
+if ($action eq "stop") {
+    stop_site();
+    shell("/data/mysociety/bin/deploy-logger", "Stopped vhost $vhost");
+} elsif ($action eq "update") {
+    update_site();
+    shell("/data/mysociety/bin/deploy-logger", "Updated vhost $vhost");
+} elsif ($action eq "start") {
+    start_site();
+    shell("/data/mysociety/bin/deploy-logger", "Started vhost $vhost");
+} elsif ($action eq "deploy") {
+    stop_site();
+    update_site();
+    start_site();
+    shell("/data/mysociety/bin/deploy-logger", "Deployed vhost $vhost");
+} else {
+    die "unknown action";
 }
 
-# Down notice
-open(FH, "> $vhost_dir/docs/.down.html.new") or die "failed to open .down.html.new";
-print FH <<END;
-<html>
-<head>
-<title>$vhost - Down for Maintenance</title>
-</head>
-<body>
-<p>Sorry, but $vhost is currently not available.  We're doing a spot of
-maintenance.  Check back in a few minutes, and everything should be
-restored to order.  Thanks for your patience!
-<p> &mdash; the <a href="http://www.mysociety.org/">mySociety</a> developers
-</body>
-</html> 
+# Halt any daemons, crontabs, email systems, and the web host itself
+sub stop_site {
+    # Stop daemons
+    foreach my $daemon (keys %{$conf->{'daemons'}}) {
+        shell("/etc/init.d/$daemon", "stop");
+    }
+
+    # Stop crontab
+    unlink($cron_name);
+
+    # Stop email forwarding
+    if ($conf->{'email'}) {
+        foreach my $email_user (keys %{$conf->{'email'}}) {
+            unlink("$email_user/.forward");
+        }
+    }
+
+    # Down notice
+    open(FH, "> $vhost_dir/docs/.down.html.new") or die "failed to open .down.html.new";
+    print FH <<END;
+    <html>
+    <head>
+    <title>$vhost - Down for Maintenance</title>
+    </head>
+    <body>
+    <p>Sorry, but $vhost is currently not available.  We're doing a spot of
+    maintenance.  Check back in a few minutes, and everything should be
+    restored to order.  Thanks for your patience!
+    <p> &mdash; the <a href="http://www.mysociety.org/">mySociety</a> developers
+    </body>
+    </html> 
 END
-close FH;
-unlink("$vhost_dir/docs/down.html");
-rename("$vhost_dir/docs/.down.html.new", "$vhost_dir/docs/down.html") or die "failed to rename to down.html";
-chown($user_uid, $user_gid, "$vhost_dir/docs/down.html");
+    close FH;
+    unlink("$vhost_dir/docs/down.html");
+    rename("$vhost_dir/docs/.down.html.new", "$vhost_dir/docs/down.html") or die "failed to rename to down.html";
+    chown($user_uid, $user_gid, "$vhost_dir/docs/down.html");
+}
 
-# If just doing "down" then exit
-exit if $action eq "stop";
+# Check that config files and database files have been updated
+sub update_config_and_schemas {
+    # Make a list of all the database schemas to be checked
+    my %unchecked_schemas = map {$_ => 1} keys %{$conf->{'psql_schemas'}}, @{$conf->{mysql_schemas}};
 
-# Update from CVS
-foreach my $cvs_dir (@{$conf->{'cvs_dirs'}}) {
-	die "unexpectedly missing cvs directory in update stage" if (! -d "$vhost_dir/mysociety/$cvs_dir/CVS");
-    if ($conf->{'cvs_user'} eq "") {
-        shell("cd \"$vhost_dir/mysociety/$cvs_dir\" && cvs -Q update -dP && 
-            chown -R ".$conf->{'user'}.":".$conf->{'user'}." ../");
-    } else {
-        shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir/mysociety/$cvs_dir\" && cvs -Q update -dP");
+    # Generate all conf files from conf/*-example template files e.g. conf/general
+    foreach my $conf_dir (@{$conf->{conf_dir}}) {
+        foreach my $glob (glob "$vhost_dir/mysociety/$conf_dir/*-example") {
+            $glob =~ m#^.*/(.*?)-example$#;
+            my $name_part = $1;
+
+            my $conf_file = "$vhost_dir/mysociety/$conf_dir/$name_part"; # destination file
+
+            my $old_umask = umask(0077);
+            # find source template (.ugly) file
+            my $conf_ugly_part = $conf_dir . "/$name_part";
+            $conf_ugly_part =~ s#/#_#g;
+            my $conf_ugly_file = "$servers_dir/vhosts/$conf_ugly_part.ugly";
+            # update the conf/general (or whatever) template
+            chdir "$servers_dir/vhosts";
+            shell("cvs", "-Q", "update", "$conf_ugly_part.ugly");
+            # update example we'll be comparing against, to make sure no missing entries
+            chdir $mysociety_dir;
+            shell("cvs", "-Q", "update", "$conf_dir/$name_part-example");
+            # check destination file hasn't been separately modified
+            my $make_conf = 1;
+            if (-e $conf_file) {
+                # XXX detect errors
+                if (system("diff", "-u", "$conf_file.deployed", "$conf_file") != 0) {
+                    print STDERR "Warning: $conf_file was changed directly since last update from\n";
+                    print STDERR "template file $conf_ugly_file, so has not been updated.\n";
+                    $make_conf = 0;
+                }
+            }
+            if ($make_conf) {
+                # call mugly to generate from template
+                shell("$mysociety_bin/mugly", "-O", "$conf_file.tmp", "-p", "$settings_file", "$conf_ugly_file");
+                if ($name_part eq 'general') {
+                    # test contents of new configuration file before copying it over
+                    chdir $mysociety_bin;
+                    shell("$mysociety_bin/compareconfig.pl", "$conf_file.tmp", "$mysociety_dir/$conf_dir/$name_part-example");
+                }
+                # copy into place
+                copy("$conf_file.tmp", "$conf_file.deployed");
+                chown($user_uid, $user_gid, "$conf_file.deployed");
+                copy("$conf_file.tmp", "$conf_file");
+                chown($user_uid, $user_gid, "$conf_file");
+                unlink("$conf_file.tmp") or die "couldn't unlink $conf_file.tmp";
+            } else {
+                if ($name_part eq 'general') {
+                    # test contents of configuration file before copying it over
+                    chdir $mysociety_bin;
+                    shell("$mysociety_bin/compareconfig.pl", "$conf_file", "$mysociety_dir/$conf_dir/$name_part-example");
+                }
+            }
+            # now we use this configuration
+            mySociety::Config::set_file($conf_file);
+            umask($old_umask);
+            
+            
+            # Check pgsql databases are up to date
+            foreach my $psql_conf_prefix (keys %{$conf->{'psql_schemas'}}) {
+                my $psql_schema = $conf->{'psql_schemas'}->{$psql_conf_prefix};
+                my $psql_name = mySociety::Config::get($psql_conf_prefix.'_DB_NAME', 0);
+
+                # It's OK for the configuration info for a DB to be absent from
+                # any given conf file, as long as it's in one of them
+                if ($psql_name){
+                    
+                    if (exists($unchecked_schemas{$psql_conf_prefix})){ 
+                        delete $unchecked_schemas{$psql_conf_prefix};
+                    }
+
+                    my $psql_host = mySociety::Config::get($psql_conf_prefix.'_DB_HOST', 'localhost');
+                    my $psql_port = mySociety::Config::get($psql_conf_prefix.'_DB_PORT', 5432);
+                    my $psql_user = mySociety::Config::get($psql_conf_prefix.'_DB_USER');
+        
+                    chdir $mysociety_dir;
+                    shell("cvs", "-Q", "update", "$psql_schema");
+                    chdir $mysociety_bin;
+                    # It isn't safe to pass the password over the command line as that can be
+                    # seen by other processes, instead put it in in ~/.pgpass (see
+                    # mysociety/bin/generate-pgpass). And no, PGPASSWORD isn't safer, as on
+                    # some systems the environment can be seen in other processes.
+                    shell("./psql-schema-compare", $mysociety_dir.'/'.$psql_schema, $conf->{'user'}, $psql_name, $psql_user, $psql_host, $psql_port);
+                }
+            }
+
+            # Check MySQL databases are up to date
+            foreach my $mysql_schema (@{$conf->{'mysql_schemas'}}) {
+                my $mysql_name = mySociety::Config::get('DB_NAME', 0);
+
+                # It's OK for the configuration info for a DB to be absent from
+                # any given conf file, as long as it's in one of them
+                if ($mysql_name) {
+                    
+                    if (exists($unchecked_schemas{$mysql_schema})){ 
+                        delete $unchecked_schemas{$mysql_schema};
+                    }
+
+                    my $mysql_host = mySociety::Config::get('DB_HOST', 'localhost');
+                    my $mysql_port = mySociety::Config::get('DB_PORT', 3306);
+                    my $mysql_user = mySociety::Config::get('DB_USER');
+        
+                    chdir $mysociety_dir;
+                    shell("cvs", "-Q", "update", "$mysql_schema");
+                    chdir $mysociety_bin;
+                    # It isn't safe to pass the password over the command line or in the
+            # environment as that can be seen by other processes.
+                    shell("./mysql-schema-compare", $mysociety_dir.'/'.$mysql_schema, $conf->{'user'}, $mysql_name, $mysql_user, $mysql_host, $mysql_port);
+                }
+            }
+
+        }
+    }
+        
+    # exit if there are any schemas not covered by a config
+    foreach my $unchecked_schema (keys %unchecked_schemas) {
+        die "$unchecked_schema not configured in conf/general file(s)";
     }
 }
 
-# Run any extra executables
-foreach my $exec_extra (@{$conf->{'exec_extras'}}) {
-    chdir("$vhost_dir/mysociety");
-    shell("su", $conf->{'user'}, "-c $exec_extra");
+sub update_site {
+    # Update from CVS
+    foreach my $cvs_dir (@{$conf->{'cvs_dirs'}}) {
+        die "unexpectedly missing cvs directory in update stage" if (! -d "$vhost_dir/mysociety/$cvs_dir/CVS");
+        if ($conf->{'cvs_user'} eq "") {
+            shell("cd \"$vhost_dir/mysociety/$cvs_dir\" && cvs -Q update -dP && 
+                chown -R ".$conf->{'user'}.":".$conf->{'user'}." ../");
+        } else {
+            shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir/mysociety/$cvs_dir\" && cvs -Q update -dP");
+        }
+    }
+
+    # Run any extra executables
+    foreach my $exec_extra (@{$conf->{'exec_extras'}}) {
+        chdir("$vhost_dir/mysociety");
+        shell("su", $conf->{'user'}, "-c $exec_extra");
+    }
+
+    # Prompt apache to reread files, on machines which have apache
+    if (-e "/usr/sbin/apachectl") {
+        shell("apachectl", "graceful");
+    }
 }
 
-# Prompt apache to reread files, on machines which have apache
-if (-e "/usr/sbin/apachectl") {
-    shell("apachectl", "graceful");
-}
+sub start_site {
+    # Up notice
+    unlink("$vhost_dir/docs/down.html") or die "couldn't unlink down.html";
 
-# Up notice
-unlink("$vhost_dir/docs/down.html") or die "couldn't unlink down.html";
+    # Start daemons
+    foreach my $daemon (keys %{$conf->{'daemons'}}) {
+        shell("/etc/init.d/$daemon", "start");
+    }
 
-# Start daemons
-foreach my $daemon (keys %{$conf->{'daemons'}}) {
-    shell("/etc/init.d/$daemon", "start");
-}
-
-# Make or remove crontab
-my $cron_name = "vhost-$vhost";
-$cron_name =~ s/\./-/g;
-$cron_name = "/etc/cron.d/$cron_name";
-my $ok = 0;
-if ($conf->{'crontab'}) {
-    if ($conf->{'crontab'} eq '1') {
-        $ok = 1;
-    } else {
-        if ($hostname eq $conf->{'crontab'}) {
+    # Make or remove crontab
+    my $ok = 0;
+    if ($conf->{'crontab'}) {
+        if ($conf->{'crontab'} eq '1') {
             $ok = 1;
+        } else {
+            if ($hostname eq $conf->{'crontab'}) {
+                $ok = 1;
+            }
+        }
+    }
+    if ($ok) {
+        chdir $mysociety_dir;
+        foreach my $conf_dir (@{$conf->{conf_dir}}) {
+            shell("cvs", "-Q", "update", "$conf_dir/crontab.ugly");
+            shell("$mysociety_bin/mugly", "-O", $cron_name, "-p", "$settings_file", "$mysociety_dir/$conf_dir/crontab.ugly");
+        }
+    } else {
+        unlink($cron_name);
+    }
+
+    # Make .forward files
+    if ($conf->{'email'}) {
+        foreach my $email_user (keys %{$conf->{'email'}}) {
+            my $email_pipeto = $conf->{'email'}->{$email_user};
+            shell("su", "-", $email_user, "-c echo \"|$vhost_dir/mysociety/$email_pipeto\" >~$email_user/.forward");
         }
     }
 }
-if ($ok) {
-    chdir $mysociety_dir;
-    foreach my $conf_dir (@{$conf->{conf_dir}}) {
-        shell("cvs", "-Q", "update", "$conf_dir/crontab.ugly");
-        shell("$mysociety_bin/mugly", "-O", $cron_name, "-p", "$settings_file", "$mysociety_dir/$conf_dir/crontab.ugly");
-    }
-} else {
-    unlink($cron_name);
-}
-
-# Log
-shell("/data/mysociety/bin/deploy-logger", "Deployed vhost $vhost");
 
