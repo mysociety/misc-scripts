@@ -28,7 +28,7 @@ for VERSION in 7.4 8.1
 do
     if [ -e "/etc/postgresql/$VERSION/main/pgdata" ]
     then
-        PORT=`grep "port = " /etc/postgresql/$VERSION/main/postgresql.conf | sed "s/port = //"`
+        PORT=`grep "port = " /etc/postgresql/$VERSION/main/postgresql.conf | sed "s/port = //" | sed "s/#.*$//" `
 
         DBDIR=`readlink --canonicalize /etc/postgresql/$VERSION/main/pgdata`
         if [ -e "$DBDIR" ]
