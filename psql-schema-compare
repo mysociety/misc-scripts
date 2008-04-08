@@ -35,6 +35,11 @@ then
     PGDUMP=/usr/lib/postgresql/8.1/bin/pg_dump
 fi
 
+if [ "`cat /etc/debian_version`" != "3.1" ]
+then
+    PGDUMP=/usr/lib/postgresql/8.1/bin/pg_dump
+fi
+
 # XXX SET default_with_oids - not sure why these are varying in dump, when they look off in all the databases, ignore for now.
 
 # load file schema into a temporary place to dump it in the same format as ...
