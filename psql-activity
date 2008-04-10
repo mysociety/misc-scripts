@@ -1,0 +1,5 @@
+#!/bin/bash
+
+su postgres -c "psql template1 -p 5432 -c \"select * from pg_stat_activity where current_query not like '%IDLE%'\" "
+su postgres -c "psql template1 -p 5433 -c \"select * from pg_stat_activity where current_query not like '%IDLE%'\" "
+
