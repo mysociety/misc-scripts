@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: File.pm,v 1.3 2007-01-23 15:14:15 francis Exp $
+# $Id: File.pm,v 1.4 2008-04-21 14:51:46 keith Exp $
 #
 
 package File;
@@ -31,6 +31,10 @@ sub test () {
     while (my $line = $f->getline()) {
         chomp($line);
         my ($dev, $mnt, $type, $flags, $a, $b) = split(/\s+/, $line);
+	# Skip /machinebackup (readonly) for the moment
+        if ($mnt eq "/machinebackup") {
+            next;
+        }
         # Exclude filesystems to which we wouldn't expect to be able to write.
         push(@dirs, $mnt) unless ($type =~ /^(proc|devpts|usbfs|sysfs)$/);
     }
