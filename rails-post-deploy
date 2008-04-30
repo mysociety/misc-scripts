@@ -8,7 +8,7 @@
 # Copyright (c) 2007 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: rails-post-deploy,v 1.15 2008-03-10 16:40:42 francis Exp $
+# $Id: rails-post-deploy,v 1.16 2008-04-30 13:02:58 francis Exp $
 #
 
 set -e
@@ -73,6 +73,7 @@ touch development.log fastcgi.crash.log production.log test.log
 cd ..
 
 # and for solr logs, if present
+# (not now used by any mySociety sites, but hey)
 if [ -e vendor/plugins/acts_as_solr/solr ]
 then
     cd vendor/plugins/acts_as_solr/solr
@@ -84,7 +85,7 @@ then
     cd -
 fi
 
-# if not staging, force production (via a hack in config/boot.rb which needs
+# Force appropriate environment (via a hack in config/boot.rb which needs
 # applying to your rails app, see foi/config/boot.rb)
 if [ "$OPTION_STAGING_SITE" = "0" ]
 then
@@ -93,7 +94,7 @@ elif [[ "$OPTION_DOMAIN" == "testharness."* ]]
 then
     echo "ENV['RAILS_ENV'] = 'test'" > config/rails_env.rb
 else
-    rm -f config/rails_env.rb
+    echo "ENV['RAILS_ENV'] = 'development'" > config/rails_env.rb
 fi
 
 # upgrade database
