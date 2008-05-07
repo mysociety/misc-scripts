@@ -3,10 +3,10 @@
 # update-index:
 # Create Debian repository index files.
 #
-# $Id: debian-vhost-update,v 1.4 2008-02-14 00:18:07 keith Exp $
+# $Id: debian-vhost-update,v 1.5 2008-05-07 14:51:18 keith Exp $
 #
 
-if [ "`hostname`" != 'bitter' ]
+if [ "`hostname`" != 'cake' ]
 then
     echo "Run on bitter only"
     exit
