@@ -95,7 +95,7 @@ COMMAND is one of:
     class COMMAND
         Run a command on all machines in the same principal class as this one
     base COMMAND
-        Run a command on all machines (which are in the base class)
+        Run a command on all machines (which are in the same base class as this one)
     debug
     	Show debugging information for mysociety command
 
