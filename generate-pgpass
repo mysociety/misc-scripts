@@ -20,7 +20,7 @@ my $database_permissions_bitter_tea = {
     'timsk' => ['pb-staging', 'pb'],
     'louise' => ['mswww-staging','mswww','news-staging', 'fyr-staging', 'donate-staging', 'news', 'fyr'],
     'adam' => ['fyr','pb','mapit','dadem','ratty','evel','fyr-staging', 'foi'],
-    'debbi' => ['bci'],
+    'debbi' => ['bci', 'fyr'],
 
     # Sites
     'pb' => ['pb','pb-staging','pb-interface'],
@@ -67,7 +67,7 @@ my $database_permissions_balti = {
 
 my $database_permissions_sponge = {
     # All-seeing power
-    'root' => ['twfy'],
+    'root' => [],
      
     # People
     'keith' => ['mswww-staging'],
@@ -80,7 +80,7 @@ my $database_permissions_sponge = {
 
 my $database_permissions_pudding = {
     # All-seeing power
-    'root' => ['twfy'],
+    'root' => [],
      
     # People
     'keith' => ['mswww-staging'],
@@ -116,7 +116,7 @@ if ($server eq 'bitter' || $server eq 'tea') {
 	die "generate-pgpass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.70 2008-05-02 14:22:28 adam Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.71 2008-05-15 09:02:43 matthew Exp $';
 
 use strict;
 require 5.8.0;
