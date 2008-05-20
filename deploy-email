@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-email,v 1.16 2008-03-05 00:44:04 adam Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-email,v 1.17 2008-05-20 22:23:30 keith Exp $';
 
 use strict;
 
@@ -186,7 +186,7 @@ try {
     }
 
     $file_uid = 0;
-    $file_gid = getpwnam('Debian-exim') or throw Oops("Debian-exim: unknown username"); # XXX
+    $file_gid = getgrnam('Debian-exim') or throw Oops("Debian-exim: unknown username"); # XXX
 
     # Everything is fine, so we need to install the new alias files, and remove
     # any which are obsolete, because exim relies on the *presence* of a file
