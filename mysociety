@@ -96,6 +96,8 @@ COMMAND is one of:
         Run a command on all machines in the same principal class as this one
     base COMMAND
         Run a command on all machines (which are in the same base class as this one)
+    archetype <archetype>
+        Run a command on all machine in the given archetype
     debug
     	Show debugging information for mysociety command
 
@@ -232,6 +234,24 @@ END
 
     class)
         for X in $SAME_ARCHETYPE
+        do
+            echo " -- on $X..."
+            ssh $X "$@" || echo " -- ...failed"
+        done
+        ;;
+
+    archetype)
+        ARCHETYPE=$1
+        shift || die "specify an archetype (try --help for help)"
+        # Obtain list of servers in archetype
+        LOOP_ARCHETYPE=`echo $ARCHETYPE | cat - /data/servers/serverclass | \
+            sed 's/#.*//' | awk '
+            BEGIN { ORS=" " } {
+                if (NR == 1) classname = $1; 
+                else if ($2 == classname) print $1
+            }'`
+
+        for X in $LOOP_ARCHETYPE
         do
             echo " -- on $X..."
             ssh $X "$@" || echo " -- ...failed"
