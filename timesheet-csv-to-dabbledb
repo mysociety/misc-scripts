@@ -1,0 +1,36 @@
+#!/usr/bin/python
+#
+# timesheet-csv-to-dabbledb:
+# Migration of timesheets from spreadsheet to dabbledb.
+# 
+# Copyright (c) 2008 UK Citizens Online Democracy. All rights reserved.
+# Email: francis@mysociety.org; WWW: http://www.mysociety.org/
+#
+
+import sys
+import csv
+import mx.DateTime
+
+for person in [ "francis", "keith", "matthew", "angie", "tom", "chris", "ben", "louise" ]:
+    reader = csv.reader(open("/home/francis/docs/mysociety/timesheets/%s.csv" % person, "r"))
+    writer = csv.writer(open("/home/francis/docs/mysociety/timesheets/%s-out.csv" % person, "w"))
+    person = person.capitalize()
+
+    months = []
+    head = reader.next()
+    for col in head[1:]:
+        lldate = mx.DateTime.DateTimeFrom("1 " + col.replace('-', ' 20'))
+        llform = lldate.strftime('%Y-%m-%d')
+        months.append(llform)
+
+    writer.writerow(['Person', 'Month', 'Project', 'Days'])
+
+    for row in reader:
+        if len(row) > 0:
+            project = row[0]
+            for i in range(1, len(row)):
+                col = row[i]
+                if col and float(col) > 0:
+                    writer.writerow([person, months[i-1], project, float(col)])
+
+
