@@ -240,6 +240,14 @@ END
         done
         ;;
 
+    base)
+        for X in $BASE_ARCHETYPE
+        do
+            echo " -- on $X..."
+            ssh $X "$@" || echo " -- ...failed"
+        done
+        ;;
+
     archetype)
         ARCHETYPE=$1
         shift || die "specify an archetype (try --help for help)"
@@ -259,23 +267,15 @@ END
         ;;
 
     debug)
-	echo "HOST: $HOST"
-	echo "ARCHETYPES: $ARCHETYPES"
-	echo "ARCHETYPES_DIR: $ARCHETYPES_DIR"
-	echo "PRINCIPAL_ARCHETYPE: $PRINCIPAL_ARCHETYPE"
-	echo "SAME_ARCHETYPE: $SAME_ARCHETYPE"
-	echo "BASE_ARCHETYPE: $BASE_ARCHETYPE"
-	echo "BASE: $BASE"
-	;;
-
-
-    base)
-        for X in $BASE_ARCHETYPE
-        do
-            echo " -- on $X..."
-            ssh $X "$@" || echo " -- ...failed"
-        done
+        echo "HOST: $HOST"
+        echo "ARCHETYPES: $ARCHETYPES"
+        echo "ARCHETYPES_DIR: $ARCHETYPES_DIR"
+        echo "PRINCIPAL_ARCHETYPE: $PRINCIPAL_ARCHETYPE"
+        echo "SAME_ARCHETYPE: $SAME_ARCHETYPE"
+        echo "BASE_ARCHETYPE: $BASE_ARCHETYPE"
+        echo "BASE: $BASE"
         ;;
+
     *)
 	show_help
         ;;
