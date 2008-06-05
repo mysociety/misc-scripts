@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.66 2008-03-31 11:50:59 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.67 2008-06-05 15:36:11 francis Exp $';
 
 package main;
 
@@ -50,11 +50,18 @@ sub make_symlink {
     }
 }
 
+sub pgpw {
+    $_ = shift;
+    $_ = `/data/mysociety/bin/pgpw $_`;
+    s/\s+$//;
+    return $_;
+}
+
 #####################################################################
 # Main code
 
 # Read in configuration file
-our ($vhosts, $sites);
+our ($vhosts, $sites, $databases);
 require "$servers_dir/vhosts.pl";
 
 # Check command line parameters, look up in config file
@@ -161,6 +168,27 @@ foreach my $public_cache_dir (@{$conf->{'public_cache_dirs'}}) {
     chown($user_uid, $user_gid, "$vhost_dir/$public_cache_dir");
 }
 
+# Make database config settings
+my $database_configs;
+if (defined $conf->{'databases'}) {
+    foreach my $database (@{$conf->{'databases'}}) {
+        my $params = $databases->{$database};
+        if ($params->{type} eq 'psql') {
+            my $password = pgpw($database);
+            $database_configs .= <<END
+define('OPTION_$params->{prefix}_DB_HOST', 'svcs.$params->{host}.int.ukcod.org.uk');
+define('OPTION_$params->{prefix}_DB_PORT', $params->{port});
+define('OPTION_$params->{prefix}_DB_NAME', '$database');
+define('OPTION_$params->{prefix}_DB_USER', '$database');
+define('OPTION_$params->{prefix}_DB_PASS', '$password');
+END
+#define('OPTION_$params->{prefix}_DB_PASS', '!!(*= pgpw('$database') *)!!');
+        } else {
+            die "unknown database type '$params->{type}'";
+        }
+    }
+}
+
 # Make some settings
 $vhost =~ m/^([^.]+)\.(.*)$/;
 my $vhost_first = $1;
@@ -188,6 +216,9 @@ print FH <<END;
 \$https = '$conf->{'https'}';
 \$fastcgi = '$conf->{'fastcgi'}';
 \$randomly = '/data/mysociety/bin/randomly -p 0.5'; # for crontab
+\$database_configs = <<DONE_DATABASE_CONFIGS;
+$database_configs
+DONE_DATABASE_CONFIGS
 END
 
 print FH Dumper($conf->{conf_dir});
