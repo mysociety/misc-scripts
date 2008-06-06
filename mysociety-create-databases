@@ -2,13 +2,14 @@
 #
 # mysociety-create-database:
 # Creates databases that are listed in vhosts.pl. Creates corresponding users
-# and gives them permissions and right password.
+# and gives them permissions and right password. Testharness databases/users
+# get the extra ownership and permissions they need.
 #
 # Copyright (c) 2008 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: mysociety-create-databases,v 1.1 2008-06-06 16:53:56 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: mysociety-create-databases,v 1.2 2008-06-06 16:55:05 francis Exp $';
 
 package main;
 
