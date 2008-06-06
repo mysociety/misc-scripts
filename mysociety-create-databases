@@ -1,0 +1,119 @@
+#!/usr/bin/perl -w
+#
+# mysociety-create-database:
+# Creates databases that are listed in vhosts.pl. Creates corresponding users
+# and gives them permissions and right password.
+#
+# Copyright (c) 2008 UK Citizens Online Democracy. All rights reserved.
+# Email: francis@mysociety.org; WWW: http://www.mysociety.org/
+#
+
+my $rcsid = ''; $rcsid .= '$Id: mysociety-create-databases,v 1.1 2008-06-06 16:53:56 francis Exp $';
+
+package main;
+
+use strict;
+require 5.8.0;
+
+use FindBin;
+use lib "$FindBin::Bin/../perllib";
+my $mysociety_bin = $FindBin::Bin;
+my $servers_dir = "$FindBin::Bin/../../servers";
+my $mysociety_dir = "$FindBin::Bin/../../mysociety";
+
+use mySociety::SystemMisc qw(shell);
+use mySociety::Config;
+
+use Data::Dumper;
+use DBI
+
+our $verbose = $ENV{VERBOSE} ? 1 : 0;
+
+#####################################################################
+# General functions
+
+sub pgpw {
+    $_ = shift;
+    $_ = `/data/mysociety/bin/pgpw $_`;
+    s/\s+$//;
+    return $_;
+}
+
+#####################################################################
+# Main code
+
+# Become user postgresql, so can connect to db as admin
+if (getpwuid($>) eq 'root') {
+    # XXX yeuch, but seems easiest way to give postgres access to vhosts.pl, and postgres_secret
+    chown((getpwnam("root"))[2], (getgrnam("postgres"))[2], "$servers_dir/vhosts.pl");
+    chown((getpwnam("root"))[2], (getgrnam("postgres"))[2], "/etc/mysociety/postgres_secret");
+    chmod(0755, '/data/mysociety/bin/pgpw');
+    exit system("su postgres -c \"$0\"") >> 8;
+}
+if (getpwuid($>) ne 'postgres') {
+    die "Please run as user root";
+}
+
+# Read in configuration file
+our ($vhosts, $sites, $databases);
+require "$servers_dir/vhosts.pl";
+
+# Various other parameters
+my $hostname = `hostname`;
+chomp($hostname);
+
+# Go through each database
+my $database_configs;
+foreach my $database (keys %{$databases}) {
+    my $params = $databases->{$database};
+    if ($params->{type} eq 'psql') {
+        # Is it for our server?
+        if ($params->{host} eq $hostname) {
+            print "database '$database' on host $hostname port $params->{port}\n" if $::verbose;
+
+            # Testharness databases get dropped and recreated by the test script, so
+            # give them more permissions.
+            my $testharness = 0;
+            if ($database =~ m/testharness$/) {
+                $testharness = 1;
+            }
+
+            # Connect to server
+            my $dbh = DBI->connect("dbi:Pg:dbname=template1;port=$params->{port}", 'postgres', undef, { PrintWarn => 1, PrintError => 1, RaiseError => 0, AutoCommit => 1 }) || die DBI->errstr();
+
+            # Create user with same name as database
+            if ($dbh->selectrow_array("select count(*) from pg_catalog.pg_user where usename = '$database'")) {
+                print "\tuser '$database' already exists\n" if $::verbose;
+            } else {
+                my $password = pgpw($database);
+                print "\tcreating user '$database'\n" if $::verbose;
+                $dbh->do("create user \"$database\" with password '$password'");
+            }
+
+            # Create database
+            if ($dbh->selectrow_array("select count(*) from pg_catalog.pg_database where datname = '$database'")) {
+                print "\tdatabase '$database' already exists\n" if $::verbose;
+            } else {
+                print "\tcreating database '$database'\n" if $::verbose;
+                my $owner_clause = "";
+                if ($testharness) {
+                    $owner_clause = "owner \"$database\"" 
+                }
+                $dbh->do("create database \"$database\" $owner_clause encoding 'SQL_ASCII'");
+            }
+
+            # Give user permissions on database
+            print "\tgranting permissions for user to access database '$database'\n" if $::verbose;
+            $dbh->do("grant all on database \"$database\" to \"$database\" ");
+            if ($testharness) {
+                print "\tgiving user '$database' createdb (as testharness database)\n" if $::verbose;
+                $dbh->do("alter user \"$database\" with createdb");
+            }
+
+        }
+    } else {
+        die "unknown database type '$params->{type}'";
+    }
+}
+
+
