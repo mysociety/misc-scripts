@@ -9,7 +9,7 @@
 # 
 
 # Who can access what databases
-my $database_permissions_bitter_tea = {
+my $database_permissions_main = {
     # All-seeing power
     'root' => ['pb', 'ycml', 'rt', 'gaze', 'dadem', 'evel', 'mapit', 'ratty', 'fyr', 'pb-interface', 'pb-livesimply', 'pb-o2', 'pb-staging', 'mswww', 'track', 'list', 'pet', 'pet-testharness', 'donate', 'news', 'bci', 'dress', 'bbcparlvid', 'ycml-cllr', 'foi'],
      
@@ -21,6 +21,7 @@ my $database_permissions_bitter_tea = {
     'louise' => ['mswww-staging','mswww','news-staging', 'fyr-staging', 'donate-staging', 'news', 'fyr'],
     'adam' => ['fyr','pb','mapit','dadem','ratty','evel','fyr-staging', 'foi'],
     'debbi' => ['bci', 'fyr'],
+    'keith' => ['mswww-staging'],
 
     # Sites
     'pb' => ['pb','pb-staging','pb-interface'],
@@ -65,19 +66,6 @@ my $database_permissions_balti = {
     'msservices-testharness' => ['mapit-testharness','dadem-testharness','ratty-testharness','evel-testharness','news-testharness'],
 };
 
-my $database_permissions_sponge = {
-    # All-seeing power
-    'root' => [],
-     
-    # People
-    'keith' => ['mswww-staging'],
-
-    # Sites
-    'mswww-staging' => ['mswww-staging'],
-
-    # Services
-};
-
 my $database_permissions_pudding = {
     # All-seeing power
     'root' => [],
@@ -102,21 +90,17 @@ my $database_permissions_whisky_water_peas = {
 
 my $database_permissions;
 my $server = (uname())[1];
-if ($server eq 'bitter' || $server eq 'tea') {
-	$database_permissions = $database_permissions_bitter_tea;
+if ($server eq 'bitter' || $server eq 'tea' || $server eq 'sponge' || $server eq 'sandwich' || $server eq 'pudding') {
+	$database_permissions = $database_permissions_main;
 } elsif ($server eq 'balti') {
 	$database_permissions = $database_permissions_balti;
-} elsif ($server eq 'sponge') {
-	$database_permissions = $database_permissions_sponge;
-} elsif ($server eq 'pudding') {
-	$database_permissions = $database_permissions_pudding;
 } elsif ($server eq 'whisky' || $server eq 'water' || $server eq 'peas') {
 	$database_permissions = $database_permissions_whisky_water_peas;
 } else {
 	die "generate-pgpass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.71 2008-05-15 09:02:43 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.72 2008-06-09 12:44:02 francis Exp $';
 
 use strict;
 require 5.8.0;
