@@ -44,7 +44,7 @@ fi
 
 # load file schema into a temporary place to dump it in the same format as ...
 ssh $5 su $POSTGRES -c \""dropdb --port $6 -q $SCHEMATEST"\" 2>&1 | grep -v "does not exist" || echo -n
-ssh $5 su $POSTGRES -c \""createdb --port $6 -q $SCHEMATEST"\"
+ssh $5 su $POSTGRES -c \""createdb --encoding=SQL_ASCII --port $6 -q $SCHEMATEST"\"
 cat $1 | ssh $5 su $POSTGRES -c \""psql --port $6 --file=- -q $SCHEMATEST"\" 2>&1 | grep -v "will create implicit" && echo -n 
 ssh $5 su $POSTGRES -c \""$PGDUMP --port $6 --schema-only --schema=public -s $SCHEMATEST"\" | egrep -v "^--|SET SESSION AUTHORIZATION|\\connect - |GRANT ALL|REVOKE ALL|START WITH 1|OWNER TO|SET default_with_oids" | grep -v "SET search_path = public, pg_catalog;" | sed "s/,$//;" | grep -v '^[ \t]*$' > $CVS_SCHEMA_FILE
 ssh $5 su $POSTGRES -c \""dropdb --port $6 -q $SCHEMATEST"\"
