@@ -11,7 +11,7 @@
 # Who can access what databases
 my $database_permissions_main = {
     # All-seeing power
-    'root' => ['pb', 'ycml', 'rt', 'gaze', 'dadem', 'evel', 'mapit', 'ratty', 'fyr', 'pb-interface', 'pb-livesimply', 'pb-o2', 'pb-staging', 'mswww', 'track', 'list', 'pet', 'pet-testharness', 'donate', 'news', 'bci', 'dress', 'bbcparlvid', 'ycml-cllr', 'foi'],
+    'root' => ['pb', 'ycml', 'rt', 'gaze', 'dadem', 'evel', 'mapit', 'ratty', 'fyr', 'pb-interface', 'pb-livesimply', 'pb-o2', 'pb-staging', 'mswww', 'track', 'list', 'pet', 'pet-testharness', 'donate', 'news', 'bci', 'dress', 'bbcparlvid', 'ycml-cllr', 'foi', 'survey'],
      
     # People
     'francis' => ['fyr','pb','ycml','mapit','dadem','ratty','evel','pb-staging','ycml-staging','fyr-staging', 'track', 'pet-staging', 'pet', 'bci', 'dress', 'foi'],
@@ -90,7 +90,7 @@ my $database_permissions_whisky_water_peas = {
 
 my $database_permissions;
 my $server = (uname())[1];
-if ($server eq 'bitter' || $server eq 'tea' || $server eq 'sponge' || $server eq 'sandwich' || $server eq 'pudding') {
+if ($server eq 'bitter' || $server eq 'tea' || $server eq 'sponge' || $server eq 'sandwich' || $server eq 'pudding' || $server eq 'cake') {
 	$database_permissions = $database_permissions_main;
 } elsif ($server eq 'balti') {
 	$database_permissions = $database_permissions_balti;
@@ -100,7 +100,7 @@ if ($server eq 'bitter' || $server eq 'tea' || $server eq 'sponge' || $server eq
 	die "generate-pgpass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.72 2008-06-09 12:44:02 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.73 2008-06-24 17:08:08 francis Exp $';
 
 use strict;
 require 5.8.0;
