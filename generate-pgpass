@@ -20,7 +20,7 @@ my $database_permissions_main = {
     'timsk' => ['pb-staging', 'pb'],
     'louise' => ['mswww-staging','mswww','news-staging', 'fyr-staging', 'donate-staging', 'news', 'fyr'],
     'adam' => ['fyr','pb','mapit','dadem','ratty','evel','fyr-staging', 'foi'],
-    'debbi' => ['bci', 'fyr'],
+    'debbi' => ['bci', 'fyr', 'ycml'],
     'keith' => ['mswww-staging'],
 
     # Sites
@@ -101,7 +101,7 @@ if ($server eq 'bitter' || $server eq 'tea' || $server eq 'sponge' || $server eq
 	die "generate-pgpass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.74 2008-06-24 22:22:01 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.75 2008-07-01 09:57:04 matthew Exp $';
 
 use strict;
 require 5.8.0;
