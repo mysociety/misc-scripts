@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: test-site,v 1.5 2007-08-02 11:45:00 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: test-site,v 1.6 2008-07-18 11:25:34 keith Exp $';
 
 package main;
 
@@ -61,7 +61,7 @@ die "'$hostname' is not a vhost for '$vhost'" if !grep { m/^$hostname$/ } @{$con
 # Launch test script, and check for errors
 my $test_script_path = $vhost_dir."/mysociety/".dirname($conf->{test_script});
 my $test_script_name = basename($conf->{test_script});
-shell("su", "-", $conf->{'user'}, "cd \"$test_script_path\" && ".
+shell("su", "-", $conf->{'user'}, "-c cd \"$test_script_path\" && ".
     "./$test_script_name --verbose=$verbose");
 if ($?) {
     die "Failed test, " . $conf->{test_script} . " returned $?";
