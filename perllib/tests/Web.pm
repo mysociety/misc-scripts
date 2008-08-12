@@ -8,7 +8,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Web.pm,v 1.12 2008-04-16 12:35:25 francis Exp $
+# $Id: Web.pm,v 1.13 2008-08-12 13:38:56 matthew Exp $
 #
 
 package Web;
@@ -54,8 +54,8 @@ my @pages = qw(
 
         http://www.downingstreetsays.com/
 
-        http://petitions.pm.gov.uk/
-        http://petitions.pm.gov.uk/huntingactrepeal/
+        http://petitions.number10.gov.uk/
+        http://petitions.number10.gov.uk/huntingactrepeal/
 
         https://secure.mysociety.org/
         https://secure.mysociety.org/cvstrac/
