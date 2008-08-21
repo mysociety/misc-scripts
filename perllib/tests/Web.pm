@@ -8,7 +8,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Web.pm,v 1.13 2008-08-12 13:38:56 matthew Exp $
+# $Id: Web.pm,v 1.14 2008-08-21 09:22:41 francis Exp $
 #
 
 package Web;
@@ -22,8 +22,6 @@ use Time::HiRes qw(time alarm);
 
 my @pages = qw(
         http://www.mysociety.org/
-        http://www.mysociety.org/moin.cgi
-        http://www.mysociety.org/volunteertasks?skills=nontech
 
         http://www.mysociety.co.uk/
 
