@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.69 2008-06-24 22:22:01 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.70 2008-08-21 14:48:51 root Exp $';
 
 package main;
 
@@ -479,6 +479,9 @@ sub update_site {
     # Prompt apache to reread files, on machines which have apache
     if (-e "/usr/sbin/apachectl") {
         shell("apachectl", "graceful");
+    }
+    if (-e "/usr/sbin/apache2ctl") {
+        shell("apache2ctl", "graceful");
     }
 }
 
