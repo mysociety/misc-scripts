@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: File.pm,v 1.4 2008-04-21 14:51:46 keith Exp $
+# $Id: File.pm,v 1.5 2008-08-22 09:29:27 matthew Exp $
 #
 
 package File;
@@ -31,8 +31,9 @@ sub test () {
     while (my $line = $f->getline()) {
         chomp($line);
         my ($dev, $mnt, $type, $flags, $a, $b) = split(/\s+/, $line);
-	# Skip /machinebackup (readonly) for the moment
-        if ($mnt eq "/machinebackup") {
+        # Skip /machinebackup (readonly) for the moment
+        # and the automounted /net thing
+        if ($mnt eq "/machinebackup" || $mnt eq '/net') {
             next;
         }
         # Exclude filesystems to which we wouldn't expect to be able to write.
