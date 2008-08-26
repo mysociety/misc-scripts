@@ -80,6 +80,15 @@ my $database_permissions_pudding = {
     # Services
 };
 
+my $database_permissions_steak = {
+    # All-seeing power
+    'root' => [],
+     
+    # Sites
+    'pet' => ['pet'],
+    'pet-testharness' => ['pet-testharness'],
+    'pet-standby' => ['pet-standby'],
+};
 
 my $database_permissions_whisky_water_peas = {
     # All-seeing power
@@ -97,11 +106,13 @@ if ($server eq 'bitter' || $server eq 'tea' || $server eq 'sponge' || $server eq
 	$database_permissions = $database_permissions_balti;
 } elsif ($server eq 'whisky' || $server eq 'water' || $server eq 'peas') {
 	$database_permissions = $database_permissions_whisky_water_peas;
+} elsif ($server eq 'steak') {
+	$database_permissions = $database_permissions_steak;
 } else {
 	die "generate-pgpass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.75 2008-07-01 09:57:04 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.76 2008-08-26 15:50:47 root Exp $';
 
 use strict;
 require 5.8.0;
