@@ -79,6 +79,7 @@ my $database_permissions_pudding = {
     'mswww-staging' => ['mswww-staging'],
 
     # Services
+    'msservices-testharness' => ['mapit-testharness','dadem-testharness','ratty-testharness','evel-testharness','news-testharness'],
 };
 
 my $database_permissions_steak = {
@@ -101,7 +102,7 @@ my $database_permissions_whisky_water_peas = {
 
 my $database_permissions;
 my $server = (uname())[1];
-if ($server eq 'bitter' || $server eq 'tea' || $server eq 'sponge' || $server eq 'sandwich' || $server eq 'pudding' || $server eq 'cake') {
+if ($server eq 'bitter' || $server eq 'tea' || $server eq 'sponge' || $server eq 'sandwich' || $server eq 'cake') {
 	$database_permissions = $database_permissions_main;
 } elsif ($server eq 'balti') {
 	$database_permissions = $database_permissions_balti;
@@ -109,11 +110,13 @@ if ($server eq 'bitter' || $server eq 'tea' || $server eq 'sponge' || $server eq
 	$database_permissions = $database_permissions_whisky_water_peas;
 } elsif ($server eq 'steak') {
 	$database_permissions = $database_permissions_steak;
+} elsif ($server eq 'pudding') {
+	$database_permissions = $database_permissions_pudding;
 } else {
 	die "generate-pgpass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.77 2008-09-03 17:40:13 root Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.78 2008-09-03 23:35:06 root Exp $';
 
 use strict;
 require 5.8.0;
