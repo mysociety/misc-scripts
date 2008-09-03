@@ -40,6 +40,7 @@ my $database_permissions_main = {
     'bbcparlvid' => ['bbcparlvid'],
     'foi' => ['foi'],
     'survey' => ['survey'],
+    'hm' => ['hm'],
 
     # Services
     'msservices' => ['mapit','dadem','ratty','evel','news','track','gaze'],
@@ -112,7 +113,7 @@ if ($server eq 'bitter' || $server eq 'tea' || $server eq 'sponge' || $server eq
 	die "generate-pgpass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.76 2008-08-26 15:50:47 root Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.77 2008-09-03 17:40:13 root Exp $';
 
 use strict;
 require 5.8.0;
