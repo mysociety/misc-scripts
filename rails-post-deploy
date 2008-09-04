@@ -8,7 +8,7 @@
 # Copyright (c) 2007 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: rails-post-deploy,v 1.16 2008-04-30 13:02:58 francis Exp $
+# $Id: rails-post-deploy,v 1.17 2008-09-04 06:17:42 francis Exp $
 #
 
 set -e
@@ -32,28 +32,35 @@ else
     OPTION_STAGING_SITE=1
 fi
 
+# Go into vendor
+mkdir -p vendor
+cd vendor
+
 # see if rails is frozen or not
-if [ -d "rails" ]
+if [ -d "rails-2.1.0" ]
+then
+    LN_PATH=rails-2.1.0
+elif [ -d "rails" ]
 then
     LN_PATH=rails
 else
-    rm -f rails
-    ln -s . rails
     LN_PATH=/usr/share/rails
 fi
 
 # make symlinks to global rails installation
-mkdir -p vendor
-cd vendor
 for X in actionmailer actionpack activerecord activesupport railties
 do
     rm -f $X
     ln -s $LN_PATH/$X $X
 done
+rm -f rails
+ln -s $LN_PATH rails
 rm -f actionwebservice
+cd ..
+rm -f rails
+ln -s $LN_PATH rails
 
 # create initial log files
-cd ..
 if [ -e $MYSOCIETY_DIR/../logs ]
 then
     # mySociety servers have logs dir in level above
