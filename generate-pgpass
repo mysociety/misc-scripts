@@ -11,7 +11,7 @@
 # Who can access what databases
 my $database_permissions_main = {
     # All-seeing power
-    'root' => ['pb', 'ycml', 'rt', 'gaze', 'dadem', 'evel', 'mapit', 'ratty', 'fyr', 'pb-interface', 'pb-livesimply', 'pb-o2', 'pb-staging', 'mswww', 'track', 'list', 'pet', 'pet-testharness', 'donate', 'news', 'bci', 'dress', 'bbcparlvid', 'ycml-cllr', 'foi', 'survey'],
+    'root' => ['pb', 'ycml', 'rt', 'gaze', 'dadem', 'evel', 'mapit', 'ratty', 'fyr', 'pb-interface', 'pb-livesimply', 'pb-o2', 'pb-staging', 'mswww', 'track', 'list', 'pet', 'pet-testharness', 'donate', 'news', 'bci', 'dress', 'bbcparlvid', 'ycml-cllr', 'foi', 'survey', 'hm'],
      
     # People
     'francis' => ['fyr','pb','ycml','mapit','dadem','ratty','evel','pb-staging','ycml-staging','fyr-staging', 'track', 'pet-staging', 'pet', 'bci', 'dress', 'foi'],
@@ -116,7 +116,7 @@ if ($server eq 'bitter' || $server eq 'tea' || $server eq 'sponge' || $server eq
 	die "generate-pgpass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.78 2008-09-03 23:35:06 root Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.79 2008-09-06 06:46:40 root Exp $';
 
 use strict;
 require 5.8.0;
