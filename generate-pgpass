@@ -22,6 +22,7 @@ my $database_permissions_main = {
     'adam' => ['fyr','pb','mapit','dadem','ratty','evel','fyr-staging', 'foi'],
     'debbi' => ['bci', 'fyr', 'ycml'],
     'keith' => ['mswww-staging'],
+    'skenaja' => ['foi'], # so he can do stats and stuff
 
     # Sites
     'pb' => ['pb','pb-staging','pb-interface'],
@@ -116,7 +117,7 @@ if ($server eq 'bitter' || $server eq 'tea' || $server eq 'sponge' || $server eq
 	die "generate-pgpass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.79 2008-09-06 06:46:40 root Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.80 2008-09-07 14:55:22 francis Exp $';
 
 use strict;
 require 5.8.0;
