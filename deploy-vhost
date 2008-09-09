@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.71 2008-08-27 09:15:34 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.72 2008-09-09 00:57:11 root Exp $';
 
 package main;
 
@@ -311,7 +311,7 @@ sub stop_site {
     # Stop email forwarding
     if ($conf->{'email'}) {
         foreach my $email_user (keys %{$conf->{'email'}}) {
-            unlink("$email_user/.forward");
+            unlink("/home/$email_user/.forward");
         }
     }
 
