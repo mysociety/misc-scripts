@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.72 2008-09-09 00:57:11 root Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.73 2008-09-09 00:59:34 root Exp $';
 
 package main;
 
@@ -308,12 +308,16 @@ sub stop_site {
     # Stop crontab
     unlink($cron_name);
 
-    # Stop email forwarding
-    if ($conf->{'email'}) {
-        foreach my $email_user (keys %{$conf->{'email'}}) {
-            unlink("/home/$email_user/.forward");
-        }
-    }
+    # Stop email forwarding 
+    # XXX hmmm, maybe not such a good idea to stop this, as emails to, say
+    # WhatDoTheyknow, would then not be delivered while deploying new version
+    # of it. Really should replace with something that gets exim to try
+    # redelivery?
+    #if ($conf->{'email'}) {
+    #    foreach my $email_user (keys %{$conf->{'email'}}) {
+    #        unlink("/home/$email_user/.forward");
+    #    }
+    #}
 
     # Down notice
     open(FH, "> $vhost_dir/docs/.down.html.new") or die "failed to open .down.html.new";
