@@ -8,12 +8,12 @@
 # Copyright (c) 2007 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: gettext-custom-validations,v 1.1 2007-12-31 13:53:42 francis Exp $
+# $Id: gettext-custom-validations,v 1.2 2008-09-09 14:16:13 matthew Exp $
 
 my $last_line_subject = 0;
 while(<>) {
     if ($last_line_subject) {
-        if (!m/^"\\n"$/) {
+        if (!m/^"\\n"\r?$/) {
             print STDERR "WARNING: line following email Subject: should be just a \\n, on line $.: $_"
         }
     }
