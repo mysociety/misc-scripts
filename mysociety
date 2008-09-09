@@ -185,7 +185,7 @@ END
         # deploy vhost
         /data/mysociety/bin/deploy-vhost $VHOST $COMMAND "$@"
         # special code to set up dademcron user and cron job
-        if [ "$VHOST" = "services.mysociety.org" -a $( hostname ) = bitter ]; then
+        if [ "$VHOST" = "services.mysociety.org" -a $( hostname ) = cake ]; then
             /data/vhost/services.mysociety.org/mysociety/services/DaDem/bin/setup-dademcron
         fi
         ;;
