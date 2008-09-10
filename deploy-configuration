@@ -20,7 +20,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.52 2007-12-28 14:04:39 keith Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.53 2008-09-10 09:52:13 root Exp $';
 
 package Oops;
 
@@ -694,6 +694,7 @@ try {
     # Compare existing files to those in a named archive.
     if (!$no_check_existing && !$only_check_new) {
         verbose("reading previous configuration from $save_file\n");
+        throw Oops("Server has probably been added to a new archetype, please run with --no-check-existing to make new config reference tarball. Not found: $save_file") if !-e $save_file;
         my $tar = new Archive::Tar();
         my $h = new IO::File($save_file, O_RDONLY)
                     || throw Oops("$save_file: $!");
