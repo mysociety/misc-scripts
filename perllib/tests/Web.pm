@@ -8,7 +8,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Web.pm,v 1.16 2008-09-10 09:35:24 francis Exp $
+# $Id: Web.pm,v 1.17 2008-09-19 18:16:11 matthew Exp $
 #
 
 package Web;
@@ -43,7 +43,7 @@ my @pages = qw(
         http://www.whatdotheyknow.com/request/regenda_group_hoaos
 
         http://www.fixmystreet.com/
-        http://www.fixmystreet.com/?id=21025
+        http://www.fixmystreet.com/report/21025
 
         http://www.groupsnearyou.com/
         http://www.groupsnearyou.com/groups/brunk
