@@ -20,7 +20,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.53 2008-09-10 09:52:13 root Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.54 2008-09-22 11:27:02 root Exp $';
 
 package Oops;
 
@@ -552,6 +552,78 @@ sub install_files ($$;$) {
     }
 }
 
+# Internal use by install_files_dry_run
+sub compare_modes ($$$) {
+    my ($outname, $st, $st2) = @_;
+    if (!$st2 || ($st->mode() & 07777) != ($st2->mode() & 07777)) {
+        print "chmod " . ($st->mode() & 07777) . " $outname\n";
+    }
+    if (!$st2 || $st->uid() != $st2->uid() || $st->gid() != $st2->gid()) {
+        print "chown " . getpwuid($st->uid()) . ":" . getgrgid($st->gid()) . " $outname\n";
+    }
+}
+
+# install_files_dry_run INDIR [OUTDIR]
+# Output what would happen if installing files from INDIR (presumably, the
+# OUTDIR previously passed to process_files) onto the real system to OUTDIR,
+# or, if it is not specified, /.
+sub install_files_dry_run ($;$);
+use Data::Dumper;
+sub install_files_dry_run ($;$) {
+    my ($indir, $outdir) = @_;
+    $indir =~ s#(?<!^)/$##;
+    $outdir ||= '/';
+
+    my @subdirs = ( );
+    opendir(D, $indir) or throw Oops("$indir: opendir: $!");
+    while (defined(my $name = readdir(D))) {
+        next if ($name eq '.' || $name eq '..');
+        my $outname = $outdir eq '/' ? "$outdir$name" : "$outdir/$name";
+        $outname = File::Spec->canonpath($outname);
+        my $st = lstat("$indir/$name") || throw Oops("$indir/$name: lstat: $!");
+        my $st2 = lstat($outname);
+        throw Oops("$outname: lstat: $!") if (!$st2 && !$!{ENOENT});
+
+        if (S_ISDIR($st->mode())) {
+            throw Oops("$outname: already exists, but is a " . file_type($st2->mode()) . ", not a directory")
+                if ($st2 && !S_ISDIR($st2->mode()));
+            if (!$st2) {
+                print "mkdir $outname\n";
+            }
+            compare_modes($outname, $st, $st2);
+            push(@subdirs, $name);
+        } elsif (S_ISREG($st->mode())) {
+            if (!$st2) {
+                print "cat >$outname <<DEPLOYEND\n";
+                system('cat', "$indir/$name");
+                print "DEPLOYEND\n";
+            } else {
+                system('diff', '-u', $outname, "$indir/$name");
+            }
+            compare_modes($outname, $st, $st2);
+        } elsif (S_ISCHR($st->mode()) || S_ISBLK($st->mode())) {
+            if (!$st2) {
+                printf("mknod %s %s %d %d\n", $outname, S_ISCHR($st->mode()) ? 'c' : 'b', major($st->rdev()), minor($st->rdev()));
+            }
+            compare_modes($outname, $st, $st2);
+        } elsif (S_ISLNK($st->mode())) {
+            if (!$st2) {
+                print "ln -s " . readlink("$indir/$name") . " $outname\n";
+            }
+            compare_modes($outname, $st, $st2);
+        } else {
+            throw Oops("$indir/$name: not a regular file, directory, block or character device, or symlink");
+        }
+    }
+    closedir(D);
+    
+    foreach my $dir (@subdirs) {
+        my $outname = $outdir eq '/' ? "$outdir$dir" : "$outdir/$dir";
+        install_files_dry_run("$indir/$dir", $outname);
+    }
+}
+
+
 # compare_installed_files H TAR DIR
 # Compare the files installed on the machine (under DIR) with those archived in
 # TAR. Discrepancies are reported to H, and the total number of discrepancies
@@ -641,6 +713,7 @@ try {
     my $only_check_existing = 0;
     my $no_check_existing = 0;
     my $only_check_new = 0;
+    my $dry_run = 0; # produces a diff, but doesn't install anything
     my $target = '/';
     if (!GetOptions(
             'help' =>               \$help,
@@ -648,6 +721,7 @@ try {
             'check-existing' =>     \$only_check_existing,
             'no-check-existing' =>  \$no_check_existing,
             'check-new' =>          \$only_check_new,
+            'dry-run' =>            \$dry_run,
             'save-file=s' =>        \$save_file,
             'mugly-path=s' =>       \$mugly_bin,
             'target=s' =>           \$target
@@ -722,7 +796,9 @@ try {
         verbose("temporary directory is $tempdir\n");
         process_directory($tree, $tempdir, $settings);
 
-        if (!$only_check_new) {
+        if ($dry_run) {
+            install_files_dry_run($tempdir, $target);
+        } elsif (!$only_check_new) {
             my $tar = new Archive::Tar();
             verbose("installing new configuration files...\n");
             install_files($tar, $tempdir, $target);
@@ -747,10 +823,9 @@ try {
             };
             # New versions of Archive::Tar close the file when they write to it
             # so check before we close. Can remove once we are all at Etch and above.
-            if ($f->opened())
-	    {
-		    $f->close() || throw Oops("$t: close: $!");
-	    }
+            if ($f->opened()) {
+                $f->close() || throw Oops("$t: close: $!");
+            }
             if (!rename($t, $save_file)) {
                 unlink($t);
                 throw Oops("$t: rename: $!");
@@ -855,6 +930,11 @@ by this program. Use with caution.
 
 Only check that the new configuration files can be generated from TREE and
 SETTINGS; do not check the existing files or install the new ones.
+
+=item --dry-run
+
+Don't actually install the new configuration, instead output the changes that
+will be made to the destination.
 
 =item --save-file TARFILE
 
