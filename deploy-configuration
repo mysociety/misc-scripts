@@ -20,7 +20,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.54 2008-09-22 11:27:02 root Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.55 2008-09-22 11:36:44 root Exp $';
 
 package Oops;
 
@@ -934,7 +934,9 @@ SETTINGS; do not check the existing files or install the new ones.
 =item --dry-run
 
 Don't actually install the new configuration, instead output the changes that
-will be made to the destination.
+will be made to the destination. You can combine this with --no-check-existing,
+which can be useful/confusing; it will display diffs from the point of view of
+any local modifications that are going to be wiped.
 
 =item --save-file TARFILE
 
