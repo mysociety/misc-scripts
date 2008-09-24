@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.73 2008-09-09 00:59:34 root Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.74 2008-09-24 16:52:54 root Exp $';
 
 package main;
 
@@ -170,17 +170,27 @@ foreach my $public_cache_dir (@{$conf->{'public_cache_dirs'}}) {
 
 # Make database config settings
 my $database_configs = "";
+my $rails_database_config = "";
 if (defined $conf->{'databases'}) {
     foreach my $database (@{$conf->{'databases'}}) {
         my $params = $databases->{$database};
         if ($params->{type} eq 'psql') {
             my $password = pgpw($database);
-            $database_configs .= <<END
+            $database_configs .= <<END;
 define('OPTION_$params->{prefix}_DB_HOST', '$params->{host}.int.ukcod.org.uk');
 define('OPTION_$params->{prefix}_DB_PORT', $params->{port});
 define('OPTION_$params->{prefix}_DB_NAME', '$database');
 define('OPTION_$params->{prefix}_DB_USER', '$database');
 define('OPTION_$params->{prefix}_DB_PASS', '$password');
+END
+            # XXX doesn't cope with multiple Rails database configs, oh well
+            $rails_database_config = <<END;
+    adapter: postgresql
+    database: $database
+    username: $database
+    password: $password
+    host: $params->{host}.int.ukcod.org.uk
+    port: $params->{port}
 END
 #define('OPTION_$params->{prefix}_DB_PASS', '!!(*= pgpw('$database') *)!!');
         } else {
@@ -219,6 +229,9 @@ print FH <<END;
 \$database_configs = <<DONE_DATABASE_CONFIGS;
 $database_configs
 DONE_DATABASE_CONFIGS
+\$rails_database_config = <<DONE_RAILS_DATABASE_CONFIG;
+$rails_database_config
+DONE_RAILS_DATABASE_CONFIG
 END
 
 print FH Dumper($conf->{conf_dir});
