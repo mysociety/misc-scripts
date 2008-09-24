@@ -92,7 +92,7 @@ COMMAND is one of:
         Run a command on all machines in the same principal class as this one
     base COMMAND
         Run a command on all machines (which are in the same base class as this one)
-    archetype <archetype>
+    archetype/arch <archetype>
         Run a command on all machine in the given archetype
     debug
     	Show debugging information for mysociety command
@@ -244,7 +244,7 @@ END
         done
         ;;
 
-    archetype)
+    archetype | arch)
         ARCHETYPE=$1
         shift || die "specify an archetype (try --help for help)"
         # Obtain list of servers in archetype
