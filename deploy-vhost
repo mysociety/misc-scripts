@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.74 2008-09-24 16:52:54 root Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.75 2008-09-24 17:00:41 root Exp $';
 
 package main;
 
@@ -183,8 +183,11 @@ define('OPTION_$params->{prefix}_DB_NAME', '$database');
 define('OPTION_$params->{prefix}_DB_USER', '$database');
 define('OPTION_$params->{prefix}_DB_PASS', '$password');
 END
-            # XXX doesn't cope with multiple Rails database configs, oh well
-            $rails_database_config = <<END;
+            # XXX doesn't cope with multiple Rails database configs (as you
+            # have to list them in the yml file in right place, so one text
+            # option can't), oh well
+            if (scalar(@{$conf->{'databases'}}) == 1) {
+                $rails_database_config = <<END;
     adapter: postgresql
     database: $database
     username: $database
@@ -192,6 +195,7 @@ END
     host: $params->{host}.int.ukcod.org.uk
     port: $params->{port}
 END
+            }
 #define('OPTION_$params->{prefix}_DB_PASS', '!!(*= pgpw('$database') *)!!');
         } else {
             die "unknown database type '$params->{type}'";
