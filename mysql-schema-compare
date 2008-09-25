@@ -30,7 +30,7 @@ CURRENT_SCHEMA_FILE=`mktemp /tmp/ms-deploy-currentschema.XXXXXX`
 MYSQLDUMP="/usr/bin/mysqldump --no-data --skip-opt --create-options"
 
 # ... the live database dump
-su $2 -c "$MYSQLDUMP --user $4 --host $5 --port $6 $3" 2>&1 | grep -v "\-\-databases\|^--\|/\*.*SET\|^\s*$" | sed "s/ ENGINE.*;/;/" | sed "s/,$//;" > $CURRENT_SCHEMA_FILE
+su $2 --shell "/bin/bash" -c "set -o pipefail && $MYSQLDUMP --user $4 --host $5 --port $6 $3 | grep -v \"\-\-databases\|^--\|/\*.*SET\|^\s*$\" | sed \"s/ ENGINE.*;/;/\" | sed \"s/,$//;\"" > $CURRENT_SCHEMA_FILE
 
 grep -v "^--" $1 | grep -v "^\s*$"  | sed "s/,$//;" >$CVS_SCHEMA_FILE
 
