@@ -19,6 +19,7 @@ my %langs = (
     'pl_PL' => 'pl',
     'pt_BR' => 'pt-br',
     'ru_RU' => 'ru',
+    'sk_SK' => 'sk',
     'uk_UA' => 'uk',
     'zh_CN' => 'zh'
 );
