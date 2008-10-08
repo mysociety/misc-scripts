@@ -12,7 +12,7 @@
 use DBI;
 
 # Who can access what databases - only one database per user for MySQL
-my $database_permissions_sponge = {
+my $database_permissions_all = {
     # All-seeing power
     'root' => ['root'], # see hack below that sets default database to mysql, although user root
      
@@ -22,19 +22,20 @@ my $database_permissions_sponge = {
 
     # Sites
     'twfy-live' => ['twfy'],
+    'piwik' => ['piwik']
 
     # Services
 };
 
 my $database_permissions;
 my $server = (uname())[1];
-if ($server eq 'sponge') {
-	$database_permissions = $database_permissions_sponge;
+if ($server eq 'sponge' || $server eq 'sandwich') {
+	$database_permissions = $database_permissions_all;
 } else {
 	die "generate-mypass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-mypass,v 1.2 2008-03-24 08:54:56 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-mypass,v 1.3 2008-10-08 15:22:09 root Exp $';
 
 use strict;
 require 5.8.0;
