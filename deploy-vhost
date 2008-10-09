@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.77 2008-10-09 13:15:31 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.78 2008-10-09 13:23:14 matthew Exp $';
 
 package main;
 
@@ -180,7 +180,7 @@ define('OPTION_$params->{prefix}_DB_HOST', '$params->{host}.int.ukcod.org.uk');
 define('OPTION_$params->{prefix}_DB_PORT', $params->{port});
 define('OPTION_$params->{prefix}_DB_NAME', '$database');
 define('OPTION_$params->{prefix}_DB_USER', '$database');
-define('OPTION_$params->{prefix}_DB_PASS', '!!(*= pgpw('$database') *)!!');
+define('OPTION_$params->{prefix}_DB_PASS', '$password');
 END
             # XXX doesn't cope with multiple Rails database configs (as you
             # have to list them in the yml file in right place, so one text
@@ -211,6 +211,7 @@ my $settings_file_namepart = "settings-autogen.pl";
 my $settings_file = "$vhost_dir/$settings_file_namepart";
 my $global_settings_file = "/etc/mysociety/config-settings.pl";
 my $global_settings = read_file($global_settings_file) or die "failed to read /etc/mysociety/config-settings.pl, which is made by deploy-configuration";
+my $old_umask = umask(0077);
 open(FH, "> $settings_file") or die "failed to open $settings_file for write";
 print FH <<END;
 #
@@ -261,6 +262,7 @@ $global_settings
 END
 close FH;
 chown($user_uid, $user_gid, $settings_file);
+umask($old_umask);
 
 # Generate daemon init scripts from templates
 foreach my $daemon (keys %{$conf->{'daemons'}}) {
