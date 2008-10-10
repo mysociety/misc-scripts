@@ -15,7 +15,7 @@ my $database_permissions_main = {
      
     # People
     'francis' => ['fyr','pb','ycml','mapit','dadem','ratty','evel','pb-staging','ycml-staging','fyr-staging', 'track', 'pet-staging', 'pet', 'bci', 'dress', 'foi'],
-    'matthew' => ['fyr','pb','ycml','mapit','dadem','ratty','evel','pb-staging','ycml-staging','fyr-staging', 'track', 'pet-staging', 'pet', 'bci', 'dress', 'ycml-cllr', 'bbcparlvid'],
+    'matthew' => ['fyr','pb','ycml','mapit','dadem','ratty','evel','pb-staging','ycml-staging','fyr-staging', 'track', 'pet-staging', 'pet', 'bci', 'bci-emptyhomes', 'dress', 'ycml-cllr', 'bbcparlvid'],
     'etienne' => ['pb-staging','ycml-staging', 'bbcparlvid'],
     'timsk' => ['pb-staging', 'pb'],
     'louise' => ['mswww-staging','mswww','news-staging', 'fyr-staging', 'donate-staging', 'news', 'fyr'],
@@ -38,6 +38,7 @@ my $database_permissions_main = {
     'mswww-staging' => ['mswww-staging'],
     'mssecure' => ['donate'],
     'bci' => ['bci'],
+    'bci-emptyhomes' => ['bci-emptyhomes'],
     'bbcparlvid' => ['bbcparlvid'],
     'foi' => ['foi'],
     'survey' => ['survey'],
@@ -118,7 +119,7 @@ if ($server eq 'bitter' || $server eq 'tea' || $server eq 'sponge' || $server eq
 	die "generate-pgpass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.81 2008-09-09 15:53:15 root Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.82 2008-10-10 14:32:40 matthew Exp $';
 
 use strict;
 require 5.8.0;
