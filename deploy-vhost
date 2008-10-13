@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.79 2008-10-13 09:18:01 root Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.80 2008-10-13 11:47:22 matthew Exp $';
 
 package main;
 
@@ -179,7 +179,7 @@ define('OPTION_$params->{prefix}_DB_HOST', '$params->{host}.int.ukcod.org.uk');
 define('OPTION_$params->{prefix}_DB_PORT', $params->{port});
 define('OPTION_$params->{prefix}_DB_NAME', '$database');
 define('OPTION_$params->{prefix}_DB_USER', '$database');
-define('OPTION_$params->{prefix}_DB_PASS', \${\\(pgpw('$database'))});
+define('OPTION_$params->{prefix}_DB_PASS', '\${\\(pgpw('$database'))}');
 END
             # XXX doesn't cope with multiple Rails database configs (as you
             # have to list them in the yml file in right place, so one text
