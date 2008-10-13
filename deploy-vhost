@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.78 2008-10-09 13:23:14 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.79 2008-10-13 09:18:01 root Exp $';
 
 package main;
 
@@ -174,13 +174,12 @@ if (defined $conf->{'databases'}) {
     foreach my $database (@{$conf->{'databases'}}) {
         my $params = $databases->{$database};
         if ($params->{type} eq 'psql') {
-            my $password = pgpw($database);
             $database_configs .= <<END;
 define('OPTION_$params->{prefix}_DB_HOST', '$params->{host}.int.ukcod.org.uk');
 define('OPTION_$params->{prefix}_DB_PORT', $params->{port});
 define('OPTION_$params->{prefix}_DB_NAME', '$database');
 define('OPTION_$params->{prefix}_DB_USER', '$database');
-define('OPTION_$params->{prefix}_DB_PASS', '$password');
+define('OPTION_$params->{prefix}_DB_PASS', \${\\(pgpw('$database'))});
 END
             # XXX doesn't cope with multiple Rails database configs (as you
             # have to list them in the yml file in right place, so one text
@@ -190,7 +189,7 @@ END
     adapter: postgresql
     database: $database
     username: $database
-    password: $password
+    password: \${\\(pgpw('$database'))}
     host: $params->{host}.int.ukcod.org.uk
     port: $params->{port}
 END
