@@ -17,6 +17,7 @@ my $database_permissions_all = {
     'root' => ['root'], # see hack below that sets default database to mysql, although user root
      
     # People
+    'angie' => ['twfy_staging'],
     'francis' => ['twfy_staging'],
     'matthew' => ['twfy_staging'],
 
@@ -36,7 +37,7 @@ if ($server eq 'sponge' || $server eq 'sandwich') {
 	die "generate-mypass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-mypass,v 1.4 2008-10-13 09:27:46 root Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-mypass,v 1.5 2008-10-14 14:18:44 angie Exp $';
 
 use strict;
 require 5.8.0;
