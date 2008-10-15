@@ -20,6 +20,8 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
+#set -x # debug
+
 set -e
 . ../shlib/deployfns
 
