@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: newzonefile,v 1.10 2008-10-15 19:56:57 adam Exp $';
+my $rcsid = ''; $rcsid .= '$Id: newzonefile,v 1.11 2008-10-15 20:05:28 adam Exp $';
 
 use strict;
 
@@ -16,16 +16,16 @@ use POSIX qw();
 use Regexp::Common qw(dns);
 
 my @nameservers = qw(
-        ns0.ukcod.org.uk
-        ns1.ukcod.org.uk
-	ns2.ukcod.org.uk
-	ns0.mysociety.org
-	ns1.mysociety.org
-        ns0.flirble.org.uk
-        ns1.flirble.org.uk
-        ns2.flirble.org.uk
-        ns3.flirble.org.uk
-        ns4.flirble.org.uk
+        ns0.ukcod.org.uk.
+        ns1.ukcod.org.uk.
+	ns2.ukcod.org.uk.
+	ns0.mysociety.org.
+	ns1.mysociety.org.
+        ns0.flirble.org.
+        ns1.flirble.org.
+        ns2.flirble.org.
+        ns3.flirble.org.
+        ns4.flirble.org.
     );
 
 if (@ARGV == 0) {
