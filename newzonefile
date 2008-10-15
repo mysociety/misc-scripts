@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: newzonefile,v 1.8 2006-02-28 12:20:36 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: newzonefile,v 1.9 2008-10-15 19:40:12 adam Exp $';
 
 use strict;
 
@@ -75,7 +75,7 @@ $f->print(<<EOF);
 ;
 
 @               SOA     ns0.ukcod.org.uk.   hostmaster.ukcod.org.uk. (
-                $serial          ; Serial
+                $serial             ; Serial
                 10800               ; Refresh
                 3600                ; Retry
                 604800              ; Expire
@@ -94,11 +94,13 @@ EOF
 $f->print(<<EOF);
 
 ; Mail records for the domain itself
-                MX      10          tea.ukcod.org.uk.
-                MX      10          bitter.ukcod.org.uk.
+                MX      10          mx0.ukcod.org.uk.
+                MX      10          mx1.ukcod.org.uk.
+                MX      10          mx2.ukcod.org.uk.
+                MX      10          mx3.ukcod.org.uk.
 
-                MX      20          prune.flirble.org.
-                MX      30          castaway.flirble.org.
+                MX      50          prune.flirble.org.
+                MX      50          castaway.flirble.org.
 
 ; Address of $domain itself.
                 IN      A           82.111.230.200      ; svcs.tea.ukcod.org.uk
