@@ -122,6 +122,13 @@ case $COMMAND in
                 s/\\s+\$//;
                 return \$_;
             }
+
+            sub in_archetype {
+                my \$test_against = shift;
+                my \$archetypes = "$ARCHETYPES";
+                my @archetypes = split(/ /, \$archetypes);
+                return grep(/^\$test_against$/, @archetypes);
+            }
             
 END
 
