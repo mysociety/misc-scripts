@@ -14,7 +14,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: hassleblog,v 1.8 2005-11-02 12:27:46 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: hassleblog,v 1.9 2008-10-15 17:09:43 adam Exp $';
 
 use strict;
 
@@ -33,9 +33,9 @@ my %hours = map { $_ => 1 } (10 .. 19);
 
 # People we can hassle.
 my @people = (
-    # Name,             email address,           IRC nick   days
-    ['Chris Lightfoot', 'chris@mysociety.org',   'chris',   [qw(1 2 3 4 5)]],
-    ['Francis Irving',  'francis@mysociety.org', 'frabcus', [qw(1 2 3 4 5)]],
+    # Name,             email address,           IRC nick,  days
+    ['Angie Ahl'	'angie@mysociety.org',	 'angie',   [qw(1 2 3 4 5)]],
+    ['Francis Irving',  'francis@mysociety.org', 'Francis', [qw(1 2 3 4 5)]],
     ['Tom Steinberg',   'tom@mysociety.org',     'Steiny',  [qw(1 2 3 4 5)]],
     ['Matthew Somerville',
                         'matthew@mysociety.org', 'Matthew', [5]]
@@ -94,7 +94,7 @@ Options:
     --force     Always send a notification, even if it's out-of-hours or the
                 random-number-generator doesn't decide we should do
 
-$Id: hassleblog,v 1.8 2005-11-02 12:27:46 chris Exp $
+$Id: hassleblog,v 1.9 2008-10-15 17:09:43 adam Exp $
 Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
 Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 EOF
