@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: newzonefile,v 1.9 2008-10-15 19:40:12 adam Exp $';
+my $rcsid = ''; $rcsid .= '$Id: newzonefile,v 1.10 2008-10-15 19:56:57 adam Exp $';
 
 use strict;
 
@@ -18,6 +18,9 @@ use Regexp::Common qw(dns);
 my @nameservers = qw(
         ns0.ukcod.org.uk
         ns1.ukcod.org.uk
+	ns2.ukcod.org.uk
+	ns0.mysociety.org
+	ns1.mysociety.org
         ns0.flirble.org.uk
         ns1.flirble.org.uk
         ns2.flirble.org.uk
