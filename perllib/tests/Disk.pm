@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Disk.pm,v 1.3 2008-01-30 16:56:00 matthew Exp $
+# $Id: Disk.pm,v 1.4 2008-10-20 14:18:49 francis Exp $
 #
 
 package Disk;
@@ -17,7 +17,7 @@ use IO::Pipe;
 
 use constant PROG_DF => '/bin/df';
 
-use constant MIN_DISK_FRACTION => 0.1;
+use constant MIN_DISK_FRACTION => 0.05; # XXX temp should be 0.1
 
 sub test () {
     my $p = new IO::Pipe();
