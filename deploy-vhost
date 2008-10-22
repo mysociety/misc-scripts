@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.80 2008-10-13 11:47:22 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.81 2008-10-22 21:13:47 keith Exp $';
 
 package main;
 
@@ -336,25 +336,33 @@ sub stop_site {
     #    }
     #}
 
-    # Down notice
-    open(FH, "> $vhost_dir/docs/.down.html.new") or die "failed to open .down.html.new";
-    print FH <<END;
-    <html>
-    <head>
-    <title>$vhost - Down for Maintenance</title>
-    </head>
-    <body>
-    <p>Sorry, but $vhost is currently not available.  We're doing a spot of
-    maintenance.  Check back in a few minutes, and everything should be
-    restored to order.  Thanks for your patience!
-    <p> &mdash; the <a href="http://www.mysociety.org/">mySociety</a> developers
-    </body>
-    </html> 
+    if(-s "$vhost_dir/docs/down.current.html") {
+        unlink("$vhost_dir/docs/down.html");
+        symlink("$vhost_dir/docs/down.current.html", "$vhost_dir/docs/down.html");
+    } elsif (-s "$vhost_dir/docs/down.default.html") {
+        unlink("$vhost_dir/docs/down.html");
+        symlink("$vhost_dir/docs/down.default.html", "$vhost_dir/docs/down.html");
+    } else {
+        # Down notice
+        open(FH, "> $vhost_dir/docs/.down.html.new") or die "failed to open .down.html.new";
+        print FH <<END;
+        <html>
+        <head>
+        <title>$vhost - Down for Maintenance</title>
+        </head>
+        <body>
+        <p>Sorry, but $vhost is currently not available.  We're doing a spot of
+        maintenance.  Check back in a few minutes, and everything should be
+        restored to order.  Thanks for your patience!
+        <p> &mdash; the <a href="http://www.mysociety.org/">mySociety</a> developers
+        </body>
+        </html> 
 END
-    close FH;
-    unlink("$vhost_dir/docs/down.html");
-    rename("$vhost_dir/docs/.down.html.new", "$vhost_dir/docs/down.html") or die "failed to rename to down.html";
-    chown($user_uid, $user_gid, "$vhost_dir/docs/down.html");
+        close FH;
+        unlink("$vhost_dir/docs/down.html");
+        rename("$vhost_dir/docs/.down.html.new", "$vhost_dir/docs/down.html") or die "failed to rename to down.html";
+        chown($user_uid, $user_gid, "$vhost_dir/docs/down.html");
+    }
 }
 
 # Check that config files and database files have been updated
