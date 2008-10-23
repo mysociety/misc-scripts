@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.81 2008-10-22 21:13:47 keith Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.82 2008-10-23 01:28:50 francis Exp $';
 
 package main;
 
@@ -195,6 +195,13 @@ END
 END
             }
 #define('OPTION_$params->{prefix}_DB_PASS', '!!(*= pgpw('$database') *)!!');
+        } elsif ($params->{type} eq 'mysql') {
+            $database_configs .= <<END;
+define('OPTION_$params->{prefix}_DB_HOST', '$params->{host}.int.ukcod.org.uk');
+define('OPTION_$params->{prefix}_DB_NAME', '$database');
+define('OPTION_$params->{prefix}_DB_USER', '$database');
+define('OPTION_$params->{prefix}_DB_PASS', '\${\\(pgpw('$database'))}');
+END
         } else {
             die "unknown database type '$params->{type}'";
         }
