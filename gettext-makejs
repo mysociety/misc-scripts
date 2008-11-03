@@ -66,7 +66,7 @@ for (<locale/*.UTF-8/LC_MESSAGES/PledgeBank*.po>) {
                 ($msgstr) = $next =~ /^msgstr "(.*)"/;
             }
         }
-	decode_entities($msgstr);
+	_decode_entities($msgstr, { nbsp => "\xc2\xa0", ocirc => "\xc3\xb4" });
         $out .= "\"$msgid\":\"$msgstr\",\n";
     }
     close FP;
