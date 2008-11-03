@@ -1,6 +1,8 @@
 #!/usr/bin/perl -w
 
 use strict;
+use HTML::Entities;
+
 my %langs = (
     'be_BY' => 'be',
     'cy_GB' => 'cy',
@@ -64,6 +66,7 @@ for (<locale/*.UTF-8/LC_MESSAGES/PledgeBank*.po>) {
                 ($msgstr) = $next =~ /^msgstr "(.*)"/;
             }
         }
+	decode_entities($msgstr);
         $out .= "\"$msgid\":\"$msgstr\",\n";
     }
     close FP;
