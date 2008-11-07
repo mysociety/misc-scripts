@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Hosts.pm,v 1.7 2008-03-24 22:39:12 keith Exp $
+# $Id: Hosts.pm,v 1.8 2008-11-07 17:26:10 root Exp $
 #
 
 package Hosts;
@@ -22,12 +22,17 @@ my @hostlist = qw(
         tea.ukcod.org.uk
         balti.ukcod.org.uk
 
-        peas.ukcod.org.uk
         steak.ukcod.org.uk
 
-        whisky.ukcod.org.uk
         water.ukcod.org.uk
+
+        sandwich.ukcod.org.uk
+        pudding.ukcod.org.uk
+        cake.ukcod.org.uk
     );
+#peas.ukcod.org.uk
+#whisky.ukcod.org.uk
+
 
 use constant NPINGS => 10;
 
