@@ -1,0 +1,51 @@
+#!/bin/bash
+#
+# bin/check-packages-installed
+# Given a file containaing a list of Debian packages, checks they are all
+# installed. Prints to STDERR those that aren't, and returns an appropriate
+# error code.
+#
+# XXX The file format is currently just a list of packages, one per line. It
+# might make sense later to add the option of version comparison operators,
+# preferably reusing code from Debian dependencies checking.
+#
+# Copyright (c) 2008 UK Citizens Online Democracy. All rights reserved.
+# Email: francis@mysociety.org; WWW: http://www.mysociety.org/
+#
+# $Id: check-packages-installed,v 1.1 2008-11-07 15:32:04 root Exp $
+
+
+RET=0
+PACKAGES=`cat $1`
+
+function check_line() {
+    while read STATUS NAME REST
+    do
+        for PACKAGE in $PACKAGES
+        do
+            if [ "$PACKAGE" == "$NAME" ]
+            then
+                if [ "$STATUS" != "ii" ]
+                then
+                    echo "package '$PACKAGE' is not fully installed or has been uninstalled, status $STATUS" >&2
+                    RET=1
+                fi
+                # mark that package as done
+                PACKAGES=${PACKAGES/$PACKAGE/}
+            fi
+        done
+    done
+    echo $PACKAGES
+}
+
+COLUMNS=2000 
+PACKAGES=`dpkg -l | check_line`
+
+for PACKAGE in $PACKAGES
+do
+    echo "package '$PACKAGE' is not installed" >&2
+    RET=1
+done
+
+exit $RET
+
