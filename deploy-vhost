@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.82 2008-10-23 01:28:50 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.83 2008-11-07 15:40:05 root Exp $';
 
 package main;
 
@@ -75,7 +75,7 @@ my $site_conf = $sites->{$site};
 die "site '$site' is not in vhosts.pl" if !$site_conf;
 my $vhost_dir = "/data/vhost/$vhost";
 my $action = $ARGV[1];
-die "Specify 'deploy', 'stop', 'update' or 'start'as second parameter" if $action ne "deploy" && $action ne "stop" && $action ne "update" && $action ne "start";
+die "Specify 'deploy', 'stop', 'update' or 'start' as second parameter" if $action ne "deploy" && $action ne "stop" && $action ne "update" && $action ne "start";
 
 # Merge vhost and site configs together
 my $conf;
@@ -295,6 +295,15 @@ shell("$mysociety_bin/mugly", "-O", "/etc/apache/virtualhosts.d/$vhost.conf", "-
 my $cron_name = "vhost-$vhost";
 $cron_name =~ s/\./-/g;
 $cron_name = "/etc/cron.d/$cron_name";
+
+# Check Debian packages are all installed, if there is a conf/packages file
+foreach my $conf_dir (@{$conf->{conf_dir}}) {
+    chdir $mysociety_dir;
+    shell("cvs", "-Q", "update", "$conf_dir/packages");
+    if (-e "$conf_dir/packages") {
+        shell("/data/mysociety/bin/check-packages-installed", "$conf_dir/packages")
+    }
+}
 
 #####################################################################
 # Shut down services, update, start services
