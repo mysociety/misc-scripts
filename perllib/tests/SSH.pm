@@ -5,7 +5,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: SSH.pm,v 1.8 2008-11-07 17:26:10 root Exp $
+# $Id: SSH.pm,v 1.9 2008-11-07 17:59:47 root Exp $
 #
 
 package SSH;
@@ -25,7 +25,7 @@ my @hostlist = qw(
 
         water.ukcod.org.uk
         cake.ukcod.org.uk
-        sandich.ukcod.org.uk
+        sandwich.ukcod.org.uk
         pudding.ukcod.org.uk
     );
 
