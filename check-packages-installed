@@ -5,18 +5,21 @@
 # installed. Prints to STDERR those that aren't, and returns an appropriate
 # error code.
 #
-# XXX The file format is currently just a list of packages, one per line. It
-# might make sense later to add the option of version comparison operators,
-# preferably reusing code from Debian dependencies checking.
+# XXX The file format is currently just a list of packages, one per line. 
+# Characters after a # are interpreted as comments. It might make sense later
+# to add the option of version comparison operators, preferably reusing code
+# from Debian dependencies checking.
 #
 # Copyright (c) 2008 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: check-packages-installed,v 1.2 2008-11-07 15:41:52 root Exp $
+# $Id: check-packages-installed,v 1.3 2008-11-10 11:44:19 root Exp $
 
 
 RET=0
-PACKAGES=`cat $1`
+
+# Using sed as a rubbishy comment parser :)
+PACKAGES=`cat $1 | sed "s/#.*$//g;"`
 
 function check_line() {
     while read STATUS NAME REST
