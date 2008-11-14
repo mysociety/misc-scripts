@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Disk.pm,v 1.4 2008-10-20 14:18:49 francis Exp $
+# $Id: Disk.pm,v 1.5 2008-11-14 00:07:23 adam Exp $
 #
 
 package Disk;
@@ -25,8 +25,8 @@ sub test () {
         print "pipe: $!\n";
         return;
     }
-    # -k == 1KB blocks, -P for each on one line
-    if (!$p->reader(PROG_DF, '-k', '-P')) {
+    # -k == 1KB blocks, -P for each on one line -l == local mounts only
+    if (!$p->reader(PROG_DF, '-k', '-P', '-l')) {
         print "fork/exec df: $!\n";
         return;
     }
