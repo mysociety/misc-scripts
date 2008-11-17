@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: PET.pm,v 1.2 2006-11-20 15:33:47 francis Exp $
+# $Id: PET.pm,v 1.3 2008-11-17 13:37:37 francis Exp $
 #
 
 package PET;
@@ -18,10 +18,13 @@ use POSIX qw();
 use mySociety::Config;
 use mySociety::DBHandle qw(dbh);
 
-use constant PET_CONF_DIR => '/data/vhost/petitions.pm.gov.uk/mysociety/pet/conf';
+use constant PET_CONF_DIR => '/data/vhost/petitions.number10.gov.uk/mysociety/pet/conf';
 
 sub test () {
     return if (!-d PET_CONF_DIR || !-e PET_CONF_DIR . "/general");
+
+    print "This is a test";
+    return;
 
     # Mustn't call set_file as root since that would allow an pet->root
     # compromise. So drop privileges.
