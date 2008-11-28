@@ -13,8 +13,9 @@
 # Copyright (c) 2008 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: check-packages-installed,v 1.3 2008-11-10 11:44:19 root Exp $
+# $Id: check-packages-installed,v 1.4 2008-11-28 10:21:30 francis Exp $
 
+#set -x
 
 RET=0
 
@@ -44,8 +45,7 @@ function check_line() {
     echo $PACKAGES
 }
 
-COLUMNS=2000 
-PACKAGES=`dpkg -l | check_line`
+PACKAGES=`COLUMNS=2000 dpkg -l | check_line`
 
 for PACKAGE in $PACKAGES
 do
