@@ -2,7 +2,7 @@
 # Sync logfiles to machine secure.mysociety.org is on, run them
 # through awstats.
 set -e
-set -x # debug output
+#set -x # debug output
 
 # Edit these three to add more hosts, if the server running awstats changes, or
 # if new servers are added that serve any of the hosts.
