@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: YCML.pm,v 1.7 2006-12-12 11:42:06 francis Exp $
+# $Id: YCML.pm,v 1.8 2009-01-07 18:26:46 matthew Exp $
 #
 
 package YCML;
@@ -65,8 +65,18 @@ sub test () {
                         order by creation_time desc
                         limit 1');
 
-    printf("last signup was %d minutes ago", int($last_signup_age / 60))
+    printf("last signup was %d minutes ago\n", int($last_signup_age / 60))
         if ($last_signup_age > $age_threshold);
+
+    my $q = dbh()->selectall_arrayref("select id, area_id,
+        (select count(*) from message_sent where message_id=message.id) as sent
+        from message
+            where state='approved'
+            and (select count(*) from message_sent where message_id=message.id)=0
+            and posted < ms_current_timestamp() - '1 hour'::interval", { Slice => {} });
+    foreach (@$q) {
+        print "* Message for area $_->{area_id} is >1 hour old, but has had no emails sent out yet\n";
+    }
 
     dbh()->disconnect();
 }
