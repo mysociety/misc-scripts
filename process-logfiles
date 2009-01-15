@@ -1,64 +1,73 @@
-#!/bin/bash
+#!/usr/bin/perl -w
+#
 # Sync logfiles to machine secure.mysociety.org is on, run them
 # through awstats.
-set -e
-#set -x # debug output
+#
 
-# Edit these three to add more hosts, if the server running awstats changes, or
-# if new servers are added that serve any of the hosts.
-VHOSTS="www.mysociety.org www.mysociety.co.uk www.ukcod.org.uk www.writetothem.com www.pledgebank.com promise.livesimply.org.uk www.hearfromyourmp.com www.hearfromyourcouncillor.com www.fixmystreet.com www.groupsnearyou.com petitions.number10.gov.uk www.whatdotheyknow.com www.theyworkforyou.com parlvid.mysociety.org.81"
-AWSTATS_SERVER=cake # should be where secure.mysociety.org runs
-OTHER_SERVERS="tea balti water sponge sandwich bitter"
-#OTHER_SECURE_MYSOCIETY_ORG="tea"
+use strict;
+use Sys::Hostname;
 
 # Global config
-CACHE_DIR=/var/cache/process-logfiles
-AWSTATS_OUTPUT_DIR=/var/lib/awstats
-AWSTATS=/usr/lib/cgi-bin/awstats.pl
-mkdir -p $CACHE_DIR
-TODAY=`date +"%Y-%m-%d"`
-YESTERDAY=`date --date yesterday +"%Y-%m-%d"`
+my $cache_dir = '/var/cache/process-logfiles';
+my $awstats_output_dir = '/var/lib/awstats';
+my $awstats = '/usr/lib/cgi-bin/awstats.pl';
+
+our ($vhosts, $sites, $databases);
+require "/data/servers/vhosts.pl";
+
+my $awstats_server = $vhosts->{'secure.mysociety.org'}{servers}[0];
+
+my (@vhosts, %other_servers);
+foreach (keys %$vhosts) {
+    my $staging = $vhosts->{$_}{staging};
+    my @servers = @{$vhosts->{$_}{servers}};
+    my $stats = defined($vhosts->{$_}{stats})
+        ? $vhosts->{$_}{stats}
+        : $sites->{$vhosts->{$_}{site}}{stats};
+    if (!$staging && $stats) {
+        $_ .= '.81' if $_ eq 'parlvid.mysociety.org';
+        push @vhosts, $_;
+        foreach (@servers) {
+            next if $_ eq $awstats_server;
+            $other_servers{$_} = 1;
+        }
+    }
+} 
+my @other_servers = sort keys %other_servers;
+
+system("mkdir -p $cache_dir");
+my $today = `date +"%Y-%m-%d"`;
+my $yesterday = `date --date yesterday +"%Y-%m-%d"`;
 
 # All servers need the config files generating (for the web interface)
-for VHOST in $VHOSTS
-do
+foreach (@vhosts) {
     # Generate awstats conf file from template file
-    VHOST_ALIAS=${VHOST//www./}
-    VHOST_ALIAS=${VHOST_ALIAS//./\\\\.}
-    echo "\$awstats_vhost = \"$VHOST\"; \$awstats_vhost_aliases = \"$VHOST_ALIAS\";" | /data/mysociety/bin/mugly -O /etc/awstats/awstats.$VHOST.conf -p - /etc/awstats/awstats.template.conf
-done
+    (my $vhost_alias = $_) =~ s/www\.//;
+    $vhost_alias =~ s/\./\\\\./g;
+    system("echo '\$awstats_vhost = \"$_\"; \$awstats_vhost_aliases = \"$vhost_alias\";' | /data/mysociety/bin/mugly -O /etc/awstats/awstats.$_.conf -p - /etc/awstats/awstats.template.conf");
+}
 
 # Exit unless we're on the awstats server
-if [ $( hostname ) != $AWSTATS_SERVER ] ; then
-    # echo "process-logfiles: exiting as not on $AWSTATS_SERVER"
-    exit
-fi
+exit if hostname ne $awstats_server;
 
 # Copy log files locally, collate them, process them and copy output back to all servers
-for VHOST in $VHOSTS
-do
+foreach my $vhost (@vhosts) {
     # Copy all log files from all machines to the cache directory
-    for SERVER in $AWSTATS_SERVER $OTHER_SERVERS
-    do
+    foreach my $server ($awstats_server, @other_servers) {
         # Check to see if server has the vhost, if so get its log files
-        if rsync --rsh="ssh" $SERVER:/data/vhost/ | grep $VHOST >/dev/null
-        then
-            rsync --rsh="ssh" --include 'access_log.*' --exclude '*' --delete --archive $SERVER:/data/vhost/$VHOST/logs/ $CACHE_DIR/$VHOST-$SERVER/
-        fi
-    done
+        if (system("rsync --rsh='ssh' $server:/data/vhost/ | grep $vhost >/dev/null")) {
+            system("rsync --rsh='ssh' --include 'access_log.*' --exclude '*' --delete --archive $server:/data/vhost/$vhost/logs/ $cache_dir/$vhost-$server/");
+        }
+    }
 
     # Process all the log files, except for today's (because you want to be sure all
     # the files from all the servers have rotated, so everything is available to
     # be merged together in order)
-    LOG_FILES=`find $CACHE_DIR -type f | grep "/$VHOST-.*/" | grep -v $TODAY` || (echo "No log files found for $VHOST, probably remove it from process-logfiles")
-    /usr/bin/zmergelog $LOG_FILES | $AWSTATS -update -config=$VHOST >/dev/null
-
-    # Copy awstats output to other servers which serve secure.mysociety.org
-    # XXX there are none any more 2008-01-05, Francis
-#    for SERVER in $OTHER_SECURE_MYSOCIETY_ORG
-#    do
-#        rsync --rsh="ssh" --archive $AWSTATS_OUTPUT_DIR/ $SERVER:$AWSTATS_OUTPUT_DIR
-#    done
-done
-
+    my $log_files = `find $cache_dir -type f | grep "/$vhost-.*/" | grep -v $today`;
+    if ($log_files) {
+        system("/usr/bin/zmergelog $log_files | $awstats -update -config=$vhost >/dev/null");
+    } else {
+        print "No log files found for $vhost, probably remove it from process-logfiles" unless $log_files;
+    }
+}
 
