@@ -55,7 +55,7 @@ foreach my $vhost (@vhosts) {
     # Copy all log files from all machines to the cache directory
     foreach my $server ($awstats_server, @other_servers) {
         # Check to see if server has the vhost, if so get its log files
-        if (system("rsync --rsh='ssh' $server:/data/vhost/ | grep $vhost >/dev/null")) {
+        if (!system("rsync --rsh='ssh' $server:/data/vhost/ | grep $vhost >/dev/null")) {
             system("rsync --rsh='ssh' --include 'access_log.*' --exclude '*' --delete --archive $server:/data/vhost/$vhost/logs/ $cache_dir/$vhost-$server/");
         }
     }
@@ -64,10 +64,11 @@ foreach my $vhost (@vhosts) {
     # the files from all the servers have rotated, so everything is available to
     # be merged together in order)
     my $log_files = `find $cache_dir -type f | grep "/$vhost-.*/" | grep -v $today`;
+    $log_files =~ s/\n/ /g;
     if ($log_files) {
         system("/usr/bin/zmergelog $log_files | $awstats -update -config=$vhost >/dev/null");
     } else {
-        print "No log files found for $vhost, probably remove it from process-logfiles" unless $log_files;
+        print "No log files found for $vhost, probably remove it from process-logfiles\n";
     }
 }
 
