@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: PostgreSQL.pm,v 1.11 2008-11-28 09:52:06 francis Exp $
+# $Id: PostgreSQL.pm,v 1.12 2009-01-15 15:25:29 root Exp $
 #
 
 package PostgreSQL;
@@ -15,8 +15,9 @@ use strict;
 
 use DBI;
 
-my @postgresql_servers = qw(svcs.tea.int.ukcod.org.uk svcs.bitter.int.ukcod.org.uk svcs.steak.int.ukcod.org.uk svcs.cake.int.ukcod.org.uk svcs.sandwich.int.ukcod.org.uk svcs.pudding.int.ukcod.org.uk);
-my $postgresql_port = 5432;
+# XXX this ought to check vhosts.pl or the serverclass to work out which databases to check
+my @postgresql_servers = qw(tea.int.ukcod.org.uk bitter.int.ukcod.org.uk steak.int.ukcod.org.uk cake.int.ukcod.org.uk sandwich.int.ukcod.org.uk pudding.int.ukcod.org.uk);
+my $postgresql_port = 5433;
 
 sub test() {
     return if !mySociety::Config::get('RUN_EXTRA_SERVERS_TESTS');
