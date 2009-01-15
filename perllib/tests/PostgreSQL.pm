@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: PostgreSQL.pm,v 1.12 2009-01-15 15:25:29 root Exp $
+# $Id: PostgreSQL.pm,v 1.13 2009-01-15 22:37:36 matthew Exp $
 #
 
 package PostgreSQL;
@@ -27,7 +27,9 @@ sub test() {
     foreach my $postgresql_server (@postgresql_servers) {
 
         # Connect to database
-        my $dbh = DBI->connect("dbi:Pg:dbname=template1;host=$postgresql_server;port=$postgresql_port", $user, $pass);
+        my $port = $postgresql_port;
+        $port = 5432 if $postgresql_server eq 'bitter.int.ukcod.org.uk'; # bitter has old PG database
+        my $dbh = DBI->connect("dbi:Pg:dbname=template1;host=$postgresql_server;port=$port", $user, $pass);
         if ( !defined $dbh ) {
             print "Cannot connect to database on $postgresql_server:$postgresql_port as $user\n";
             next;
