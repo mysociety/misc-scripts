@@ -55,7 +55,7 @@ foreach my $vhost (@vhosts) {
     # Copy all log files from all machines to the cache directory
     foreach my $server ($awstats_server, @other_servers) {
         # Check to see if server has the vhost, if so get its log files
-        if (!system("rsync --rsh='ssh' $server:/data/vhost/ | grep $vhost >/dev/null")) {
+        if (!system("rsync --rsh='ssh' $server:/data/vhost/ | grep $vhost\$ >/dev/null")) {
             system("rsync --rsh='ssh' --include 'access_log.*' --exclude '*' --delete --archive $server:/data/vhost/$vhost/logs/ $cache_dir/$vhost-$server/");
         }
     }
