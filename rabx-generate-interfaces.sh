@@ -7,7 +7,7 @@
 # Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: rabx-generate-interfaces.sh,v 1.4 2007-02-01 18:22:50 francis Exp $
+# $Id: rabx-generate-interfaces.sh,v 1.5 2009-02-24 14:49:40 francis Exp $
 
 echo "EvEl..."
 ./rabxtopl.pl ../services/EvEl/perllib/EvEl.pm "" > ../perllib/mySociety/EvEl.pm
@@ -20,6 +20,7 @@ php -l ../phplib/dadem.php
 echo "MaPit..."
 ./rabxtopl.pl ../services/MaPit/MaPit.pm "" >../perllib/mySociety/MaPit.pm
 ./rabxtophp.pl ../services/MaPit/MaPit.pm "" >../phplib/mapit.php
+./rabxresttopy.pl ../services/MaPit/MaPit.pm "" >../pylib/mysociety/mapit.py
 php -l ../phplib/mapit.php
 echo "Gaze..."
 ./rabxtopl.pl ../services/Gaze/perllib/Gaze.pm "" >../perllib/mySociety/Gaze.pm
