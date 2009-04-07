@@ -30,15 +30,23 @@ my $database_permissions_all = {
     # Services
 };
 
+my $database_permissions_whisky = {
+     'harry' => ['scenic'],
+     
+     'scenic' => ['scenic']
+};
+
 my $database_permissions;
 my $server = (uname())[1];
 if ($server eq 'sponge' || $server eq 'sandwich') {
 	$database_permissions = $database_permissions_all;
+} elsif ($server eq 'whisky') {
+	$database_permissions = $database_permissions_whisky;
 } else {
 	die "generate-mypass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-mypass,v 1.6 2009-04-01 17:33:48 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-mypass,v 1.7 2009-04-07 14:29:43 root Exp $';
 
 use strict;
 require 5.8.0;
