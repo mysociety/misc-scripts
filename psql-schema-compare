@@ -35,9 +35,12 @@ PGDUMP=/usr/lib/postgresql/7.4/bin/pg_dump
 if [ "$6" = "5433" ]
 then
     PGDUMP=/usr/lib/postgresql/8.1/bin/pg_dump
+elif [ "$6" = "5434" ]
+then
+    PGDUMP=/usr/lib/postgresql/8.3/bin/pg_dump
 fi
 
-if [ "`cat /etc/debian_version`" != "3.1" ]
+if [ "`cat /etc/debian_version`" == "4.0" ]
 then
     PGDUMP=/usr/lib/postgresql/8.1/bin/pg_dump
 fi
