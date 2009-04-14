@@ -8,7 +8,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Web.pm,v 1.17 2008-09-19 18:16:11 matthew Exp $
+# $Id: Web.pm,v 1.18 2009-04-14 10:43:37 keith Exp $
 #
 
 package Web;
@@ -48,7 +48,7 @@ my @pages = qw(
         http://www.groupsnearyou.com/
         http://www.groupsnearyou.com/groups/brunk
 
-        http://www.hassleme.co.uk/
+	http://scenic.mysociety.org/
 
         http://www.downingstreetsays.com/
 
@@ -62,6 +62,7 @@ my @pages = qw(
         http://gaze.mysociety.org/gaze?R1%3A0%2C37%3AGaze.get_radius_containing_population%2CL1%3A3%2CT14%3A51.41281945404%2CT17%3A-0.29430381185079%2CT6%3A200000%2C
         http://gaze.mysociety.org/gaze?R1%3A0%2C16%3AGaze.find_places%2CL1%3A5%2CT2%3AGB%2CNT7%3ANewport%2CI2%3A10%2CI1%3A0%2C
     );
+        #http://www.hassleme.co.uk/
 
 use constant CONNECT_TIME_MAX => 0.5;
 use constant SEND_REQUEST_TIME_MAX => 1;
