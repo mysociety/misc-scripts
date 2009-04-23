@@ -45,6 +45,7 @@ my $database_permissions_main = {
     'survey' => ['survey'],
     'hm' => ['hm'],
     'hm-staging' => ['hm-staging'],
+    'hm-testharness' => ['hm-testharness'],
     'ideabank' => ['guardian-ideabank'],
     'col' => ['col'],
 
@@ -107,7 +108,7 @@ if ($server eq 'bitter' || $server eq 'tea' || $server eq 'sponge' || $server eq
 	die "generate-pgpass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.92 2009-04-23 11:00:19 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.93 2009-04-23 11:34:08 louise Exp $';
 
 use strict;
 require 5.8.0;
