@@ -19,7 +19,7 @@ my $database_permissions_main = {
     'angie' => ['fyr','pb','ycml','mapit','dadem','ratty','evel','pb-staging','ycml-staging','fyr-staging', 'track', 'pet-staging', 'pet', 'bci', 'ycml-cllr'],
     'etienne' => ['pb-staging','ycml-staging', 'bbcparlvid'],
     'timsk' => ['pb-staging', 'pb'],
-    'louise' => ['mswww-staging','mswww','news-staging', 'fyr-staging', 'donate-staging', 'news', 'fyr', 'hm-staging', 'hm'],
+    'louise' => ['mswww-staging','mswww','news-staging', 'fyr-staging', 'donate-staging', 'news', 'fyr', 'hm'],
     'adam' => ['fyr','pb','mapit','dadem','ratty','evel','fyr-staging', 'foi'],
     'debbi' => ['bci', 'fyr', 'ycml'],
     'keith' => ['mswww-staging', 'bci-matthew'],
@@ -45,7 +45,6 @@ my $database_permissions_main = {
     'survey' => ['survey'],
     'hm' => ['hm'],
     'hm-staging' => ['hm-staging'],
-    'hm-testharness' => ['hm-testharness'],
     'ideabank' => ['guardian-ideabank'],
     'col' => ['col'],
 
@@ -70,6 +69,7 @@ my $database_permissions_balti = {
     'pb-livesimply' => ['pb-livesimply'],
     'pet' => ['pet','pet-staging'],
     'fyrharness' => ['fyr-testharness'],
+    'hm-testharness' => ['hm-testharness'],
 
     # Services
     'msservices-testharness' => ['mapit-testharness','dadem-testharness','ratty-testharness','evel-testharness','news-testharness'],
@@ -108,7 +108,7 @@ if ($server eq 'bitter' || $server eq 'tea' || $server eq 'sponge' || $server eq
 	die "generate-pgpass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.93 2009-04-23 11:34:08 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.94 2009-04-23 12:41:27 louise Exp $';
 
 use strict;
 require 5.8.0;
