@@ -1,0 +1,8 @@
+#!/bin/bash
+
+if [ ! -e ~/.ssh/id_dsa.pub ]
+then
+    ssh-keygen -t dsa
+fi
+cat ~/.ssh/id_dsa.pub | ssh cvs.mysociety.org "mkdir -p ~/.ssh; cat >>~/.ssh/authorized_keys"
+
