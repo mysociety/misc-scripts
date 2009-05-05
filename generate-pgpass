@@ -96,7 +96,7 @@ my $database_permissions_whisky_water_peas = {
 
 my $database_permissions;
 my $server = (uname())[1];
-if ($server eq 'bitter' || $server eq 'tea' || $server eq 'sponge' || $server eq 'sandwich' || $server eq 'cake' || $server eq 'pudding' || $server eq 'marmite') {
+if ($server eq 'bitter' || $server eq 'tea' || $server eq 'sponge' || $server eq 'sandwich' || $server eq 'cake' || $server eq 'pudding' || $server eq 'marmite' || $server eq 'stilton') {
 	$database_permissions = $database_permissions_main;
 } elsif ($server eq 'balti') {
 	$database_permissions = $database_permissions_balti;
@@ -108,7 +108,7 @@ if ($server eq 'bitter' || $server eq 'tea' || $server eq 'sponge' || $server eq
 	die "generate-pgpass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.97 2009-05-05 10:00:29 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.98 2009-05-05 18:33:48 francis Exp $';
 
 use strict;
 require 5.8.0;
