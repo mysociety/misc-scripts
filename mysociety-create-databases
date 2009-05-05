@@ -9,7 +9,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: mysociety-create-databases,v 1.3 2008-10-08 11:58:54 root Exp $';
+my $rcsid = ''; $rcsid .= '$Id: mysociety-create-databases,v 1.4 2009-05-05 18:39:03 francis Exp $';
 
 package main;
 
@@ -17,10 +17,10 @@ use strict;
 require 5.8.0;
 
 use FindBin;
-use lib "$FindBin::Bin/../perllib";
-my $mysociety_bin = $FindBin::Bin;
-my $servers_dir = "$FindBin::Bin/../../servers";
-my $mysociety_dir = "$FindBin::Bin/../../mysociety";
+use lib "$FindBin::RealBin/../perllib";
+my $mysociety_bin = $FindBin::RealBin;
+my $servers_dir = "$FindBin::RealBin/../../servers";
+my $mysociety_dir = "$FindBin::RealBin/../../mysociety";
 
 use mySociety::SystemMisc qw(shell);
 use mySociety::Config;
