@@ -37,17 +37,31 @@ my $database_permissions_whisky = {
      'scenic' => ['scenic']
 };
 
+
+my $database_permissions_balti = {
+     'root' => ['root'],
+     
+     # People
+     'louise' => ['twfy-testharness'],
+     
+     # Sites
+     'twfy-testharness' => ['twfy-testharness']
+
+};
+
 my $database_permissions;
 my $server = (uname())[1];
 if ($server eq 'sponge' || $server eq 'sandwich') {
 	$database_permissions = $database_permissions_all;
 } elsif ($server eq 'whisky') {
 	$database_permissions = $database_permissions_whisky;
+} elsif ($server eq 'balti') {
+	$database_permissions = $database_permissions_balti;
 } else {
 	die "generate-mypass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-mypass,v 1.8 2009-04-08 09:46:57 root Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-mypass,v 1.9 2009-05-06 16:22:58 louise Exp $';
 
 use strict;
 require 5.8.0;
