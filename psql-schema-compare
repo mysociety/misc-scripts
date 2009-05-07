@@ -54,16 +54,6 @@ else
     PGDUMP=/usr/bin/pg_dump
 fi
 
-PGDUMP=/usr/lib/postgresql/8.3/bin/pg_dump
-if [ ! -e "$PGDUMP" ]
-then
-    PGDUMP=/usr/lib/postgresql/8.1/bin/pg_dump
-fi
-if [ ! -e "$PGDUMP" ]
-then
-    PGDUMP=/usr/lib/postgresql/7.4/bin/pg_dump
-fi
-
 # Find any magic included files
 INCLUDED_EXTRA_SCHEMAS=`grep "PSQL-SCHEMA-COMPARE-INCLUDE" $PARAM_SCHEMA | cut -d " " -f 3`
 
