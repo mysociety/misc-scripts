@@ -1,0 +1,16 @@
+#!/bin/bash
+# 
+# Selects an appropriate pg_dump depending on debian version
+#
+# $Id: latest-psql-dump,v 1.1 2009-05-07 15:04:59 keith Exp $
+#
+DEBIAN_VERSION=`cat /etc/debian_version | cut -b 1`
+
+if [ "$DEBIAN_VERSION" = "3" ]
+then
+    PGDUMP=/usr/lib/postgresql/8.1/bin/pg_dump
+else
+    PGDUMP=/usr/bin/pg_dump
+fi
+
+$PGDUMP $*
