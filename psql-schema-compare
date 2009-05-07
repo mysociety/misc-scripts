@@ -46,6 +46,14 @@ POSTGRES=postgres
 SCHEMATEST=schematest_`hostname`
 
 # Pick most recent pg_dump available
+
+if [ "$PARAM_DB_PORT" = "5432" ] || [ "$PARAM_DB_PORT" = "5433" ]
+then
+    PGDUMP=/usr/lib/postgresql/8.1/bin/pg_dump
+else
+    PGDUMP=/usr/bin/pg_dump
+fi
+
 PGDUMP=/usr/lib/postgresql/8.3/bin/pg_dump
 if [ ! -e "$PGDUMP" ]
 then
