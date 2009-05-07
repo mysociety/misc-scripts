@@ -47,12 +47,7 @@ SCHEMATEST=schematest_`hostname`
 
 # Pick most recent pg_dump available
 
-if [ "$PARAM_DB_PORT" = "5432" ] || [ "$PARAM_DB_PORT" = "5433" ]
-then
-    PGDUMP=/usr/lib/postgresql/8.1/bin/pg_dump
-else
-    PGDUMP=/usr/bin/pg_dump
-fi
+PGDUMP=/data/mysociety/bin/latest-psql-dump
 
 # Find any magic included files
 INCLUDED_EXTRA_SCHEMAS=`grep "PSQL-SCHEMA-COMPARE-INCLUDE" $PARAM_SCHEMA | cut -d " " -f 3`
