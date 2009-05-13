@@ -20,24 +20,36 @@ my $sleep_poll = 5; # seconds
 my $logobjs;
 my $logoffsets;
 my $logcount;
+sub _update_one_log {
+    my ($vhost, $logfile) = @_;
+
+    if (!$logobjs->{$vhost}) {
+        $logobjs->{$vhost} = new mySociety::Logfile($logfile);
+        $logoffsets->{$vhost} = $logobjs->{$vhost}->lastline();
+    }
+    $logobjs->{$vhost}->_update();
+    while ($logobjs->{$vhost}->nextline($logoffsets->{$vhost})) {
+        $logoffsets->{$vhost} = $logobjs->{$vhost}->nextline($logoffsets->{$vhost});
+        $logcount->{$vhost}++;
+    }
+}
 sub get_log_counts {
+    # vhost logs
     opendir(D, "/data/vhost") or die "couldn't open /data/vhost";
     while (my $vhost = readdir(D)) {
         next if $vhost eq ".." || $vhost eq ".";
         my $logfile = "/data/vhost/$vhost/logs/access_log";
         next if ! -s "$logfile";
+
         #print $logfile . "\n";
-        if (!$logobjs->{$vhost}) {
-            $logobjs->{$vhost} = new mySociety::Logfile($logfile);
-            $logoffsets->{$vhost} = $logobjs->{$vhost}->lastline();
-        }
-        $logobjs->{$vhost}->_update();
-        while ($logobjs->{$vhost}->nextline($logoffsets->{$vhost})) {
-            $logoffsets->{$vhost} = $logobjs->{$vhost}->nextline($logoffsets->{$vhost});
-            $logcount->{$vhost}++;
-        }
+        _update_one_log($vhost, $logfile);
     }
     closedir(D);
+
+    # other services
+    _update_one_log('squid', '/var/log/squid/access.log');
+    _update_one_log('exim', '/var/log/exim4/exim-main');
+
     return $logcount;
 }
 
