@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.84 2009-03-31 18:25:42 root Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.85 2009-05-14 09:07:19 francis Exp $';
 
 package main;
 
@@ -65,7 +65,7 @@ our ($vhosts, $sites, $databases);
 require "$servers_dir/vhosts.pl";
 
 # Check command line parameters, look up in config file
-die "Specify virtual host name as first parameter, deploy/stop/update/start as second parameter" if scalar(@ARGV) != 2;
+die "Specify virtual host name as first parameter, deploy/stop/update/start/remove as second parameter" if scalar(@ARGV) != 2;
 my $vhost = $ARGV[0];
 my $vhost_conf = $vhosts->{$vhost};
 die "vhost '$vhost' is not in vhosts.pl" if !$vhost_conf;
@@ -75,7 +75,7 @@ my $site_conf = $sites->{$site};
 die "site '$site' is not in vhosts.pl" if !$site_conf;
 my $vhost_dir = "/data/vhost/$vhost";
 my $action = $ARGV[1];
-die "Specify 'deploy', 'stop', 'update' or 'start' as second parameter" if $action ne "deploy" && $action ne "stop" && $action ne "update" && $action ne "start";
+die "Specify 'deploy', 'stop', 'update', 'start' or 'remove' as second parameter" if $action ne "deploy" && $action ne "stop" && $action ne "update" && $action ne "start" && $action ne 'remove';
 
 # Merge vhost and site configs together
 my $conf;
@@ -306,6 +306,18 @@ foreach my $conf_dir (@{$conf->{conf_dir}}) {
 }
 
 #####################################################################
+# Helper functions
+
+sub apache_graceful {
+    if (-e "/usr/sbin/apache") {
+        shell("apachectl", "graceful");
+    }
+    if (-e "/usr/sbin/apache2") {
+        shell("apache2ctl", "graceful");
+    }
+}
+
+#####################################################################
 # Shut down services, update, start services
 
 # XXX bit nasty that we have to always call this. Should split into separate
@@ -327,6 +339,10 @@ if ($action eq "stop") {
     update_site();
     start_site();
     shell("/data/mysociety/bin/deploy-logger", "Deployed vhost $vhost");
+} elsif ($action eq "remove") {
+    stop_site();
+    remove_site();
+    shell("/data/mysociety/bin/deploy-logger", "Removed vhost $vhost");
 } else {
     die "unknown action";
 }
@@ -522,12 +538,7 @@ sub update_site {
     }
 
     # Prompt apache to reread files, on machines which have apache
-    if (-e "/usr/sbin/apache") {
-        shell("apachectl", "graceful");
-    }
-    if (-e "/usr/sbin/apache2") {
-        shell("apache2ctl", "graceful");
-    }
+    apache_graceful();
 }
 
 sub start_site {
@@ -568,4 +579,30 @@ sub start_site {
         }
     }
 }
+
+# Remove crontabs, vhost config etc.
+sub remove_site {
+    # Remove daemons
+    foreach my $daemon (keys %{$conf->{'daemons'}}) {
+        unlink("/etc/init.d/$daemon");
+    }
+
+    # Remove crontab
+    unlink($cron_name);
+
+    # Remove email forwarding 
+    if ($conf->{'email'}) {
+        foreach my $email_user (keys %{$conf->{'email'}}) {
+            unlink("/home/$email_user/.forward");
+        }
+    }
+
+    # Remove Apache virtual host config
+    unlink("/etc/apache/virtualhosts.d/$vhost.conf");
+    apache_graceful();
+
+    print "Daemon, crontab, email and virtual host config files for $vhost removed.\n";
+    print "Please rename/remove /data/vhost/$vhost yourself.\n";
+}
+
 

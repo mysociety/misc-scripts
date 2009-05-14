@@ -73,6 +73,8 @@ COMMAND is one of:
         Deploy latest version of VHOST, e.g. www.pledgebank.com
     vhost stop/update/start VHOST
         Stop/update/start VHOST, e.g. www.pledgebank.com
+    vhost remove VHOST
+        Remove crontab, Apache config, email forwards etc. for VHOST
     test VHOST
         Deploy, then run test script on VHOST, e.g. testharness.pet.mysociety.org
 
@@ -179,7 +181,7 @@ END
         COMMAND=deploy
         VHOST=$1
         shift || die "specify a command or a virtual host"
-        if [ "$VHOST" == "stop" -o "$VHOST" == "update" -o "$VHOST" == "start" ]
+        if [ "$VHOST" == "stop" -o "$VHOST" == "update" -o "$VHOST" == "start" -o "$VHOST" == "remove" ]
         then
             COMMAND=$VHOST
             VHOST=$1
