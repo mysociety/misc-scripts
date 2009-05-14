@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.86 2009-05-14 09:08:42 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.87 2009-05-14 10:31:03 louise Exp $';
 
 package main;
 
@@ -296,13 +296,8 @@ my $cron_name = "vhost-$vhost";
 $cron_name =~ s/\./-/g;
 $cron_name = "/etc/cron.d/$cron_name";
 
-# Check Debian packages are all installed, if there is a conf/packages file
-foreach my $conf_dir (@{$conf->{conf_dir}}) {
-    chdir $mysociety_dir;
-    shell("cvs", "-Q", "update", "$conf_dir/packages");
-    if (-e "$conf_dir/packages") {
-        shell("/data/mysociety/bin/check-packages-installed", "$conf_dir/packages")
-    }
+if ($action neq "remove"){
+    check_packages();
 }
 
 #####################################################################
@@ -345,6 +340,17 @@ if ($action eq "stop") {
     shell("/data/mysociety/bin/deploy-logger", "Removed vhost $vhost");
 } else {
     die "unknown action";
+}
+
+sub check_packages{
+    # Check Debian packages are all installed, if there is a conf/packages file
+    foreach my $conf_dir (@{$conf->{conf_dir}}) {
+        chdir $mysociety_dir;
+        shell("cvs", "-Q", "update", "$conf_dir/packages");
+        if (-e "$conf_dir/packages") {
+            shell("/data/mysociety/bin/check-packages-installed", "$conf_dir/packages")
+        }
+    }
 }
 
 # Halt any daemons, crontabs, email systems, and the web host itself
