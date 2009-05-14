@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.85 2009-05-14 09:07:19 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.86 2009-05-14 09:08:42 francis Exp $';
 
 package main;
 
@@ -601,8 +601,7 @@ sub remove_site {
     unlink("/etc/apache/virtualhosts.d/$vhost.conf");
     apache_graceful();
 
-    print "Daemon, crontab, email and virtual host config files for $vhost removed.\n";
-    print "Please rename/remove /data/vhost/$vhost yourself.\n";
+    print "Config files removed, please tidy data/vhost/$vhost yourself.\n";
 }
 
 
