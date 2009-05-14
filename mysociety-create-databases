@@ -9,7 +9,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: mysociety-create-databases,v 1.5 2009-05-14 11:21:00 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: mysociety-create-databases,v 1.6 2009-05-14 11:34:38 louise Exp $';
 
 package main;
 
@@ -109,9 +109,9 @@ foreach my $database (keys %{$databases}) {
             print "mysql database '$database' on host $hostname\n" if $::verbose;
 
             # get the root db password
-            my $password = pgpw('root');
+            my $root_password = pgpw('root');
             # Connect to server
-            my $dbh = DBI->connect("dbi:mysql:dbname=mysql", 'root', $password, { PrintWarn => 1, PrintError => 1, RaiseError => 0, AutoCommit => 1 }) || die DBI->errstr();
+            my $dbh = DBI->connect("dbi:mysql:dbname=mysql", 'root', $root_password, { PrintWarn => 1, PrintError => 1, RaiseError => 0, AutoCommit => 1 }) || die DBI->errstr();
 
             # Create database
             $dbh->do("create database if not exists `$database`");
