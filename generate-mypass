@@ -25,7 +25,8 @@ my $database_permissions_all = {
     # Sites
     'twfy-live' => ['twfy'],
     'twfy-staging' => ['twfy_staging'],
-    'piwik' => ['piwik']
+    'piwik' => ['piwik'],
+    'twfy-testharness' => ['twfy-testharness']
 
     # Services
 };
@@ -61,7 +62,7 @@ if ($server eq 'sponge' || $server eq 'sandwich') {
 	die "generate-mypass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-mypass,v 1.10 2009-05-07 18:03:23 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-mypass,v 1.11 2009-05-19 15:30:08 louise Exp $';
 
 use strict;
 require 5.8.0;
