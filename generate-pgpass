@@ -19,7 +19,7 @@ my $database_permissions_main = {
     'angie' => ['fyr','pb','ycml','mapit','dadem','ratty','evel','pb-staging','ycml-staging','fyr-staging', 'track', 'pet-staging', 'pet', 'bci', 'ycml-cllr'],
     'etienne' => ['pb-staging','ycml-staging', 'bbcparlvid'],
     'timsk' => ['pb-staging', 'pb'],
-    'louise' => ['mswww-staging','mswww','news-staging', 'fyr-staging', 'donate-staging', 'news', 'fyr', 'hm-staging', 'hm', 'foi-testharness', 'foi'],
+    'louise' => ['mswww-staging','mswww','news-staging', 'fyr-staging', 'donate-staging', 'news', 'fyr', 'hm-staging', 'hm', 'foi-testharness', 'foi', 'bbcparlvid'],
     'adam' => ['fyr','pb','mapit','dadem','ratty','evel','fyr-staging', 'foi'],
     'debbi' => ['bci', 'fyr', 'ycml'],
     'keith' => ['mswww-staging', 'bci-matthew'],
@@ -119,7 +119,7 @@ if ($server eq 'bitter' || $server eq 'tea' || $server eq 'sponge' || $server eq
 	die "generate-pgpass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.101 2009-05-20 00:17:55 keith Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.102 2009-05-27 08:23:48 louise Exp $';
 
 use strict;
 require 5.8.0;
