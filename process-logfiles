@@ -6,6 +6,11 @@
 
 use strict;
 use Sys::Hostname;
+use Data::Dumper;
+use FindBin;
+
+use lib "$FindBin::Bin/../perllib";
+use mySociety::ServerClass;
 
 # Global config
 my $cache_dir = '/var/cache/process-logfiles';
@@ -28,8 +33,11 @@ foreach (keys %$vhosts) {
         $_ .= '.81' if $_ eq 'parlvid.mysociety.org';
         push @vhosts, $_;
         foreach (@servers) {
-            next if $_ eq $awstats_server;
-            $other_servers{$_} = 1;
+            my $server = $_;
+            next if $server eq $awstats_server;
+            next if (!mySociety::ServerClass::server_in_class($server, "webserver") &&
+                    !mySociety::ServerClass::server_in_class($server, "sqapache"));
+            $other_servers{$server} = 1;
         }
     }
 } 
