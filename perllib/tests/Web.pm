@@ -8,7 +8,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Web.pm,v 1.18 2009-04-14 10:43:37 keith Exp $
+# $Id: Web.pm,v 1.19 2009-06-01 16:35:23 francis Exp $
 #
 
 package Web;
@@ -48,7 +48,10 @@ my @pages = qw(
         http://www.groupsnearyou.com/
         http://www.groupsnearyou.com/groups/brunk
 
-	http://scenic.mysociety.org/
+        http://scenic.mysociety.org/
+
+        http://mapumental.channel4.com/signup
+        http://mapumental.channel4.com/tilecache.fcgi/1.0.0/housing/11/1013/663.png
 
         http://www.downingstreetsays.com/
 
