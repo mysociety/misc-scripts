@@ -11,7 +11,7 @@
 # Who can access what databases
 my $database_permissions_main = {
     # All-seeing power
-    'root' => ['pb', 'ycml', 'rt', 'gaze', 'dadem', 'evel', 'mapit', 'ratty', 'fyr', 'pb-interface', 'pb-livesimply', 'pb-o2', 'pb-staging', 'mswww', 'track', 'list', 'pet', 'pet-testharness', 'donate', 'news', 'bci', 'dress', 'bbcparlvid', 'ycml-cllr', 'foi', 'survey', 'hm', 'guardian-ideabank'],
+    'root' => ['pb', 'ycml', 'rt', 'gaze', 'dadem', 'evel', 'mapit', 'ratty', 'fyr', 'pb-interface', 'pb-livesimply', 'pb-o2', 'pb-staging', 'mswww', 'track', 'list', 'pet', 'pet-testharness', 'donate', 'news', 'bci', 'dress', 'bbcparlvid', 'ycml-cllr', 'foi', 'survey', 'hm', 'guardian-ideabank', 'sitestats'],
      
     # People
     'francis' => ['fyr','pb','ycml','mapit','dadem','ratty','evel','pb-staging','ycml-staging','fyr-staging', 'track', 'pet-staging', 'pet', 'bci', 'dress', 'foi', 'col-francis'],
@@ -19,7 +19,7 @@ my $database_permissions_main = {
     'angie' => ['fyr','pb','ycml','mapit','dadem','ratty','evel','pb-staging','ycml-staging','fyr-staging', 'track', 'pet-staging', 'pet', 'bci', 'ycml-cllr'],
     'etienne' => ['pb-staging','ycml-staging', 'bbcparlvid'],
     'timsk' => ['pb-staging', 'pb'],
-    'louise' => ['mswww-staging','mswww','news-staging', 'fyr-staging', 'donate-staging', 'news', 'fyr', 'hm-staging', 'hm', 'foi-testharness', 'foi', 'bbcparlvid'],
+    'louise' => ['mswww-staging','mswww','news-staging', 'fyr-staging', 'donate-staging', 'news', 'fyr', 'hm-staging', 'hm', 'foi-testharness', 'foi', 'bbcparlvid', 'sitestats'],
     'adam' => ['fyr','pb','mapit','dadem','ratty','evel','fyr-staging', 'foi'],
     'debbi' => ['bci', 'fyr', 'ycml'],
     'keith' => ['mswww-staging', 'bci-matthew'],
@@ -47,6 +47,7 @@ my $database_permissions_main = {
     'hm-staging' => ['hm-staging'],
     'ideabank' => ['guardian-ideabank'],
     'col' => ['col'],
+    'sitestats' => ['sitestats'],
 
     # Services
     'msservices' => ['mapit','dadem','ratty','evel','news','track','gaze'],
@@ -120,7 +121,7 @@ if ($server eq 'bitter' || $server eq 'tea' || $server eq 'sponge' || $server eq
 	die "generate-pgpass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.103 2009-06-01 16:42:41 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.104 2009-06-04 15:32:18 louise Exp $';
 
 use strict;
 require 5.8.0;
