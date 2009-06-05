@@ -1,0 +1,13 @@
+#!/bin/sh
+#
+# check-for-down:
+#    trivial script to check for 'down.html' in vhosts: 
+#    to run from cron
+#
+# Copyright (c) 2009 Adam McGreggor. All rights reserved.
+# Email: adam@mysociety.org; WWW: http://blog.amyl.org.uk/
+#
+# $Id: check-for-down,v 1.1 2009-06-05 13:19:38 adam Exp $
+#
+
+find /data/vhost/*/docs -name "down.html" -exec ls -lha {} \;
