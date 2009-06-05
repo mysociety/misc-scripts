@@ -18,7 +18,7 @@ then
 	exit
 fi
 
-#trap '[ x$DUFILE != x ] && rm $DUFILE ; [ x$IDMAP != x ] && rm $IDMAP' EXIT
+trap '[ x$DUFILE != x ] && rm $DUFILE ; [ x$IDMAP != x ] && rm $IDMAP' EXIT
 
 # XXX tempfile usage is not safe here
 IDMAP=`tempfile`
