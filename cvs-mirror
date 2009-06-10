@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: cvs-mirror,v 1.9 2007-10-15 11:43:31 francis Exp $
+# $Id: cvs-mirror,v 1.10 2009-06-10 09:44:50 francis Exp $
 #
 
 if [ x$1 = x-h -o x$1 = x--help ] ; then
@@ -27,7 +27,7 @@ die () {
 # Want to clear up our locks on exit.
 locks=""
 lockname="#cvs.rfl.cvs-mirror.$$"
-trap 'for d in $locks ; do [ -d "$d" ] && rmdir "$d" ; find "$repos" -type d -name "$lockname" | xargs rmdir ; done' EXIT
+trap 'for d in $locks ; do [ -d "$d" ] && rmdir "$d" ; find "$repos" -type d -name "$lockname" -print0 | xargs -0 rmdir ; done' EXIT
 
 lock_repos () {
     repos=$1
@@ -58,7 +58,7 @@ lock_repos () {
             fi
 
             # Remove the locks.
-            find "$repos" -type d -name "$lockname" | xargs rmdir
+            find "$repos" -type d -name "$lockname" -print0 | xargs -0 rmdir
         fi
         i=$[ $i + 1 ]
         sleep 1
