@@ -8,7 +8,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Web.pm,v 1.19 2009-06-01 16:35:23 francis Exp $
+# $Id: Web.pm,v 1.20 2009-06-12 09:50:39 francis Exp $
 #
 
 package Web;
@@ -26,7 +26,6 @@ my @pages = qw(
         http://www.pledgebank.com/
         http://www.pledgebank.com/rights
         http://www.pledgebank.com/faq
-        http://promise.livesimply.org.uk/
 
         http://www.theyworkforyou.com/
         http://www.theyworkforyou.com/mp/tony_blair/sedgefield
