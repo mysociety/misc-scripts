@@ -90,6 +90,9 @@ my $database_permissions_whisky_water_peas = {
     # All-seeing power
     'root' => ['pb', 'ycml', 'rt', 'gaze', 'dadem', 'evel', 'mapit', 'ratty', 'fyr', 'pb-interface', 'pb-livesimply', 'pb-o2', 'pb-staging', 'mswww', 'track', 'list', 'pet', 'pet-testharness', 'donate', 'news', 'bci', 'bci-emptyhomes', 'dress', 'bbcparlvid', 'ycml-cllr', 'foi', 'survey', 'hm', 'guardian-ideabank', 'sitestats', 'col'],
      
+    # People
+    'debbi' => ['fyr'],
+
     # Sites
     'pet' => ['pet'],
     'msservices' => ['gaze'],
@@ -121,7 +124,7 @@ if ($server eq 'bitter' || $server eq 'tea' || $server eq 'sponge' || $server eq
 	die "generate-pgpass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.109 2009-06-18 15:27:25 keith Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.110 2009-06-25 21:24:25 matthew Exp $';
 
 use strict;
 require 5.8.0;

@@ -38,16 +38,16 @@ my $database_permissions_whisky = {
      'scenic' => ['scenic']
 };
 
-
 my $database_permissions_peas = {
-     'root' => ['root'],
+    'root' => ['root'],
      
-     # People
-     'louise' => ['twfy-testharness'],
+    # People
+    'louise' => ['twfy-testharness'],
+    'matthew' => ['twfy'],
      
-     # Sites
-     'twfy-testharness' => ['twfy-testharness'],
-     'twfy-live' => ['twfy']
+    # Sites
+    'twfy-testharness' => ['twfy-testharness'],
+    'twfy-live' => ['twfy']
 };
 
 my $database_permissions;
@@ -62,7 +62,7 @@ if ($server eq 'sponge' || $server eq 'sandwich') {
 	die "generate-mypass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-mypass,v 1.12 2009-06-01 16:42:30 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-mypass,v 1.13 2009-06-25 21:24:25 matthew Exp $';
 
 use strict;
 require 5.8.0;
