@@ -6,7 +6,7 @@
 # Copyright (c) 2004 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: backup-stuff,v 1.30 2008-09-04 12:29:25 francis Exp $
+# $Id: backup-stuff,v 1.31 2009-07-14 16:05:57 francis Exp $
 #
 
 set -e
@@ -90,7 +90,7 @@ for thing in /data/backups/dailydb /data/backups/dailyfiles; do
         mkdir $target
     fi
 
-    rsync $rsyncopts readbackups@cake.ukcod.org.uk:$thing/. $target/.
+    rsync $rsyncopts readbackups@peas.ukcod.org.uk:$thing/. $target/.
 
     #trap '' EXIT
 done
