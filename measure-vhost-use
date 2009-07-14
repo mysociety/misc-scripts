@@ -48,7 +48,7 @@ sub get_log_counts {
 
     # other services
     _update_one_log('squid', '/var/log/squid/access.log');
-    _update_one_log('exim', '/var/log/exim4/exim-main');
+    _update_one_log('exim', '/var/log/exim4/exim-mainlog');
 
     return $logcount;
 }
