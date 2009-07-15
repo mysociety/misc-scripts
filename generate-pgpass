@@ -48,7 +48,7 @@ my $database_permissions_main = {
     'ideabank' => ['guardian-ideabank'],
     'col' => ['col'],
     'sitestats' => ['sitestats'],
-
+    
     # Services
     'msservices' => ['mapit','dadem','ratty','evel','news','track','gaze'],
 };
@@ -98,6 +98,7 @@ my $database_permissions_whisky_water_peas = {
     'msservices' => ['gaze'],
     'fyr' => ['fyr'],
     'fyrharness' => ['fyr-testharness'],
+    'gc' => ['cities_development'],
 };
 
 my $database_permissions_hotpot = {
@@ -124,7 +125,7 @@ if ($server eq 'bitter' || $server eq 'tea' || $server eq 'sponge' || $server eq
 	die "generate-pgpass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.112 2009-06-30 14:08:51 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.113 2009-07-15 09:46:21 louise Exp $';
 
 use strict;
 require 5.8.0;
