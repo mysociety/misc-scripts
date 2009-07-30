@@ -92,7 +92,7 @@ my $database_permissions_whisky_water_peas = {
      
     # People
     'debbi' => ['fyr'],
-    'louise' => ['fyr-staging'],
+    'louise' => ['fyr-louise'],
 
     # Sites
     'pet' => ['pet'],
@@ -128,7 +128,7 @@ if ($server eq 'bitter' || $server eq 'tea' || $server eq 'sponge' || $server eq
 	die "generate-pgpass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.117 2009-07-30 14:43:25 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.118 2009-07-30 15:32:54 louise Exp $';
 
 use strict;
 require 5.8.0;
