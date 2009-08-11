@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.90 2009-06-30 13:54:51 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.91 2009-08-11 12:14:28 louise Exp $';
 
 package main;
 
@@ -56,7 +56,6 @@ sub pgpw {
     s/\s+$//;
     return $_;
 }
-
 #####################################################################
 # Main code
 
@@ -138,28 +137,15 @@ if ($conf->{'cvs_user'} eq "") {
 } else {
     $cvsroot = $conf->{'cvs_user'} . "\@cvs.mysociety.org:/usr/local/cvs";
 }
-foreach my $cvs_dir (@{$conf->{'cvs_dirs'}}) {
-    my $d = "$vhost_dir/mysociety/$cvs_dir/CVS";
-	if (! -d $d) {
-        if ($conf->{'cvs_user'} eq "") {
-            shell("cd \"$vhost_dir\" && cvs -Q -d \"$cvsroot\" co mysociety/$cvs_dir".
-                 " && chown -R ".$conf->{'user'}.":".$conf->{'user'}." mysociety");
-       } else {
-            shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir\" && cvs -Q -d \"$cvsroot\" co mysociety/$cvs_dir");
-        }
-	} else {
-        my $current_root = read_file("$d/Root");
-        $current_root =~ s/\s*$//;
-        die "CVSROOT in $d is \n\t$current_root\nwhen config says\n\t$cvsroot\n" if ($current_root ne $cvsroot);
 
-        # XXX add a command-line option to override this check?
-        if ($conf->{'cvs_user'} eq 'anon') {
-            chdir("$vhost_dir/mysociety/$cvs_dir");
-            # XXX detect errors.
-            system("cvs -Q diff -u") == 0 || die "Files checked out with anonymous CVS have been modified in $vhost_dir/mysociety/$cvs_dir";
-        }
-    }
+make_cvs_dirs($cvsroot, $conf->{'cvs_user'}, $conf->{'cvs_dirs'});
+
+if (exists($conf->{'private_cvs_dirs'})){
+    die "must specify 'private_cvs_user' in vhost config" if (!exists($conf->{'private_cvs_user'}));
+    my $privatecvsroot = $conf->{'private_cvs_user'} . "\@cvs.mysociety.org:/usr/local/privatecvs";
+    make_cvs_dirs($privatecvsroot, $conf->{'private_cvs_user'}, $conf->{'private_cvs_dirs'});
 }
+
 
 # Make public directories
 foreach my $public_dir (@{$conf->{'public_dirs'}}) {
@@ -312,6 +298,44 @@ sub apache_graceful {
     }
 }
 
+sub make_cvs_dirs {
+   my ($cvs_root, $cvs_user, $cvs_dirs) = @_;
+   foreach my $cvs_dir (@{$cvs_dirs}) {
+       my $d = "$vhost_dir/mysociety/$cvs_dir/CVS";
+           if (! -d $d) {
+           if ($cvs_user eq "") { 
+               shell("cd \"$vhost_dir\" && cvs -Q -d \"$cvs_root\" co mysociety/$cvs_dir".
+                    " && chown -R ".$conf->{'user'}.":".$conf->{'user'}." mysociety");
+           } else {
+               shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir\" && cvs -Q -d \"$cvs_root\" co mysociety/$cvs_dir");
+           }
+           } else {
+           my $current_root = read_file("$d/Root");
+           $current_root =~ s/\s*$//;
+           die "CVSROOT in $d is \n\t$current_root\nwhen config says\n\t$cvs_root\n" if ($current_root ne $cvs_root);
+
+           # XXX add a command-line option to override this check?
+           if ($cvs_user eq 'anon') {
+               chdir("$vhost_dir/mysociety/$cvs_dir");
+               # XXX detect errors.  
+               system("cvs -Q diff -u") == 0 || die "Files checked out with anonymous CVS have been modified in $vhost_dir/mysociety/$cvs_dir";
+           }
+       }
+   }
+}
+
+sub update_cvs {
+    my ($cvs_user, $cvs_dirs) = @_;
+    foreach my $cvs_dir (@{$cvs_dirs}) {
+        die "unexpectedly missing cvs directory in update stage" if (! -d "$vhost_dir/mysociety/$cvs_dir/CVS");
+        if ($cvs_user eq "") {
+                shell("cd \"$vhost_dir/mysociety/$cvs_dir\" && cvs -Q update -dP &&
+                chown -R ".$conf->{'user'}.":".$conf->{'user'}." ../");
+        } else {
+            shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir/mysociety/$cvs_dir\" && cvs -Q update -dP");
+        }
+    }
+}
 #####################################################################
 # Shut down services, update, start services
 
@@ -527,15 +551,11 @@ sub update_config_and_schemas {
 
 sub update_site {
     # Update from CVS
-    foreach my $cvs_dir (@{$conf->{'cvs_dirs'}}) {
-        die "unexpectedly missing cvs directory in update stage" if (! -d "$vhost_dir/mysociety/$cvs_dir/CVS");
-        if ($conf->{'cvs_user'} eq "") {
-	        shell("cd \"$vhost_dir/mysociety/$cvs_dir\" && cvs -Q update -dP && 
-                chown -R ".$conf->{'user'}.":".$conf->{'user'}." ../");
-        } else {
-            shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir/mysociety/$cvs_dir\" && cvs -Q update -dP");
-        }
+    update_cvs($conf->{'cvs_user'}, $conf->{'cvs_dirs'});
+    if (exists($conf->{'private_cvs_dirs'})){
+        update_cvs($conf->{'private_cvs_user'}, $conf->{'private_cvs_dirs'});
     }
+	
 
     # Run any extra executables
     foreach my $exec_extra (@{$conf->{'exec_extras'}}) {
