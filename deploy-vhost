@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.91 2009-08-11 12:14:28 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.92 2009-08-13 09:29:56 louise Exp $';
 
 package main;
 
@@ -369,10 +369,10 @@ if ($action eq "stop") {
 sub check_packages{
     # Check Debian packages are all installed, if there is a conf/packages file
     foreach my $conf_dir (@{$conf->{conf_dir}}) {
-        chdir $mysociety_dir;
-        shell("cvs", "-Q", "update", "$conf_dir/packages");
-        if (-e "$conf_dir/packages") {
-            shell("/data/mysociety/bin/check-packages-installed", "$conf_dir/packages")
+        chdir "$mysociety_dir/$conf_dir";
+        shell("cvs", "-Q", "update", "packages");
+        if (-e "packages") {
+            shell("/data/mysociety/bin/check-packages-installed", "packages")
         }
     }
 }
