@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: PostgreSQL.pm,v 1.16 2009-06-22 10:52:47 francis Exp $
+# $Id: PostgreSQL.pm,v 1.17 2009-08-17 09:25:55 francis Exp $
 #
 
 package PostgreSQL;
@@ -31,7 +31,7 @@ sub check_old_queries($$$$$$) {
     $sth->execute;
     while ( my ($datname, $usename, $current_query, $query_start, $procpid) = $sth->fetchrow()) {
         # some exceptions for particular queries
-        next if $current_query =~ m/$exceptions/; # for large petitions this does take ages
+        next if $current_query =~ m/$exceptions/; 
         print "PostgreSQL query taking more than $age; server:$postgresql_server; database:$datname; user:$usename; process: $procpid; query:$current_query\n";
     }
 }
@@ -53,9 +53,11 @@ sub test() {
         } 
 
         # Check for long running queries
-        # ... check most queries take less than 30 minutes, with some exceptions (petitions delete from signer)
-        check_old_queries($dbh, "30 minutes", "\$(delete from signer)", $postgresql_server, $postgresql_port, $user); 
-        # .. show anything more than 12 hours long
+        # ... check most queries take less than 30 minutes, with some exceptions 
+        # * petitions delete from signer - for large petitions it just does take ages
+        # * WhatDoTheyKnow backing up the raw_emails table - which is large
+        check_old_queries($dbh, "30 minutes", "(^delete from signer|^COPY public.raw_emails )", $postgresql_server, $postgresql_port, $user); 
+        # .. show anything more than 12 hours long ($^ will never match, so no exceptions)
         check_old_queries($dbh, "12 hours", "\$^", $postgresql_server, $postgresql_port, $user); 
 
         $dbh->disconnect;
