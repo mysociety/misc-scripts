@@ -23,18 +23,34 @@
 set -e
 . /data/mysociety/shlib/deployfns
 
+# Command line parameters
+PARAM_SCHEMA=$1
+PARAM_UNIX_USER=$2
+PARAM_DB_NAME=$3
+PARAM_DB_USER=$4
+PARAM_DB_HOST=$5
+PARAM_DB_PORT=$6
+
+SCHEMATEST=schematest_`hostname`
+
 # XXX use of mktemp here not safe; should make a temporary directory
 CVS_SCHEMA_FILE=`mktemp /tmp/ms-deploy-cvsschema.XXXXXX`
 CURRENT_SCHEMA_FILE=`mktemp /tmp/ms-deploy-currentschema.XXXXXX`
 
 MYSQLDUMP="/usr/bin/mysqldump --no-data --skip-opt --create-options"
 
+# load schema into temporay db to deal with SET stuff
+ssh $PARAM_DB_HOST su root -c \"mysql --port=$PARAM_DB_PORT --execute=\\\"drop database $SCHEMATEST\\\"\" 2>&1 | grep -v "database doesn't exist" || echo -n
+ssh $PARAM_DB_HOST su root -c \"mysql --port=$PARAM_DB_PORT --execute=\\\"create database $SCHEMATEST\\\"\" 
+cat $PARAM_SCHEMA | ssh $PARAM_DB_HOST su root -c \"mysql --database=$SCHEMATEST --port=$PARAM_DB_PORT\"
+
+ssh $PARAM_DB_HOST su root -c \"$MYSQLDUMP --port $PARAM_DB_PORT $SCHEMATEST \" | grep -v "\-\-databases\|^--\|/\*.*SET\|^\s*$" | sed "s/ ENGINE.*;/;/" | sed "s/,$//;" > $CVS_SCHEMA_FILE
+
+cat $CVS_SCHEMA_FILE | sort > $CVS_SCHEMA_FILE.sorted
+
 # ... the live database dump
 su $2 --shell "/bin/bash" -c "[ \"${BASH_VERSINFO[0]}\" != \"2\" ] && set -o pipefail; $MYSQLDUMP --user $4 --host $5 --port $6 $3 | grep -v \"\-\-databases\|^--\|/\*.*SET\|^\s*$\" | sed \"s/ ENGINE.*;/;/\" | sed \"s/,$//;\"" > $CURRENT_SCHEMA_FILE
 
-grep -v "^--" $1 | grep -v "^\s*$"  | sed "s/,$//;" >$CVS_SCHEMA_FILE
-
-cat $CVS_SCHEMA_FILE | sort > $CVS_SCHEMA_FILE.sorted
 cat $CURRENT_SCHEMA_FILE | sort > $CURRENT_SCHEMA_FILE.sorted
 
 if ! diff -w $CURRENT_SCHEMA_FILE.sorted $CVS_SCHEMA_FILE.sorted
