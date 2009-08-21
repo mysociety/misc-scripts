@@ -46,17 +46,19 @@ cat $PARAM_SCHEMA | ssh $PARAM_DB_HOST su root -c \"mysql --database=$SCHEMATEST
 
 ssh $PARAM_DB_HOST su root -c \"$MYSQLDUMP --port $PARAM_DB_PORT $SCHEMATEST \" | grep -v "\-\-databases\|^--\|/\*.*SET\|^\s*$" | sed "s/ ENGINE.*;/;/" | sed "s/,$//;" > $CVS_SCHEMA_FILE
 
+ssh $PARAM_DB_HOST su root -c \"mysql --port=$PARAM_DB_PORT --execute=\\\"drop database $SCHEMATEST\\\"\" 2>&1 | grep -v "database doesn't exist" || echo -n
+
 cat $CVS_SCHEMA_FILE | sort > $CVS_SCHEMA_FILE.sorted
 
 # ... the live database dump
-su $2 --shell "/bin/bash" -c "[ \"${BASH_VERSINFO[0]}\" != \"2\" ] && set -o pipefail; $MYSQLDUMP --user $4 --host $5 --port $6 $3 | grep -v \"\-\-databases\|^--\|/\*.*SET\|^\s*$\" | sed \"s/ ENGINE.*;/;/\" | sed \"s/,$//;\"" > $CURRENT_SCHEMA_FILE
+su $PARAM_UNIX_USER --shell "/bin/bash" -c "[ \"${BASH_VERSINFO[0]}\" != \"2\" ] && set -o pipefail; $MYSQLDUMP --user $PARAM_DB_USER --host $PARAM_DB_HOST --port $PARAM_DB_PORT $PARAM_DB_NAME | grep -v \"\-\-databases\|^--\|/\*.*SET\|^\s*$\" | sed \"s/ ENGINE.*;/;/\" | sed \"s/,$//;\"" > $CURRENT_SCHEMA_FILE
 
 cat $CURRENT_SCHEMA_FILE | sort > $CURRENT_SCHEMA_FILE.sorted
 
 if ! diff -w $CURRENT_SCHEMA_FILE.sorted $CVS_SCHEMA_FILE.sorted
 then
     warn "Schema in CVS differs from that in MySQL database, you need to update it"
-    warn "host: $5 port: $6 database: $3; user: $4 schema: $1"
+    warn "host: $PARAM_DB_HOST port: $PARAM_DB_PORT database: $PARAM_DB_NAME; user: $PARAM_DB_USER schema: $PARAM_SCHEMA"
     warn "CVS sorted: $CVS_SCHEMA_FILE.sorted; current sorted: $CURRENT_SCHEMA_FILE.sorted"
     warn "CVS schema: $CVS_SCHEMA_FILE; current schema: $CURRENT_SCHEMA_FILE"
     exit 1
