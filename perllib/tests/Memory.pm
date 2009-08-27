@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Memory.pm,v 1.6 2007-03-22 09:05:49 francis Exp $
+# $Id: Memory.pm,v 1.7 2009-08-27 10:20:16 keith Exp $
 #
 
 package Memory;
@@ -45,10 +45,15 @@ sub test () {
                 100 * MIN_SWAP_FRACTION;
     }
 
+    # Removed this so we can have more than 1
+    # swap area if required. Don't really need to add up
+    # since if we are using half of one swap then we have
+    # a problem and should go buy some more memory.
+    #
     # check there are no more swap devices
-    if ($f->getline()) {
-        printf "swap: there are multiple swap devices\n";
-    }
+    #if ($f->getline()) {
+    #    printf "swap: there are multiple swap devices\n";
+    #}
 }
 
 1;
