@@ -45,6 +45,7 @@ my $database_permissions_peas = {
     'louise' => ['twfy-testharness'],
     'matthew' => ['twfy'],
     'debbi' => ['twfy'],
+    'richard' => ['gny'],
      
     # Sites
     'twfy-testharness' => ['twfy-testharness'],
@@ -65,7 +66,7 @@ if ($server eq 'sponge' || $server eq 'sandwich') {
 	die "generate-mypass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-mypass,v 1.16 2009-08-07 13:40:07 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-mypass,v 1.17 2009-09-02 14:16:54 matthew Exp $';
 
 use strict;
 require 5.8.0;
