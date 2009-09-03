@@ -8,7 +8,7 @@
 # Copyright (c) 2007 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: rails-post-deploy,v 1.17 2008-09-04 06:17:42 francis Exp $
+# $Id: rails-post-deploy,v 1.18 2009-09-03 23:44:50 francis Exp $
 #
 
 set -e
@@ -97,7 +97,7 @@ fi
 if [ "$OPTION_STAGING_SITE" = "0" ]
 then
     echo "ENV['RAILS_ENV'] = 'production'" > config/rails_env.rb
-elif [[ "$OPTION_DOMAIN" == "testharness."* ]]
+elif [[ "$OPTION_DOMAIN" == *"test"* ]]
 then
     echo "ENV['RAILS_ENV'] = 'test'" > config/rails_env.rb
 else
