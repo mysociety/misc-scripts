@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.92 2009-08-13 09:29:56 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.93 2009-09-03 12:57:14 matthew Exp $';
 
 package main;
 
@@ -357,7 +357,8 @@ if ($action eq "stop") {
     stop_site();
     update_site();
     start_site();
-    shell("/data/mysociety/bin/deploy-logger", "Deployed vhost $vhost");
+    shell("/data/mysociety/bin/deploy-logger", "Deployed vhost $vhost")
+        unless $vhost =~ /testharness/;
 } elsif ($action eq "remove") {
     stop_site();
     remove_site();
@@ -555,7 +556,6 @@ sub update_site {
     if (exists($conf->{'private_cvs_dirs'})){
         update_cvs($conf->{'private_cvs_user'}, $conf->{'private_cvs_dirs'});
     }
-	
 
     # Run any extra executables
     foreach my $exec_extra (@{$conf->{'exec_extras'}}) {
