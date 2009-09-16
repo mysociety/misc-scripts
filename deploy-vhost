@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.93 2009-09-03 12:57:14 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.94 2009-09-16 12:57:25 louise Exp $';
 
 package main;
 
@@ -428,6 +428,126 @@ END
     }
 }
 
+# Update a config dir
+sub update_conf_dir {
+    my ($conf_dir, $public, $unchecked_schemas) = @_;
+    foreach my $glob (glob "$vhost_dir/mysociety/$conf_dir/*-example") {
+        $glob =~ m#^.*/(.*?)-example$#;
+        my $name_part = $1;
+
+        my $conf_file = "$vhost_dir/mysociety/$conf_dir/$name_part"; # destination file
+
+        my $old_umask = umask(0077);
+        # find source template (.ugly) file
+        my $conf_ugly_part = $conf_dir . "/$name_part";
+        $conf_ugly_part =~ s#/#_#g;
+        my $conf_ugly_file = "$servers_dir/vhosts/$conf_ugly_part.ugly";
+        # update the conf/general (or whatever) template
+        chdir "$servers_dir/vhosts";
+        shell("cvs", "-Q", "update", "$conf_ugly_part.ugly");
+        # update example we'll be comparing against, to make sure no missing entries.
+        # For public conf files, use the example in the main public checkout. For 
+        # private, use the example in the vhost conf dir.
+        my $example_file_dir;
+        if ($public) {
+            $example_file_dir = "$mysociety_dir/$conf_dir";
+        } else {
+            $example_file_dir = "$vhost_dir/mysociety/$conf_dir";
+        }
+        chdir $example_file_dir;
+        shell("cvs", "-Q", "update", "$name_part-example");
+        # check destination file hasn't been separately modified
+        chdir $mysociety_dir;
+        my $make_conf = 1;
+        if (-e $conf_file) {
+            # XXX detect errors
+            if (system("diff", "-u", "$conf_file.deployed", "$conf_file") != 0) {
+                print STDERR "Warning: $conf_file was changed directly since last update from\n";
+                print STDERR "template file $conf_ugly_file, so has not been updated.\n";
+                $make_conf = 0;
+            }
+        }
+        my $example_file = "$example_file_dir/$name_part-example";
+        if ($make_conf) {
+            # call mugly to generate from template
+            shell("$mysociety_bin/mugly", "-O", "$conf_file.tmp", "-p", "$settings_file", "$conf_ugly_file");
+            if ($name_part eq 'general') {
+                # test contents of new configuration file before copying it over
+                chdir $mysociety_bin;
+                shell("$mysociety_bin/compareconfig.pl", "$conf_file.tmp", $example_file);
+            }
+            # copy into place
+            copy("$conf_file.tmp", "$conf_file.deployed");
+            chown($user_uid, $user_gid, "$conf_file.deployed");
+            copy("$conf_file.tmp", "$conf_file");
+            chown($user_uid, $user_gid, "$conf_file");
+            unlink("$conf_file.tmp") or die "couldn't unlink $conf_file.tmp";
+        } else {
+            if ($name_part eq 'general') {
+                # test contents of configuration file before copying it over
+                chdir $mysociety_bin;
+                shell("$mysociety_bin/compareconfig.pl", "$conf_file", $example_file);
+            }
+        }
+        # now we use this configuration
+        mySociety::Config::set_file($conf_file);
+        umask($old_umask);
+
+        # Check pgsql databases are up to date
+        foreach my $psql_conf_prefix (keys %{$conf->{'psql_schemas'}}) {
+            my $psql_schema = $conf->{'psql_schemas'}->{$psql_conf_prefix};
+            my $psql_name = mySociety::Config::get($psql_conf_prefix.'_DB_NAME', 0);
+
+            # It's OK for the configuration info for a DB to be absent from
+            # any given conf file, as long as it's in one of them
+            if ($psql_name){
+
+                if (exists($unchecked_schemas->{$psql_conf_prefix})){
+                    delete $unchecked_schemas->{$psql_conf_prefix};
+                }
+
+                my $psql_host = mySociety::Config::get($psql_conf_prefix.'_DB_HOST', 'localhost');
+                my $psql_port = mySociety::Config::get($psql_conf_prefix.'_DB_PORT', 5432);
+                my $psql_user = mySociety::Config::get($psql_conf_prefix.'_DB_USER');
+
+                chdir $mysociety_dir;
+                shell("cvs", "-Q", "update", "$psql_schema");
+                chdir $mysociety_bin;
+                # It isn't safe to pass the password over the command line as that can be
+                # seen by other processes, instead put it in in ~/.pgpass (see
+                # mysociety/bin/generate-pgpass). And no, PGPASSWORD isn't safer, as on
+                # some systems the environment can be seen in other processes.
+                shell("./psql-schema-compare", $mysociety_dir.'/'.$psql_schema, $conf->{'user'}, $psql_name, $psql_user, $psql_host, $psql_port);
+            }
+        }
+
+        # Check MySQL databases are up to date
+        foreach my $mysql_schema (@{$conf->{'mysql_schemas'}}) {
+           my $mysql_name = mySociety::Config::get('DB_NAME', 0);
+
+           # It's OK for the configuration info for a DB to be absent from
+           # any given conf file, as long as it's in one of them
+           if ($mysql_name) {
+
+               if (exists($unchecked_schemas->{$mysql_schema})){
+                   delete $unchecked_schemas->{$mysql_schema};
+               }
+
+               my $mysql_host = mySociety::Config::get('DB_HOST', 'localhost');
+               my $mysql_port = mySociety::Config::get('DB_PORT', 3306);
+               my $mysql_user = mySociety::Config::get('DB_USER');
+
+                chdir $mysociety_dir;
+                shell("cvs", "-Q", "update", "$mysql_schema");
+                chdir $mysociety_bin;
+                # It isn't safe to pass the password over the command line or in the
+                # environment as that can be seen by other processes.
+                shell("./mysql-schema-compare", $mysociety_dir.'/'.$mysql_schema, $conf->{'user'}, $mysql_name, $mysql_user, $mysql_host, $mysql_port);
+            }
+        }
+    }
+}
+
 # Check that config files and database files have been updated
 sub update_config_and_schemas {
     # Make a list of all the database schemas to be checked
@@ -435,115 +555,13 @@ sub update_config_and_schemas {
 
     # Generate all conf files from conf/*-example template files e.g. conf/general
     foreach my $conf_dir (@{$conf->{conf_dir}}) {
-        foreach my $glob (glob "$vhost_dir/mysociety/$conf_dir/*-example") {
-            $glob =~ m#^.*/(.*?)-example$#;
-            my $name_part = $1;
-
-            my $conf_file = "$vhost_dir/mysociety/$conf_dir/$name_part"; # destination file
-
-            my $old_umask = umask(0077);
-            # find source template (.ugly) file
-            my $conf_ugly_part = $conf_dir . "/$name_part";
-            $conf_ugly_part =~ s#/#_#g;
-            my $conf_ugly_file = "$servers_dir/vhosts/$conf_ugly_part.ugly";
-            # update the conf/general (or whatever) template
-            chdir "$servers_dir/vhosts";
-            shell("cvs", "-Q", "update", "$conf_ugly_part.ugly");
-            # update example we'll be comparing against, to make sure no missing entries
-            chdir $mysociety_dir;
-            shell("cvs", "-Q", "update", "$conf_dir/$name_part-example");
-            # check destination file hasn't been separately modified
-            my $make_conf = 1;
-            if (-e $conf_file) {
-                # XXX detect errors
-                if (system("diff", "-u", "$conf_file.deployed", "$conf_file") != 0) {
-                    print STDERR "Warning: $conf_file was changed directly since last update from\n";
-                    print STDERR "template file $conf_ugly_file, so has not been updated.\n";
-                    $make_conf = 0;
-                }
-            }
-            if ($make_conf) {
-                # call mugly to generate from template
-                shell("$mysociety_bin/mugly", "-O", "$conf_file.tmp", "-p", "$settings_file", "$conf_ugly_file");
-                if ($name_part eq 'general') {
-                    # test contents of new configuration file before copying it over
-                    chdir $mysociety_bin;
-                    shell("$mysociety_bin/compareconfig.pl", "$conf_file.tmp", "$mysociety_dir/$conf_dir/$name_part-example");
-                }
-                # copy into place
-                copy("$conf_file.tmp", "$conf_file.deployed");
-                chown($user_uid, $user_gid, "$conf_file.deployed");
-                copy("$conf_file.tmp", "$conf_file");
-                chown($user_uid, $user_gid, "$conf_file");
-                unlink("$conf_file.tmp") or die "couldn't unlink $conf_file.tmp";
-            } else {
-                if ($name_part eq 'general') {
-                    # test contents of configuration file before copying it over
-                    chdir $mysociety_bin;
-                    shell("$mysociety_bin/compareconfig.pl", "$conf_file", "$mysociety_dir/$conf_dir/$name_part-example");
-                }
-            }
-            # now we use this configuration
-            mySociety::Config::set_file($conf_file);
-            umask($old_umask);
-            
-            
-            # Check pgsql databases are up to date
-            foreach my $psql_conf_prefix (keys %{$conf->{'psql_schemas'}}) {
-                my $psql_schema = $conf->{'psql_schemas'}->{$psql_conf_prefix};
-                my $psql_name = mySociety::Config::get($psql_conf_prefix.'_DB_NAME', 0);
-
-                # It's OK for the configuration info for a DB to be absent from
-                # any given conf file, as long as it's in one of them
-                if ($psql_name){
-                    
-                    if (exists($unchecked_schemas{$psql_conf_prefix})){ 
-                        delete $unchecked_schemas{$psql_conf_prefix};
-                    }
-
-                    my $psql_host = mySociety::Config::get($psql_conf_prefix.'_DB_HOST', 'localhost');
-                    my $psql_port = mySociety::Config::get($psql_conf_prefix.'_DB_PORT', 5432);
-                    my $psql_user = mySociety::Config::get($psql_conf_prefix.'_DB_USER');
-        
-                    chdir $mysociety_dir;
-                    shell("cvs", "-Q", "update", "$psql_schema");
-                    chdir $mysociety_bin;
-                    # It isn't safe to pass the password over the command line as that can be
-                    # seen by other processes, instead put it in in ~/.pgpass (see
-                    # mysociety/bin/generate-pgpass). And no, PGPASSWORD isn't safer, as on
-                    # some systems the environment can be seen in other processes.
-                    shell("./psql-schema-compare", $mysociety_dir.'/'.$psql_schema, $conf->{'user'}, $psql_name, $psql_user, $psql_host, $psql_port);
-                }
-            }
-
-            # Check MySQL databases are up to date
-            foreach my $mysql_schema (@{$conf->{'mysql_schemas'}}) {
-                my $mysql_name = mySociety::Config::get('DB_NAME', 0);
-
-                # It's OK for the configuration info for a DB to be absent from
-                # any given conf file, as long as it's in one of them
-                if ($mysql_name) {
-                    
-                    if (exists($unchecked_schemas{$mysql_schema})){ 
-                        delete $unchecked_schemas{$mysql_schema};
-                    }
-
-                    my $mysql_host = mySociety::Config::get('DB_HOST', 'localhost');
-                    my $mysql_port = mySociety::Config::get('DB_PORT', 3306);
-                    my $mysql_user = mySociety::Config::get('DB_USER');
-        
-                    chdir $mysociety_dir;
-                    shell("cvs", "-Q", "update", "$mysql_schema");
-                    chdir $mysociety_bin;
-                    # It isn't safe to pass the password over the command line or in the
-            # environment as that can be seen by other processes.
-                    shell("./mysql-schema-compare", $mysociety_dir.'/'.$mysql_schema, $conf->{'user'}, $mysql_name, $mysql_user, $mysql_host, $mysql_port);
-                }
-            }
-
-        }
+         update_conf_dir($conf_dir, 1, \%unchecked_schemas);        
     }
-        
+    
+    foreach my $conf_dir(@{$conf->{private_conf_dir}}){
+         update_conf_dir($conf_dir, 0, \%unchecked_schemas);
+    }
+     
     # exit if there are any schemas not covered by a config
     foreach my $unchecked_schema (keys %unchecked_schemas) {
         die "$unchecked_schema not configured in conf/general file(s)";
