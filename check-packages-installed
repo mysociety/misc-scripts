@@ -5,53 +5,30 @@
 # installed. Prints to STDERR those that aren't, and returns an appropriate
 # error code.
 #
-# XXX The file format is currently just a list of packages, one per line. 
-# Characters after a # are interpreted as comments. It might make sense later
-# to add the option of version comparison operators, preferably reusing code
-# from Debian dependencies checking.
+# The packages file can contain any syntax of a normal Debian dependency line,
+# such as version comparison operators, and | alternative operators.  The only
+# difference is that each entry is on a separate line, instead of them being
+# comma separated.
 #
-# Copyright (c) 2008 UK Citizens Online Democracy. All rights reserved.
+# Copyright (c) 2009 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: check-packages-installed,v 1.4 2008-11-28 10:21:30 francis Exp $
+# $Id: check-packages-installed,v 1.5 2009-09-23 09:10:52 francis Exp $
 
-#set -x
+# Using sed as a rubbishy comment parser :) And to put the commas in, instead of newlines.
+FLATTENED_DEPENDENCIES=`cat $1 | sed "s/#.*$//g;" | tr "\n" "," | sed "s/\s+/ /g; s/,,/,/g;"`
 
-RET=0
+# dpkg-checkbuildeps needs a debian/control file even when you specify -d and it isn't used
+TEMP_DEB_PACKAGE_DIR=/tmp/mysociety-check-packages-installed
+mkdir -p $TEMP_DEB_PACKAGE_DIR
+cd $TEMP_DEB_PACKAGE_DIR
+mkdir -p debian
+touch debian/control
 
-# Using sed as a rubbishy comment parser :)
-PACKAGES=`cat $1 | sed "s/#.*$//g;"`
+# Check dependencies, using build dependencies checking tool
+# XXX if need be, instead of calling out to dpkg-checkbuilddeps, this whole
+# script could be a Perl script calling the Dpkg perl modules directly.
+# But for now this works and is easy enough.
+dpkg-checkbuilddeps -d "$FLATTENED_DEPENDENCIES"
 
-function check_line() {
-    while read STATUS NAME REST
-    do
-        for PACKAGE in $PACKAGES
-        do
-            if [ "$PACKAGE" == "$NAME" ]
-            then
-                if [ "$STATUS" != "ii" ]
-                then
-                    echo "package '$PACKAGE' is not fully installed or has been uninstalled, status $STATUS" >&2
-                    RET=1
-                fi
-                # mark that package as done
-                PACKAGES=${PACKAGES/$PACKAGE/}
-            fi
-        done
-    done
-
-    # We return the variable via stdout, because you can't set variables in a
-    # function called in a pipe
-    echo $PACKAGES
-}
-
-PACKAGES=`COLUMNS=2000 dpkg -l | check_line`
-
-for PACKAGE in $PACKAGES
-do
-    echo "package '$PACKAGE' is not installed" >&2
-    RET=1
-done
-
-exit $RET
 
