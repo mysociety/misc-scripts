@@ -13,22 +13,34 @@
 # Copyright (c) 2009 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: check-packages-installed,v 1.5 2009-09-23 09:10:52 francis Exp $
+# $Id: check-packages-installed,v 1.6 2009-09-23 09:21:06 francis Exp $
 
 # Using sed as a rubbishy comment parser :) And to put the commas in, instead of newlines.
 FLATTENED_DEPENDENCIES=`cat $1 | sed "s/#.*$//g;" | tr "\n" "," | sed "s/\s+/ /g; s/,,/,/g;"`
 
-# dpkg-checkbuildeps needs a debian/control file even when you specify -d and it isn't used
-TEMP_DEB_PACKAGE_DIR=/tmp/mysociety-check-packages-installed
+# dpkg-checkbuildeps works via a debian/control (in old versions of Debian, before it has -d)
+TEMP_DEB_PACKAGE_DIR=/tmp/mysociety-check-packages-installed-$RANDOM-$RANDOM-$RANDOM
 mkdir -p $TEMP_DEB_PACKAGE_DIR
 cd $TEMP_DEB_PACKAGE_DIR
 mkdir -p debian
-touch debian/control
+cat <<END > debian/control
+Source: mysociety-check-packages-installed
+Section: web
+Priority: optional
+Maintainer: Francis Irving <francis@mysociety.org>
+Build-Depends: $FLATTENED_DEPENDENCIES
+Standards-Version: 3.7.2
+END
 
 # Check dependencies, using build dependencies checking tool
 # XXX if need be, instead of calling out to dpkg-checkbuilddeps, this whole
 # script could be a Perl script calling the Dpkg perl modules directly.
 # But for now this works and is easy enough.
-dpkg-checkbuilddeps -d "$FLATTENED_DEPENDENCIES"
+dpkg-checkbuilddeps
+RET=$?
 
+# Clean up
+rm -fr $TEMP_DEB_PACKAGE_DIR
+
+exit $RET
 
