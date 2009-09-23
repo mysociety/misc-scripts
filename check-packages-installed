@@ -13,7 +13,7 @@
 # Copyright (c) 2009 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: check-packages-installed,v 1.7 2009-09-23 09:22:39 francis Exp $
+# $Id: check-packages-installed,v 1.8 2009-09-23 09:34:29 francis Exp $
 
 # Using sed as a rubbishy comment parser :) And to put the commas in, instead of newlines.
 FLATTENED_DEPENDENCIES=`cat $1 | sed "s/#.*$//g;" | tr "\n" "," | sed "s/\s+/ /g; s/,,/,/g;"`
@@ -39,8 +39,9 @@ END
 
 # Check dependencies, using build dependencies checking tool
 # XXX if need be, instead of calling out to dpkg-checkbuilddeps, this whole
-# script could be a Perl script calling the Dpkg perl modules directly.
-# But for now this works and is easy enough.
+# script could be a Perl script calling the Dpkg perl modules directly,
+# on lenny or later versions of Debian. But for now this works and is easy
+# enough.
 dpkg-checkbuilddeps
 RET=$?
 
