@@ -2,8 +2,8 @@
 # Shorter interface to deploy scripts on servers.
 # Bash script because it uses temporary named pipes <(cmd)
 
-SCRIPT_LOCATION=`dirname $0`
-SCRIPT_COMMAND=`basename $0`
+SCRIPT_LOCATION=$(dirname $(readlink -f $0))
+SCRIPT_COMMAND=$(basename $(readlink -f $0))
 
 source $SCRIPT_LOCATION/../shlib/deployfns
 
