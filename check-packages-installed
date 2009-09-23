@@ -13,7 +13,7 @@
 # Copyright (c) 2009 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: check-packages-installed,v 1.6 2009-09-23 09:21:06 francis Exp $
+# $Id: check-packages-installed,v 1.7 2009-09-23 09:22:39 francis Exp $
 
 # Using sed as a rubbishy comment parser :) And to put the commas in, instead of newlines.
 FLATTENED_DEPENDENCIES=`cat $1 | sed "s/#.*$//g;" | tr "\n" "," | sed "s/\s+/ /g; s/,,/,/g;"`
@@ -30,6 +30,11 @@ Priority: optional
 Maintainer: Francis Irving <francis@mysociety.org>
 Build-Depends: $FLATTENED_DEPENDENCIES
 Standards-Version: 3.7.2
+
+Package: mysociety-check-packages-installed
+Architecture: any
+Description: Dummy mySociety dependencies package
+ This package never gets built.
 END
 
 # Check dependencies, using build dependencies checking tool
