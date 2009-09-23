@@ -2,8 +2,60 @@
 # Shorter interface to deploy scripts on servers.
 # Bash script because it uses temporary named pipes <(cmd)
 
-SCRIPT_COMMAND=mysociety
-. /data/mysociety/shlib/deployfns
+SCRIPT_LOCATION=`dirname $0`
+SCRIPT_COMMAND=`basename $0`
+
+source $SCRIPT_LOCATION/../shlib/deployfns
+
+if [ x$1 = x ] ; then 
+    die "specify a command (try --help for help)"
+fi
+
+show_help () {
+	cat <<END
+Usage: mysociety COMMAND [OPTIONS]
+
+COMMAND is one of:
+    config
+        Deploy new config for current server from /data/servers/...
+    vhost VHOST
+        Deploy latest version of VHOST, e.g. www.pledgebank.com
+    vhost stop/update/start VHOST
+        Stop/update/start VHOST, e.g. www.pledgebank.com
+    vhost remove VHOST
+        Remove crontab, Apache config, email forwards etc. for VHOST
+    test VHOST
+        Deploy, then run test script on VHOST, e.g. testharness.pet.mysociety.org
+
+    dns
+        Update the DNS configuration on the current host
+    email
+        Update the exim virtual mail configuration on the current host
+
+    update
+        "cvs update" all of /data/servers and /data/mysociety
+    commit
+        "cvs commit" all of /data/servers and /data/mysociety
+    diff
+        "cvs diff -u" all of /data/servers and /data/mysociety
+
+    class COMMAND
+        Run a command on all machines in the same principal class as this one
+    base COMMAND
+        Run a command on all machines (which are in the same base class as this one)
+    archetype/arch <archetype>
+        Run a command on all machine in the given archetype
+    debug
+    	Show debugging information for mysociety command
+
+Extra parameters are passed through to underlying deploy-... script.
+END
+	exit
+}
+
+if [ $1 = "--help" ] ; then
+    show_help
+fi
 
 # Obtain hostname
 HOST=`hostname`
@@ -56,55 +108,8 @@ BASE_ARCHETYPE=`echo $BASE | cat - /data/servers/serverclass | \
         else if ($2 == classname) print $1
     }'`
 
-# Error reporting
-die () {
-    echo "mysociety:" "$@" 1>&2
-    exit 1
-}
-
-show_help () {
-	cat <<END
-Usage: mysociety COMMAND [OPTIONS]
-
-COMMAND is one of:
-    config
-        Deploy new config for current server from /data/servers/...
-    vhost VHOST
-        Deploy latest version of VHOST, e.g. www.pledgebank.com
-    vhost stop/update/start VHOST
-        Stop/update/start VHOST, e.g. www.pledgebank.com
-    vhost remove VHOST
-        Remove crontab, Apache config, email forwards etc. for VHOST
-    test VHOST
-        Deploy, then run test script on VHOST, e.g. testharness.pet.mysociety.org
-
-    dns
-        Update the DNS configuration on the current host
-    email
-        Update the exim virtual mail configuration on the current host
-
-    update
-        "cvs update" all of /data/servers and /data/mysociety
-    commit
-        "cvs commit" all of /data/servers and /data/mysociety
-    diff
-        "cvs diff -u" all of /data/servers and /data/mysociety
-
-    class COMMAND
-        Run a command on all machines in the same principal class as this one
-    base COMMAND
-        Run a command on all machines (which are in the same base class as this one)
-    archetype/arch <archetype>
-        Run a command on all machine in the given archetype
-    debug
-    	Show debugging information for mysociety command
-
-Extra parameters are passed through to underlying deploy-... script.
-END
-	exit
-}
-
 COMMAND=$1
+# This should always shift now, as we're checking for empty $1 at the top
 shift || die "specify a command (try --help for help)"
 
 set -e
