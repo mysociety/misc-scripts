@@ -11,7 +11,7 @@
 # Who can access what databases
 my $database_permissions_main = {
     # All-seeing power
-    'root' => ['pb', 'ycml', 'rt', 'gaze', 'dadem', 'evel', 'mapit', 'ratty', 'fyr', 'pb-interface', 'pb-livesimply', 'pb-o2', 'pb-staging', 'mswww', 'track', 'list', 'pet', 'pet-testharness', 'donate', 'news', 'bci', 'bci-emptyhomes', 'dress', 'bbcparlvid', 'ycml-cllr', 'foi', 'survey', 'hm', 'guardian-ideabank', 'sitestats', 'col'],
+    'root' => ['pb', 'ycml', 'rt', 'gaze', 'dadem', 'evel', 'mapit', 'ratty', 'fyr', 'pb-interface', 'pb-livesimply', 'pb-o2', 'pb-staging', 'mswww', 'track', 'list', 'pet', 'pet-testharness', 'donate', 'news', 'bci', 'bci-emptyhomes', 'dress', 'bbcparlvid', 'ycml-cllr', 'foi', 'survey', 'hm', 'guardian-ideabank', 'sitestats', 'col', 'ratty-testharness'],
      
     # People
     'francis' => ['fyr','pb','ycml','mapit','dadem','ratty','evel','pb-staging','ycml-staging','fyr-staging', 'track', 'pet-staging', 'pet', 'bci', 'dress', 'foi', 'col-francis'],
@@ -52,6 +52,7 @@ my $database_permissions_main = {
     
     # Services
     'msservices' => ['mapit','dadem','ratty','evel','news','track','gaze'],
+    'msservices-testharness' => ['mapit-testharness','dadem-testharness','ratty-testharness','evel-testharness','news-testharness'],
 };
 
 my $database_permissions_balti = {
@@ -73,8 +74,6 @@ my $database_permissions_balti = {
     'fyrharness' => ['fyr-testharness'],
     'hm-testharness' => ['hm-testharness'],
 
-    # Services
-    'msservices-testharness' => ['mapit-testharness','dadem-testharness','ratty-testharness','evel-testharness','news-testharness'],
 };
 
 my $database_permissions_steak = {
@@ -131,7 +130,7 @@ if ($server eq 'bitter' || $server eq 'tea' || $server eq 'sponge' || $server eq
 	die "generate-pgpass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.120 2009-09-21 14:41:39 duncan Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.121 2009-09-30 09:23:07 louise Exp $';
 
 use strict;
 require 5.8.0;
