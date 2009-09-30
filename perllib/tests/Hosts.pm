@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Hosts.pm,v 1.11 2009-09-11 10:16:48 keith Exp $
+# $Id: Hosts.pm,v 1.12 2009-09-30 01:01:21 keith Exp $
 #
 
 package Hosts;
@@ -18,8 +18,6 @@ use Net::Ping;
 my @hostlist = qw(
         sponge.ukcod.org.uk
 
-        bitter.ukcod.org.uk
-        tea.ukcod.org.uk
 
         steak.ukcod.org.uk
 
@@ -35,6 +33,8 @@ my @hostlist = qw(
         stilton.ukcod.org.uk
     );
         #balti.ukcod.org.uk
+        #bitter.ukcod.org.uk
+        #tea.ukcod.org.uk
 
 
 use constant NPINGS => 10;
