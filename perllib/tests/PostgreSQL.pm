@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: PostgreSQL.pm,v 1.17 2009-08-17 09:25:55 francis Exp $
+# $Id: PostgreSQL.pm,v 1.18 2009-09-30 00:37:03 keith Exp $
 #
 
 package PostgreSQL;
@@ -16,7 +16,8 @@ use strict;
 use DBI;
 
 # XXX this ought to check vhosts.pl or the serverclass to work out which databases to check
-my @postgresql_servers = qw(tea.int.ukcod.org.uk bitter.int.ukcod.org.uk steak.int.ukcod.org.uk cake.int.ukcod.org.uk sandwich.int.ukcod.org.uk pudding.int.ukcod.org.uk stilton.int.ukcod.org.uk);
+my @postgresql_servers = qw(steak.int.ukcod.org.uk cake.int.ukcod.org.uk sandwich.int.ukcod.org.uk pudding.int.ukcod.org.uk stilton.int.ukcod.org.uk);
+#my @postgresql_servers = qw(tea.int.ukcod.org.uk bitter.int.ukcod.org.uk steak.int.ukcod.org.uk cake.int.ukcod.org.uk sandwich.int.ukcod.org.uk pudding.int.ukcod.org.uk stilton.int.ukcod.org.uk);
 my $postgresql_port = 5433;
 
 sub check_old_queries($$$$$$) {
