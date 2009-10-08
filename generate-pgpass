@@ -17,7 +17,6 @@ my $database_permissions_main = {
     'francis' => ['fyr','pb','ycml','mapit','dadem','ratty','evel','pb-staging','ycml-staging','fyr-staging', 'track', 'pet-staging', 'pet', 'bci', 'dress', 'foi', 'col-francis'],
     'duncan' => ['col-duncan'],
     'matthew' => ['fyr','pb','ycml','mapit','dadem','ratty','evel','pb-staging','ycml-staging','fyr-staging', 'track', 'pet-staging', 'pet', 'bci', 'bci-emptyhomes', 'dress', 'ycml-cllr', 'bbcparlvid', 'col-matthew'],
-    'angie' => ['fyr','pb','ycml','mapit','dadem','ratty','evel','pb-staging','ycml-staging','fyr-staging', 'track', 'pet-staging', 'pet', 'bci', 'ycml-cllr'],
     'etienne' => ['pb-staging','ycml-staging', 'bbcparlvid'],
     'timsk' => ['pb-staging', 'pb'],
     'louise' => ['mswww-staging','mswww','news-staging', 'fyr-staging', 'donate-staging', 'news', 'fyr', 'hm-staging', 'hm', 'foi-testharness', 'foi', 'bbcparlvid', 'sitestats', 'bci-louise'],
@@ -63,7 +62,6 @@ my $database_permissions_balti = {
     'matthew' => ['bci-matthew'],
     'louise' => ['ratty-testharness','fyr-testharness','news-testharness', 'hm-testharness', 'bci-louise'],
     'francis' => ['foi-francis'],
-    'angie' => ['pb-staging'],
 
     # Sites
     'ycml-testharness' => ['ycml-testharness'],
@@ -88,7 +86,7 @@ my $database_permissions_steak = {
 
 my $database_permissions_whisky_water_peas = {
     # All-seeing power
-    'root' => ['pb', 'ycml', 'rt', 'gaze', 'dadem', 'evel', 'mapit', 'ratty', 'fyr', 'pb-interface', 'pb-livesimply', 'pb-o2', 'pb-staging', 'mswww', 'track', 'list', 'pet', 'pet-testharness', 'donate', 'news', 'bci', 'bci-emptyhomes', 'dress', 'bbcparlvid', 'ycml-cllr', 'foi', 'survey', 'hm', 'guardian-ideabank', 'sitestats', 'col'],
+    'root' => ['pb', 'ycml', 'rt', 'gaze', 'dadem', 'evel', 'mapit', 'ratty', 'fyr', 'pb-interface', 'pb-livesimply', 'pb-o2', 'pb-staging', 'mswww', 'track', 'list', 'pet', 'pet-testharness', 'donate', 'news', 'bci', 'bci-emptyhomes', 'dress', 'bbcparlvid', 'ycml-cllr', 'foi', 'survey', 'hm', 'guardian-ideabank', 'sitestats', 'col', 'survey-testharness'],
      
     # People
     'debbi' => ['fyr'],
@@ -101,6 +99,7 @@ my $database_permissions_whisky_water_peas = {
     'fyr' => ['fyr'],
     'fyrharness' => ['fyr-testharness'],
     'bci-testharness' => ['bci-testharness'],
+    'survey-testharness' => ['survey-testharness'],
     'gc' => ['cities_development'],
     'ycml-cllr' => ['ycml-cllr'],
     'pb' => ['pb','pb-staging','pb-interface'],
@@ -130,7 +129,7 @@ if ($server eq 'bitter' || $server eq 'tea' || $server eq 'sponge' || $server eq
 	die "generate-pgpass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.122 2009-09-30 12:20:53 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.123 2009-10-08 08:42:53 louise Exp $';
 
 use strict;
 require 5.8.0;
