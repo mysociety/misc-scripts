@@ -118,9 +118,9 @@ case $COMMAND in
     config)
         # update and make the settings file
         SETTINGS_FILE=/etc/mysociety/config-settings.pl
-        cd /data/servers
+        cd /data/servers/machines
         cvs -Q update -dP $HOST.pl
-        cp /data/servers/$HOST.pl $SETTINGS_FILE
+        cp /data/servers/machines/$HOST.pl $SETTINGS_FILE
         cat >>$SETTINGS_FILE <<END
 
             sub pgpw {
