@@ -17,7 +17,7 @@ Usage: mysociety COMMAND [OPTIONS]
 
 COMMAND is one of:
     config
-        Deploy new config for current server from /data/servers/...
+        Deploy new config for current server from /data/servers/archetypes/...
     vhost VHOST
         Deploy latest version of VHOST, e.g. www.pledgebank.com
     vhost stop/update/start VHOST
