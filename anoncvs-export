@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: anoncvs-export,v 1.16 2007-12-13 12:50:48 francis Exp $
+# $Id: anoncvs-export,v 1.17 2009-10-19 13:08:53 keith Exp $
 #
 
 # set -x # debugging
@@ -26,6 +26,19 @@ die () {
     echo "anoncvs-export: " "$@" 1>&2
     exit 1
 }
+
+# Don't do anything if backups are currently running
+# unless the backup lock file is more than 4 hours old
+# in which case it has most likely crashed.
+
+LOCKFILE=/var/run/backups/backups-running
+
+if [ -e $LOCKFILE ] ; then
+    if [ `find $LOCKFILE -mmin -240 ` ] ; then
+        echo Backups in progress
+        exit 0
+    fi
+fi
 
 from=/data/cvs/public
 to=/data/cvs/anon/repos
