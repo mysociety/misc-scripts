@@ -35,13 +35,14 @@ foreach (keys %$vhosts) {
         foreach (@servers) {
             my $server = $_;
             next if $server eq $awstats_server;
-            next if (!mySociety::ServerClass::server_in_class($server, "webserver") &&
-                    !mySociety::ServerClass::server_in_class($server, "sqapache"));
+            next if (!mySociety::ServerClass::server_in_class($server, "webserver"));
             $other_servers{$server} = 1;
         }
     }
 } 
 my @other_servers = sort keys %other_servers;
+
+
 
 system("mkdir -p $cache_dir");
 my $today = `date +"%Y-%m-%d"`;
