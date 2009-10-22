@@ -6,19 +6,19 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: PostgreSQL.pm,v 1.18 2009-09-30 00:37:03 keith Exp $
+# $Id: PostgreSQL.pm,v 1.19 2009-10-22 12:19:06 keith Exp $
 #
+
+use Data::Dumper;
+
+my $SERVERCLASSFILE="/data/servers/serverclass";
+my $MACHINECONFIGDIR="/data/servers/machines/";
 
 package PostgreSQL;
 
 use strict;
 
 use DBI;
-
-# XXX this ought to check vhosts.pl or the serverclass to work out which databases to check
-my @postgresql_servers = qw(steak.int.ukcod.org.uk cake.int.ukcod.org.uk sandwich.int.ukcod.org.uk pudding.int.ukcod.org.uk stilton.int.ukcod.org.uk);
-#my @postgresql_servers = qw(tea.int.ukcod.org.uk bitter.int.ukcod.org.uk steak.int.ukcod.org.uk cake.int.ukcod.org.uk sandwich.int.ukcod.org.uk pudding.int.ukcod.org.uk stilton.int.ukcod.org.uk);
-my $postgresql_port = 5433;
 
 sub check_old_queries($$$$$$) {
     my ($dbh, $age, $exceptions, $postgresql_server, $postgresql_port, $user) = @_;
@@ -40,16 +40,33 @@ sub check_old_queries($$$$$$) {
 sub test() {
     return if !mySociety::Config::get('RUN_EXTRA_SERVERS_TESTS');
 
+    my @postgresql_servers;
+    open(SERVERFILE, '<', $SERVERCLASSFILE ) or die ("Cannot open $SERVERCLASSFILE : $!");
+    my @file = <SERVERFILE>;
+    my @nocomments = grep(!/^#/, @file);
+    my @justdatabases = grep(/database/, @nocomments);
+    foreach my $line (@justdatabases) {
+        my ($server) = split(/ /, $line);
+        push(@postgresql_servers,$server);
+    } 
+    close(SERVERFILE);
+
     my $user = mySociety::Config::get('MONITOR_PSQL_USER');
     my $pass = mySociety::Config::get('MONITOR_PSQL_PASS');
     foreach my $postgresql_server (@postgresql_servers) {
+        # Get machine OS version
+        my $port;
+        my $debian_version;
+        do($MACHINECONFIGDIR . $postgresql_server . ".pl");
+        if($debian_version eq "lenny") {
+            $port = 5434
+        } else {
+            $port = 5433
+        }
         # Connect to database
-        my $port = $postgresql_port;
-        $port = 5432 if $postgresql_server eq 'bitter.int.ukcod.org.uk'; # bitter has old PG database
-        $port = 5434 if $postgresql_server eq 'stilton.int.ukcod.org.uk' || $postgresql_server eq 'marmite.int.ukcod.org.uk'; # stilton/marmite on new
         my $dbh = DBI->connect("dbi:Pg:dbname=template1;host=$postgresql_server;port=$port", $user, $pass);
         if ( !defined $dbh ) {
-            print "Cannot connect to database on $postgresql_server:$postgresql_port as $user\n";
+            print "Cannot connect to database on $postgresql_server:$port as $user\n";
             next;
         } 
 
@@ -57,9 +74,9 @@ sub test() {
         # ... check most queries take less than 30 minutes, with some exceptions 
         # * petitions delete from signer - for large petitions it just does take ages
         # * WhatDoTheyKnow backing up the raw_emails table - which is large
-        check_old_queries($dbh, "30 minutes", "(^delete from signer|^COPY public.raw_emails )", $postgresql_server, $postgresql_port, $user); 
+        check_old_queries($dbh, "30 minutes", "(^delete from signer|^COPY public.raw_emails )", $postgresql_server, $port, $user); 
         # .. show anything more than 12 hours long ($^ will never match, so no exceptions)
-        check_old_queries($dbh, "12 hours", "\$^", $postgresql_server, $postgresql_port, $user); 
+        check_old_queries($dbh, "12 hours", "\$^", $postgresql_server, $port, $user); 
 
         $dbh->disconnect;
     }

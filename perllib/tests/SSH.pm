@@ -5,7 +5,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: SSH.pm,v 1.13 2009-09-30 00:37:03 keith Exp $
+# $Id: SSH.pm,v 1.14 2009-10-22 12:19:06 keith Exp $
 #
 
 package SSH;
@@ -17,6 +17,9 @@ use IO::Socket;
 my @hostlist = qw(
         sponge.ukcod.org.uk
 
+        balti.ukcod.org.uk
+        bitter.ukcod.org.uk
+        tea.ukcod.org.uk
 
         steak.ukcod.org.uk
 
@@ -30,9 +33,6 @@ my @hostlist = qw(
         marmite.ukcod.org.uk
         stilton.ukcod.org.uk
     );
-        #balti.ukcod.org.uk
-        #bitter.ukcod.org.uk
-        #tea.ukcod.org.uk
 
 
 sub test () {
