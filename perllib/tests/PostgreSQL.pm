@@ -6,19 +6,20 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: PostgreSQL.pm,v 1.19 2009-10-22 12:19:06 keith Exp $
+# $Id: PostgreSQL.pm,v 1.20 2009-10-23 09:11:18 keith Exp $
 #
-
-use Data::Dumper;
-
-my $SERVERCLASSFILE="/data/servers/serverclass";
-my $MACHINECONFIGDIR="/data/servers/machines/";
 
 package PostgreSQL;
 
 use strict;
 
 use DBI;
+use Data::Dumper;
+
+my $SERVERCLASSFILE="/data/servers/serverclass";
+my $MACHINECONFIGDIR="/data/servers/machines/";
+my $debian_version="";
+my @mysql_only_database_machines=qw(sponge whisky peas pudding bitter tea balti);
 
 sub check_old_queries($$$$$$) {
     my ($dbh, $age, $exceptions, $postgresql_server, $postgresql_port, $user) = @_;
@@ -40,29 +41,32 @@ sub check_old_queries($$$$$$) {
 sub test() {
     return if !mySociety::Config::get('RUN_EXTRA_SERVERS_TESTS');
 
-    my @postgresql_servers;
+    my $port;
+
     open(SERVERFILE, '<', $SERVERCLASSFILE ) or die ("Cannot open $SERVERCLASSFILE : $!");
-    my @file = <SERVERFILE>;
-    my @nocomments = grep(!/^#/, @file);
-    my @justdatabases = grep(/database/, @nocomments);
-    foreach my $line (@justdatabases) {
-        my ($server) = split(/ /, $line);
-        push(@postgresql_servers,$server);
-    } 
+    my @postgresql_servers = map {/^(\w+)/} grep {!/^#/ && /\bdatabase\b/} <SERVERFILE>;
     close(SERVERFILE);
 
     my $user = mySociety::Config::get('MONITOR_PSQL_USER');
     my $pass = mySociety::Config::get('MONITOR_PSQL_PASS');
-    foreach my $postgresql_server (@postgresql_servers) {
+    foreach my $server (@postgresql_servers) {
+        if(grep(/$server/, @mysql_only_database_machines)) {
+            next;
+        }
         # Get machine OS version
-        my $port;
-        my $debian_version;
-        do($MACHINECONFIGDIR . $postgresql_server . ".pl");
-        if($debian_version eq "lenny") {
+
+        open(MACHINEFILE, '<', $MACHINECONFIGDIR . $server . ".pl") or die ("Cannot open $MACHINECONFIGDIR : $!") ;
+        my @debian_version = grep {/\$debian_version/} <MACHINEFILE>;
+        my ($key, $version)  = split("\"", $debian_version[0]);
+        close(MACHINEFILE);
+
+        if($version eq "lenny") {
             $port = 5434
         } else {
             $port = 5433
         }
+
+        my $postgresql_server = $server . ".int.ukcod.org.uk";
         # Connect to database
         my $dbh = DBI->connect("dbi:Pg:dbname=template1;host=$postgresql_server;port=$port", $user, $pass);
         if ( !defined $dbh ) {
