@@ -181,7 +181,7 @@ END
         done
         /data/mysociety/bin/deploy-logger "Deployed configuration for archetypes \"$ARCHETYPES\" with settings \"$HOST.pl\""
         # check all packages installed
-        for PACKAGE_FILE in `find /etc/mysociety/packages.d/ ! -name "*~" -type f`
+        for PACKAGE_FILE in `find /etc/mysociety/packages.d/ ! -name "*~" ! -name "*.swp" -type f`
         do
             if ! $SCRIPT_LOCATION/check-packages-installed $PACKAGE_FILE
             then
