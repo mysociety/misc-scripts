@@ -185,7 +185,7 @@ END
         do
             if ! $SCRIPT_LOCATION/check-packages-installed $PACKAGE_FILE
             then
-                echo "While checking archetype package dependenies in $PACKAGE_FILE"
+                echo "While checking archetype package dependencies in $PACKAGE_FILE"
                 exit 1
             fi
         done
