@@ -180,6 +180,15 @@ END
             /data/mysociety/bin/deploy-configuration --save-file=/var/lib/deploy-configuration-$ARCHETYPE.tar /data/servers/$ARCHETYPES_DIR/$ARCHETYPE $SETTINGS_FILE "$@"
         done
         /data/mysociety/bin/deploy-logger "Deployed configuration for archetypes \"$ARCHETYPES\" with settings \"$HOST.pl\""
+        # check all packages installed
+        for PACKAGE_FILE in `find /etc/mysociety/packages.d/ ! -name "*~" -type f`
+        do
+            if ! $SCRIPT_LOCATION/check-packages-installed $PACKAGE_FILE
+            then
+                echo "While checking archetype package dependenies in $PACKAGE_FILE"
+                exit 1
+            fi
+        done
         ;;
         
     vhost)
