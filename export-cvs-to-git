@@ -1,0 +1,5 @@
+#!/bin/bash
+
+git cvsimport -o master -C /data/git/public/mysociety/ -d :local:/data/cvs/public/ mysociety
+
+

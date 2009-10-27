@@ -1,0 +1,73 @@
+#!/usr/bin/python2.5
+
+import os
+from subprocess import check_call
+import sys
+import re
+
+mdir = "mysociety"
+
+# This determines whether the new repositories will have working trees
+# or just be bare repositories:
+bare = False
+
+if not os.path.exists(mdir):
+    print "No %s repository found in this directory." % (mdir,)
+    print "Clone it with something like:"
+    print "  git clone ssh://mark@cake.ukcod.org.uk/data/git/public/mysociety/"
+    sys.exit(1)
+
+def subdirectory_to_extract(d):
+    return os.path.isdir(os.path.join(mdir,x)) and not re.search('^\.',d)
+
+entries = os.listdir("mysociety")
+
+# directories = [ x for x in entries if subdirectory_to_extract(x) ]
+directories = [ "foi" ]
+
+directory_map = {}
+
+for d in directories:
+    directory_map[d] = d
+
+# We might want to overwrite a few of these names when creating
+# repositories:
+
+directory_map["foi"] = "whatdotheyknow"
+#directory_map["bci"] = "fms"
+#directory_map["fyr"] = "wtt"
+#directory_map["ycml"] = "hfymp"
+
+for directory in directories:
+    renamed = directory_map[directory]
+    if bare:
+        renamed += ".git"
+    if os.path.exists(renamed):
+        print "=== Directory '%s' exists, skipping..." % (renamed,)
+        continue
+    print "=== Cloning the complete mysociety repository..."
+    clone_command = [ "git", "clone" ]
+    if bare:
+        clone_command.append( "--bare" )
+    clone_command += [ "--no-hardlinks", mdir, renamed ]
+    check_call( clone_command )
+    os.chdir( renamed )
+    # It's a pain rewriting tags properly, and Francis has told me
+    # that they're not important, so just remove all the tags from the
+    # cloned repository before "git filter-branch":
+    print "=== Removing tags from the cloned repository in '%s'" % (renamed,)
+    check_call( "git tag | xargs -n 1 git tag -d", shell=True )
+    print "=== Using git filter-branch to extract subdirectory '%s'..." % (directory,)
+    check_call( [ "git", "filter-branch", "--subdirectory-filter", directory,
+                  "--tag-name-filter", "cat", "--", "--all" ] )
+    # See "Checklist for Shrinking a Repository" on this page:
+    #   http://ftp.kernel.org/pub/software/scm/git/docs/git-filter-branch.html
+    # This is the "very destructive" method described there:
+    print "=== Removing refs/original..."
+    check_call( "git for-each-ref --format=\"%(refname)\" refs/original/ | xargs -n 1 git update-ref -d", shell=True )
+    print "=== Expiring entries from the reflog..."
+    check_call( [ "git", "reflog", "expire", "--expire=now", "--all" ] )
+    print "=== Calling git gc --prune=now..."
+    check_call( [ "git", "gc", "--prune=now" ] )
+    os.chdir( ".." )
+    print "=== Done (%s)" % (renamed,)
