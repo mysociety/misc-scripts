@@ -1,15 +1,14 @@
 #!/usr/bin/python2.5
 
+# For migration from one CVS repository to many Git ones.
+
 import os
 from subprocess import check_call
 import sys
 import re
 
 mdir = "mysociety"
-
-# This determines whether the new repositories will have working trees
-# or just be bare repositories:
-bare = False
+unix_group = "publiccvs" # Unix group for shared repositroy
 
 if not os.path.exists(mdir):
     print "No %s repository found in this directory." % (mdir,)
@@ -39,23 +38,22 @@ directory_map["foi"] = "whatdotheyknow"
 #directory_map["ycml"] = "hfymp"
 
 for directory in directories:
-    renamed = directory_map[directory]
-    if bare:
-        renamed += ".git"
+    renamed = directory_map[directory] + ".git"
     if os.path.exists(renamed):
         print "=== Directory '%s' exists, skipping..." % (renamed,)
         continue
+    pruning = renamed + "-pruning"
+    if os.path.exists(pruning):
+        raise Exception(pruning + " temporary directory already exists")
     print "=== Cloning the complete mysociety repository..."
     clone_command = [ "git", "clone" ]
-    if bare:
-        clone_command.append( "--bare" )
-    clone_command += [ "--no-hardlinks", mdir, renamed ]
+    clone_command += [ "--no-hardlinks", mdir, pruning ]
     check_call( clone_command )
-    os.chdir( renamed )
+    os.chdir( pruning )
     # It's a pain rewriting tags properly, and Francis has told me
     # that they're not important, so just remove all the tags from the
     # cloned repository before "git filter-branch":
-    print "=== Removing tags from the cloned repository in '%s'" % (renamed,)
+    print "=== Removing tags from the cloned repository in '%s'" % (pruning,)
     check_call( "git tag | xargs -n 1 git tag -d", shell=True )
     print "=== Using git filter-branch to extract subdirectory '%s'..." % (directory,)
     check_call( [ "git", "filter-branch", "--subdirectory-filter", directory,
@@ -70,4 +68,12 @@ for directory in directories:
     print "=== Calling git gc --prune=now..."
     check_call( [ "git", "gc", "--prune=now" ] )
     os.chdir( ".." )
+    print "=== Making bare shared repository..."
+    os.mkdir( renamed )
+    os.chdir( renamed )
+    check_call( [ "git", "init", "--bare", "--shared=group"] )
+    check_call( [ "git", "--bare", "fetch", "../" + pruning, "master:master" ] )
+    os.chdir( ".." )
+    check_call( [ "chgrp", "-R", unix_group, renamed ] )
     print "=== Done (%s)" % (renamed,)
+
