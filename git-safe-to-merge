@@ -1,11 +1,20 @@
 #!/bin/bash
+#
+# git-safe-to-merge:
+# Tests if no local changes have been made to a git repository, including submodules recursively.
+# 
+# Parameters are:
+# $1 - schema SQL file
+#
+# Copyright (c) 2009 UK Citizens Online Democracy. All rights reserved.
+# Email: francis@mysociety.org; WWW: http://www.mysociety.org/
+#
 
-# Tests if no local changes have been made to a git repository.
-
-SCRIPT_COMMAND=$(basename $(readlink -f $0))
+FULL_SCRIPT_COMMAND=$(readlink -f $0)
+SCRIPT_COMMAND=$(basename $FULL_SCRIPT_COMMAND)
 
 set -e
-. /data/mysociety/shlib/deployfns
+. $(dirname $FULL_SCRIPT_COMMAND)/../shlib/deployfns
 
 cd $1
 
@@ -23,7 +32,7 @@ MASTER=`git rev-parse master`
 if [ "$COMMON_ANCESTOR" != "$MASTER" ] 
 then
     git diff $COMMON_ANCESTOR $MASTER
-    die "Error: master and origin/master have diverged!" 
+    die "Error: Changes have been committed in the deploy repository" 
 fi
 
 # Go through each submodule, from:
@@ -39,7 +48,7 @@ do
 
     # Recursively check that the submodule is similarly
     # safe to merge:
-    /data/mysociety/bin/git-safe-to-merge $D
+    $FULL_SCRIPT_COMMAND $D
 
     # Now check that the submodule version in origin/master
     # is actually available in the submodule:
