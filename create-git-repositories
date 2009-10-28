@@ -22,8 +22,7 @@ def subdirectory_to_extract(d):
 entries = os.listdir("mysociety")
 
 # directories = [ x for x in entries if subdirectory_to_extract(x) ]
-directories = [ "foi" ]
-
+directories = [ "foi","perllib", "phplib", "pylib", "shlib", "jslib", "rblib", "cpplib"] 
 directory_map = {}
 
 for d in directories:
@@ -42,6 +41,7 @@ for directory in directories:
     if os.path.exists(renamed):
         print "=== Directory '%s' exists, skipping..." % (renamed,)
         continue
+    print "=== Working on '%s'..." % (renamed,)
     pruning = renamed + "-pruning"
     if os.path.exists(pruning):
         raise Exception(pruning + " temporary directory already exists")
