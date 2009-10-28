@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.97 2009-10-28 19:46:12 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.98 2009-10-28 22:56:49 francis Exp $';
 
 package main;
 
@@ -135,8 +135,8 @@ chown($user_uid, $user_gid, "$vhost_dir/logs");
 make_symlink("$vcspath/".$conf->{'web_dir'}, "$vhost_dir/docs");
 shell("chown", "-h", "$user_uid:$user_gid", "$vhost_dir/docs"); # perl's chown doesn't do symlinks
 
-# Initial checkout, for CVS directories which don't exist
 if ($cvs) {
+    # Initial checkout, for CVS directories which don't exist
     my $cvsroot;
     if ($conf->{'cvs_user'} eq "") {
         $cvsroot = "cvs.mysociety.org:/usr/local/cvs";
@@ -157,10 +157,8 @@ if ($cvs) {
         my $privatecvsroot = $conf->{'private_cvs_user'} . "\@cvs.mysociety.org:/usr/local/privatecvs";
         make_cvs_dirs($privatecvsroot, $conf->{'private_cvs_user'}, $conf->{'private_cvs_dirs'});
     }
-}
-
-# Initial clone, for git repository that don't exist
-if ($git) {
+} elsif ($git) {
+    # Initial clone, for git repository that don't exist
     my $git_url_base;
     if ($conf->{'git_user'} eq "") {
         $git_url_base = "ssh://git.mysociety.org/data/git/public/";
@@ -170,6 +168,8 @@ if ($git) {
         $git_url_base = "ssh://" . $conf->{'git_user'} . "\@git.mysociety.org/data/git/public/";
     }
     make_git_repository($git_url_base, $conf->{'git_user'}, $conf->{'git_repository'});
+} else {
+    die "Unknown version control system";
 }
 
 # Make public directories
@@ -436,13 +436,14 @@ sub check_packages {
             if (-e "packages") {
                 shell("/data/mysociety/bin/check-packages-installed", "packages")
             }
-        }
-        if ($git) {
+        } elsif ($git) {
             my $tmp_packages = mktemp("/tmp/deploy-vhost-packages-XXXXXXXX");
             chdir "$vhost_dir/$vcspath";
             shell("git show origin/master:$conf_dir/packages >$tmp_packages");
             shell("/data/mysociety/bin/check-packages-installed", "$tmp_packages");
             unlink $tmp_packages;
+        } else {
+            die "Unknown version control system";
         }
     }
 }
@@ -508,7 +509,14 @@ sub update_conf_dir {
 
         my $old_umask = umask(0077);
         # find source template (.ugly) file
-        my $conf_ugly_part = $conf_dir . "/$name_part";
+        my $conf_ugly_part;
+        if ($cvs) {
+            $conf_ugly_part = $conf_dir . "/$name_part"; # e.g. foi/config/general
+        } elsif ($git) {
+            $conf_ugly_part = $vcspath . "/" . $conf_dir; # e.g. whatdotheyknow/config/general
+        } else {
+            die "Unknown version control system";
+        }
         $conf_ugly_part =~ s#/#_#g;
         my $conf_ugly_file = "$servers_dir/vhosts/$conf_ugly_part.ugly";
         # update the conf/general (or whatever) template
@@ -643,10 +651,11 @@ sub update_site {
         if (exists($conf->{'private_cvs_dirs'})){
             update_cvs($conf->{'private_cvs_user'}, $conf->{'private_cvs_dirs'});
         }
-    }
-    if ($git) {
+    } elsif ($git) {
         # Update from git
         update_git($conf->{'git_user'}, $conf->{'git_repository'});
+    } else {
+        die "Unknown version control system";
     }
 
     # Run any extra executables
