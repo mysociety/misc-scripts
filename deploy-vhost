@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.95 2009-09-21 14:45:31 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.96 2009-10-28 19:19:33 francis Exp $';
 
 package main;
 
@@ -82,8 +82,17 @@ foreach my $key ( keys %$site_conf ) { $conf->{$key} = $site_conf->{$key}; }
 foreach my $key ( keys %$vhost_conf ) { $conf->{$key} = $vhost_conf->{$key}; }
 die "must specify 'servers' in vhost config" if (!exists($conf->{servers}));
 die "must specify 'staging' in vhost config" if (!exists($conf->{staging}));
-die "must specify 'cvs_dirs' in vhost config" if (!exists($conf->{cvs_dirs}));
-die "must specify 'cvs_user' in vhost config" if (!exists($conf->{cvs_user}));
+die "must specify one of 'cvs_dirs' or 'git_repository' in vhost config" if (!exists($conf->{cvs_dirs}) && !exists($conf->{git_repository}) );
+die "must specify 'cvs_dirs' or 'git_repository' (not both) in vhost config" if (exists($conf->{cvs_dirs}) && exists($conf->{git_repository}) );
+my $vcspath;
+if (exists($conf->{cvs_dirs})) {
+    die "must specify 'cvs_user' in vhost config" if (!exists($conf->{cvs_user}));
+    $vcspath = "mysociety";
+}
+if (exists($conf->{git_repository})) {
+    die "must specify 'git_user' in vhost config" if (!exists($conf->{git_user}));
+    $vcspath = $conf->{git_repository};
+}
 
 # Verify that this server is listed for this vhost
 my $hostname = `hostname`;
@@ -119,33 +128,45 @@ make_dir("$vhost_dir");
 chown($user_uid, $user_gid, "$vhost_dir");
 make_dir("$vhost_dir/logs");
 chown($user_uid, $user_gid, "$vhost_dir/logs");
-make_symlink("mysociety/".$conf->{'web_dir'}, "$vhost_dir/docs");
+make_symlink("$vcspath/".$conf->{'web_dir'}, "$vhost_dir/docs");
 shell("chown", "-h", "$user_uid:$user_gid", "$vhost_dir/docs"); # perl's chown doesn't do symlinks
 
 # Initial checkout, for CVS directories which don't exist
-my $cvsroot;
-if ($conf->{'cvs_user'} eq "") {
-    $cvsroot = "cvs.mysociety.org:/usr/local/cvs";
-} elsif ($conf->{'cvs_user'} eq 'anon') {
-    $cvsroot = ':pserver:anonymous@cvs.mysociety.org:/repos';
-    # for some reason, CVS gives a warning if there is no .cvspass file during 
-    # anoncvs client use, so we make an empty file
-    if (! -e "$user_home_dir/.cvspass") {
-        system("su $conf->{'user'} -c \"touch ~$conf->{'user'}/.cvspass\"");
+if (exists($conf->{cvs_dirs})) {
+    my $cvsroot;
+    if ($conf->{'cvs_user'} eq "") {
+        $cvsroot = "cvs.mysociety.org:/usr/local/cvs";
+    } elsif ($conf->{'cvs_user'} eq 'anon') {
+        $cvsroot = ':pserver:anonymous@cvs.mysociety.org:/repos';
+        # for some reason, CVS gives a warning if there is no .cvspass file during 
+        # anoncvs client use, so we make an empty file
+        if (! -e "$user_home_dir/.cvspass") {
+            system("su $conf->{'user'} -c \"touch ~$conf->{'user'}/.cvspass\"");
+        }
+        # note that anoncvs is now freshly updated automatically by anoncvs-wrapper
+    } else {
+        $cvsroot = $conf->{'cvs_user'} . "\@cvs.mysociety.org:/usr/local/cvs";
     }
-    # note that anoncvs is now freshly updated automatically by anoncvs-wrapper
-} else {
-    $cvsroot = $conf->{'cvs_user'} . "\@cvs.mysociety.org:/usr/local/cvs";
+    make_cvs_dirs($cvsroot, $conf->{'cvs_user'}, $conf->{'cvs_dirs'});
+    if (exists($conf->{'private_cvs_dirs'})){
+        die "must specify 'private_cvs_user' in vhost config" if (!exists($conf->{'private_cvs_user'}));
+        my $privatecvsroot = $conf->{'private_cvs_user'} . "\@cvs.mysociety.org:/usr/local/privatecvs";
+        make_cvs_dirs($privatecvsroot, $conf->{'private_cvs_user'}, $conf->{'private_cvs_dirs'});
+    }
 }
 
-make_cvs_dirs($cvsroot, $conf->{'cvs_user'}, $conf->{'cvs_dirs'});
-
-if (exists($conf->{'private_cvs_dirs'})){
-    die "must specify 'private_cvs_user' in vhost config" if (!exists($conf->{'private_cvs_user'}));
-    my $privatecvsroot = $conf->{'private_cvs_user'} . "\@cvs.mysociety.org:/usr/local/privatecvs";
-    make_cvs_dirs($privatecvsroot, $conf->{'private_cvs_user'}, $conf->{'private_cvs_dirs'});
+# Initial clone, for git repository that don't exist
+if (exists($conf->{git_repository})) {
+    my $git_url_base;
+    if ($conf->{'git_user'} eq "") {
+        $git_url_base = "ssh://git.mysociety.org/data/git/public/";
+    } elsif ($conf->{'git_user'} eq 'anon') {
+        $git_url_base = "git://git.mysociety.org/"
+    } else {
+        $git_url_base = "ssh://" . $conf->{'git_user'} . "\@git.mysociety.org/data/git/public/";
+    }
+    make_git_repository($git_url_base, $conf->{'git_user'}, $conf->{'git_repository'});
 }
-
 
 # Make public directories
 foreach my $public_dir (@{$conf->{'public_dirs'}}) {
@@ -304,19 +325,18 @@ sub make_cvs_dirs {
    my ($cvs_root, $cvs_user, $cvs_dirs) = @_;
    foreach my $cvs_dir (@{$cvs_dirs}) {
        my $d = "$vhost_dir/mysociety/$cvs_dir/CVS";
-           if (! -d $d) {
+       if (! -d $d) {
            if ($cvs_user eq "") { 
                shell("cd \"$vhost_dir\" && cvs -Q -d \"$cvs_root\" co mysociety/$cvs_dir".
                     " && chown -R ".$conf->{'user'}.":".$conf->{'user'}." mysociety");
            } else {
                shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir\" && cvs -Q -d \"$cvs_root\" co mysociety/$cvs_dir");
            }
-           } else {
+       } else {
            my $current_root = read_file("$d/Root");
            $current_root =~ s/\s*$//;
            die "CVSROOT in $d is \n\t$current_root\nwhen config says\n\t$cvs_root\n" if ($current_root ne $cvs_root);
 
-           # XXX add a command-line option to override this check?
            if ($cvs_user eq 'anon') {
                chdir("$vhost_dir/mysociety/$cvs_dir");
                # XXX detect errors.  
@@ -331,13 +351,48 @@ sub update_cvs {
     foreach my $cvs_dir (@{$cvs_dirs}) {
         die "unexpectedly missing cvs directory in update stage" if (! -d "$vhost_dir/mysociety/$cvs_dir/CVS");
         if ($cvs_user eq "") {
-                shell("cd \"$vhost_dir/mysociety/$cvs_dir\" && cvs -Q update -dP &&
-                chown -R ".$conf->{'user'}.":".$conf->{'user'}." ../");
+            shell("cd \"$vhost_dir/mysociety/$cvs_dir\" && cvs -Q update -dP && chown -R ".$conf->{'user'}.":".$conf->{'user'}." ../");
         } else {
             shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir/mysociety/$cvs_dir\" && cvs -Q update -dP");
         }
     }
 }
+
+sub make_git_repository {
+   my ($git_url_base, $git_user, $git_repository) = @_;
+   my $d = "$vhost_dir/$git_repository/.git";
+   my $git_url = "$git_url_base$git_repository.git";
+   if (! -d $d) {
+       if ($git_user eq "") { 
+           shell("cd \"$vhost_dir\" && git clone $git_url");
+       } else {
+           shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir\" && git clone $git_url");
+       }
+       shell("cd \"$vhost_dir/$git_repository\" && git submodule update --init");
+   } else {
+       chdir("$vhost_dir/$git_repository");
+       my $current_url = `git config --get remote.origin.url`;
+       $current_url =~ s/\s*$//;
+       die "git remote.origin.url in $d is \n\t$current_url\nwhen config says\n\t$git_url\n" if ($current_url ne $git_url);
+
+       if ($git_user eq 'anon') {
+           # XXX todo
+           #system("cvs -Q diff -u") == 0 || die "Files checked out with anonymous CVS have been modified in $vhost_dir/mysociety/$cvs_dir";
+       }
+   }
+   chdir($vhost_dir);
+}
+
+sub update_git {
+    my ($git_user, $git_repository) = @_;
+    die "unexpectedly missing .git directory in update stage" if (! -d "$vhost_dir/$git_repository/.git");
+    if ($git_user eq "") {
+        shell("cd \"$vhost_dir/$git_repository\" && git pull && git submodule update && chown -R ".$conf->{'user'}.":".$conf->{'user'}." ../");
+    } else {
+        shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir/$git_repository\" && git pull && git submodule update");
+    }
+}
+
 #####################################################################
 # Shut down services, update, start services
 
@@ -369,7 +424,7 @@ if ($action eq "stop") {
     die "unknown action";
 }
 
-sub check_packages{
+sub check_packages {
     # Check Debian packages are all installed, if there is a conf/packages file
     foreach my $conf_dir (@{$conf->{conf_dir}}) {
         chdir "$mysociety_dir/$conf_dir";
@@ -433,11 +488,11 @@ END
 # Update a config dir
 sub update_conf_dir {
     my ($conf_dir, $public, $unchecked_schemas) = @_;
-    foreach my $glob (glob "$vhost_dir/mysociety/$conf_dir/*-example") {
+    foreach my $glob (glob "$vhost_dir/$vcspath/$conf_dir/*-example") {
         $glob =~ m#^.*/(.*?)-example$#;
         my $name_part = $1;
 
-        my $conf_file = "$vhost_dir/mysociety/$conf_dir/$name_part"; # destination file
+        my $conf_file = "$vhost_dir/$vcspath/$conf_dir/$name_part"; # destination file
 
         my $old_umask = umask(0077);
         # find source template (.ugly) file
@@ -454,7 +509,7 @@ sub update_conf_dir {
         if ($public) {
             $example_file_dir = "$mysociety_dir/$conf_dir";
         } else {
-            $example_file_dir = "$vhost_dir/mysociety/$conf_dir";
+            $example_file_dir = "$vhost_dir/$vcspath/$conf_dir";
         }
         chdir $example_file_dir;
         shell("cvs", "-Q", "update", "$name_part-example");
@@ -559,7 +614,6 @@ sub update_config_and_schemas {
     foreach my $conf_dir (@{$conf->{conf_dir}}) {
          update_conf_dir($conf_dir, 1, \%unchecked_schemas);        
     }
-    
     foreach my $conf_dir(@{$conf->{private_conf_dir}}){
          update_conf_dir($conf_dir, 0, \%unchecked_schemas);
     }
@@ -571,10 +625,16 @@ sub update_config_and_schemas {
 }
 
 sub update_site {
-    # Update from CVS
-    update_cvs($conf->{'cvs_user'}, $conf->{'cvs_dirs'});
-    if (exists($conf->{'private_cvs_dirs'})){
-        update_cvs($conf->{'private_cvs_user'}, $conf->{'private_cvs_dirs'});
+    if (exists($conf->{cvs_dirs})) {
+        # Update from CVS
+        update_cvs($conf->{'cvs_user'}, $conf->{'cvs_dirs'});
+        if (exists($conf->{'private_cvs_dirs'})){
+            update_cvs($conf->{'private_cvs_user'}, $conf->{'private_cvs_dirs'});
+        }
+    }
+    if (exists($conf->{git_repository})) {
+        # Update from git
+        update_git($conf->{'git_user'}, $conf->{'git_repository'});
     }
 
     # Run any extra executables
@@ -621,7 +681,7 @@ sub start_site {
     if ($conf->{'email'}) {
         foreach my $email_user (keys %{$conf->{'email'}}) {
             my $email_pipeto = $conf->{'email'}->{$email_user};
-            shell("su", "-", $email_user, "-c echo \"|$vhost_dir/mysociety/$email_pipeto\" >~$email_user/.forward");
+            shell("su", "-", $email_user, "-c echo \"|$vhost_dir/$vcspath/$email_pipeto\" >~$email_user/.forward");
         }
     }
 }

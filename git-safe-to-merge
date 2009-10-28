@@ -1,0 +1,49 @@
+#!/bin/bash
+
+# Tests if no local changes have been made to a git repository.
+
+SCRIPT_COMMAND=$(basename $(readlink -f $0))
+
+set -e
+. /data/mysociety/shlib/deployfns
+
+cd $1
+
+git fetch origin
+git diff --exit-code || die "Error: Uncommitted changes in the working copy."
+git diff --cached --exit-code || die "Error: Staged changes exist in the index."
+UNTRACKED_FILES=$(git ls-files --others --directory --no-empty-directory --exclude-standard)
+test -z "$UNTRACKED_FILES" || die "Error: There are untracked (and unignored files) in the repository:\n$UNTRACKED_FILES"
+
+# Check that merging would just be a fast-forward, e.g. that
+# there are no new local commits that diverge from origin/master
+
+COMMON_ANCESTOR=$(git rev-parse `git merge-base master origin/master`)
+MASTER=`git rev-parse master`
+if [ "$COMMON_ANCESTOR" != "$MASTER" ] 
+then
+    git diff $COMMON_ANCESTOR $MASTER
+    die "Error: master and origin/master have diverged!" 
+fi
+
+# Go through each submodule, from:
+SUBMODULES=$(git submodule status | awk '{ print $2; }')
+# ... to check that the remote-tracking branches are up to date:
+for S in $SUBMODULES
+do
+    # Get the absolute path of the submodule and the current directory:
+    D=$(readlink -f $S)
+
+    # Get the version of the submodule that is committed in origin/master:
+    V=`git rev-parse origin/master:$s`
+
+    # Recursively check that the submodule is similarly
+    # safe to merge:
+    /data/mysociety/bin/git-safe-to-merge $D
+
+    # Now check that the submodule version in origin/master
+    # is actually available in the submodule:
+    git show --quiet $S > /dev/null 2> /dev/null || die "Error: Submodule version not found (submodule hasn't been pushed, perhaps?)"
+done
+
+
