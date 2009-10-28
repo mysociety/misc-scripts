@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.96 2009-10-28 19:19:33 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.97 2009-10-28 19:46:12 francis Exp $';
 
 package main;
 
@@ -28,7 +28,7 @@ use POSIX qw(getuid);
 use Data::Dumper;
 use File::Slurp;
 use File::Copy;
-use File::Temp qw(tempfile);
+use File::Temp qw(tempfile mktemp);
 
 our $verbose = $ENV{VERBOSE} ? 1 : 0;
 
@@ -85,13 +85,17 @@ die "must specify 'staging' in vhost config" if (!exists($conf->{staging}));
 die "must specify one of 'cvs_dirs' or 'git_repository' in vhost config" if (!exists($conf->{cvs_dirs}) && !exists($conf->{git_repository}) );
 die "must specify 'cvs_dirs' or 'git_repository' (not both) in vhost config" if (exists($conf->{cvs_dirs}) && exists($conf->{git_repository}) );
 my $vcspath;
+my $cvs = 0;
+my $git = 0;
 if (exists($conf->{cvs_dirs})) {
     die "must specify 'cvs_user' in vhost config" if (!exists($conf->{cvs_user}));
     $vcspath = "mysociety";
+    $cvs = 1;
 }
 if (exists($conf->{git_repository})) {
     die "must specify 'git_user' in vhost config" if (!exists($conf->{git_user}));
     $vcspath = $conf->{git_repository};
+    $git = 1;
 }
 
 # Verify that this server is listed for this vhost
@@ -132,7 +136,7 @@ make_symlink("$vcspath/".$conf->{'web_dir'}, "$vhost_dir/docs");
 shell("chown", "-h", "$user_uid:$user_gid", "$vhost_dir/docs"); # perl's chown doesn't do symlinks
 
 # Initial checkout, for CVS directories which don't exist
-if (exists($conf->{cvs_dirs})) {
+if ($cvs) {
     my $cvsroot;
     if ($conf->{'cvs_user'} eq "") {
         $cvsroot = "cvs.mysociety.org:/usr/local/cvs";
@@ -156,7 +160,7 @@ if (exists($conf->{cvs_dirs})) {
 }
 
 # Initial clone, for git repository that don't exist
-if (exists($conf->{git_repository})) {
+if ($git) {
     my $git_url_base;
     if ($conf->{'git_user'} eq "") {
         $git_url_base = "ssh://git.mysociety.org/data/git/public/";
@@ -376,8 +380,7 @@ sub make_git_repository {
        die "git remote.origin.url in $d is \n\t$current_url\nwhen config says\n\t$git_url\n" if ($current_url ne $git_url);
 
        if ($git_user eq 'anon') {
-           # XXX todo
-           #system("cvs -Q diff -u") == 0 || die "Files checked out with anonymous CVS have been modified in $vhost_dir/mysociety/$cvs_dir";
+           shell("$mysociety_bin/git-safe-to-merge .")
        }
    }
    chdir($vhost_dir);
@@ -387,7 +390,7 @@ sub update_git {
     my ($git_user, $git_repository) = @_;
     die "unexpectedly missing .git directory in update stage" if (! -d "$vhost_dir/$git_repository/.git");
     if ($git_user eq "") {
-        shell("cd \"$vhost_dir/$git_repository\" && git pull && git submodule update && chown -R ".$conf->{'user'}.":".$conf->{'user'}." ../");
+        shell("cd \"$vhost_dir/$git_repository\" && git merge origin/master && git submodule update && chown -R ".$conf->{'user'}.":".$conf->{'user'}." ../");
     } else {
         shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir/$git_repository\" && git pull && git submodule update");
     }
@@ -427,10 +430,19 @@ if ($action eq "stop") {
 sub check_packages {
     # Check Debian packages are all installed, if there is a conf/packages file
     foreach my $conf_dir (@{$conf->{conf_dir}}) {
-        chdir "$mysociety_dir/$conf_dir";
-        shell("cvs", "-Q", "update", "packages");
-        if (-e "packages") {
-            shell("/data/mysociety/bin/check-packages-installed", "packages")
+        if ($cvs) {
+            chdir "$mysociety_dir/$conf_dir";
+            shell("cvs", "-Q", "update", "packages");
+            if (-e "packages") {
+                shell("/data/mysociety/bin/check-packages-installed", "packages")
+            }
+        }
+        if ($git) {
+            my $tmp_packages = mktemp("/tmp/deploy-vhost-packages-XXXXXXXX");
+            chdir "$vhost_dir/$vcspath";
+            shell("git show origin/master:$conf_dir/packages >$tmp_packages");
+            shell("/data/mysociety/bin/check-packages-installed", "$tmp_packages");
+            unlink $tmp_packages;
         }
     }
 }
@@ -625,14 +637,14 @@ sub update_config_and_schemas {
 }
 
 sub update_site {
-    if (exists($conf->{cvs_dirs})) {
+    if ($cvs) {
         # Update from CVS
         update_cvs($conf->{'cvs_user'}, $conf->{'cvs_dirs'});
         if (exists($conf->{'private_cvs_dirs'})){
             update_cvs($conf->{'private_cvs_user'}, $conf->{'private_cvs_dirs'});
         }
     }
-    if (exists($conf->{git_repository})) {
+    if ($git) {
         # Update from git
         update_git($conf->{'git_user'}, $conf->{'git_repository'});
     }
