@@ -49,9 +49,9 @@ verbose_call( [ "mkdir", cdir ] )
 os.chdir(cdir)
 verbose_call( [ "git", "init" ] )
 # Make sure that there's one commit in the repository:
-verbose_call( "echo This is the new mySociety commonlib repository > README", shell=True )
-verbose_call( [ "git", "add", "README" ] )
-verbose_call( [ "git", "commit", "-m", "A small README for the new commonlib" ] )
+verbose_call( "echo This is the new mySociety commonlib repository > README.txt", shell=True )
+verbose_call( [ "git", "add", "README.txt" ] )
+verbose_call( [ "git", "commit", "-m", "A small README.txt for the new commonlib" ] )
 
 for d in commonlib_directories:
     repository = directories_to_repostories[d]
