@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.100 2009-10-29 01:02:58 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.101 2009-10-29 10:08:15 francis Exp $';
 
 package main;
 
@@ -46,7 +46,9 @@ sub make_symlink {
     my ($a, $b) = @_;
     my $current = readlink($b);
     if (!$current) {
-        symlink($a, $b) || die "failed to make symlink '$a'->'$b'";
+        symlink($a, $b) || die "failed to make symlink '$b' -> '$a'";
+    } elsif ($current ne $a) {
+        die "remove existing wrong symlink '$b' -> '$current' first, so can become '$b' -> '$a'";
     }
 }
 
