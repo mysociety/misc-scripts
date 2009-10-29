@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.99 2009-10-29 00:46:32 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.100 2009-10-29 01:02:58 francis Exp $';
 
 package main;
 
@@ -705,10 +705,22 @@ sub start_site {
         }
     }
     if ($ok) {
-        chdir $mysociety_dir;
-        foreach my $conf_dir (@{$conf->{conf_dir}}) {
-            shell("cvs", "-Q", "update", "$conf_dir/crontab.ugly");
-            shell("$mysociety_bin/mugly", "-O", $cron_name, "-p", "$settings_file", "$mysociety_dir/$conf_dir/crontab.ugly");
+        if ($cvs) {
+            chdir $mysociety_dir;
+            foreach my $conf_dir (@{$conf->{conf_dir}}) {
+                shell("cvs", "-Q", "update", "$conf_dir/crontab.ugly");
+                shell("$mysociety_bin/mugly", "-O", $cron_name, "-p", "$settings_file", "$mysociety_dir/$conf_dir/crontab.ugly");
+            }
+        } elsif ($git) {
+            foreach my $conf_dir (@{$conf->{conf_dir}}) {
+                my $tmp_crontab_ugly = mktemp("/tmp/deploy-vhost-crontab.ugly-XXXXXXXX");
+                chdir "$vhost_dir/$vcspath";
+                shell("git show origin/master:$conf_dir/crontab.ugly >$tmp_crontab_ugly");
+                shell("$mysociety_bin/mugly", "-O", $cron_name, "-p", "$settings_file", "$tmp_crontab_ugly");
+                unlink $tmp_crontab_ugly;
+            }
+        } else {
+            die "Unknown version control system";
         }
     } else {
         unlink($cron_name);
