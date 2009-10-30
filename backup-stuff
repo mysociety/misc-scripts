@@ -6,7 +6,7 @@
 # Copyright (c) 2004 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: backup-stuff,v 1.32 2009-10-30 11:44:14 francis Exp $
+# $Id: backup-stuff,v 1.33 2009-10-30 11:51:42 francis Exp $
 #
 
 set -e
@@ -64,7 +64,7 @@ for X in _data_backups_dailyfiles_????????T??????; do
 done
 
 # Get daily copy of backups from server
-for thing in /data/backups/dailydb /data/backups/dailyfiles; do
+for thing in /data/backups/dailyfiles /data/backups/dailydb; do
     dir=$( echo $thing | sed s@/@_@g )
     now=$( date +%Y%m%dT%H%M%S )
     target=${dir}_$now
