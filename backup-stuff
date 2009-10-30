@@ -6,7 +6,7 @@
 # Copyright (c) 2004 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: backup-stuff,v 1.31 2009-07-14 16:05:57 francis Exp $
+# $Id: backup-stuff,v 1.32 2009-10-30 11:44:14 francis Exp $
 #
 
 set -e
@@ -16,7 +16,7 @@ RSYNC_RSH=ssh
 export RSYNC_RSH
 # --delete is to delete files no longer in the backup, but in previous copy we
 # use to speed up backup
-rsyncopts="-raq --delete"
+rsyncopts="--inplace -raq --delete"
 
 if tty 2>&1 > /dev/null ; then
     function debug () {
