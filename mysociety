@@ -216,6 +216,8 @@ END
         # any FastCGI processes holding the database open, so the test script
         # can drop and reload the database)
         /data/mysociety/bin/deploy-vhost $VHOST deploy "$@"
+        # sleep for a few seconds to allow the Apache processes mentioned above to die
+        sleep 10
         # launch test script
         VERBOSE=1 /data/mysociety/bin/test-site $VHOST
         ;;
