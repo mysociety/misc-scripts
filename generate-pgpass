@@ -103,6 +103,8 @@ my $database_permissions_whisky_water_peas = {
     'gc' => ['cities_development'],
     'ycml-cllr' => ['ycml-cllr'],
     'pb' => ['pb','pb-staging','pb-interface'],
+
+    'guardian' => ['dadem-guardian', 'ratty-guardian'],
 };
 
 my $database_permissions_hotpot = {
@@ -129,7 +131,7 @@ if ($server eq 'bitter' || $server eq 'tea' || $server eq 'sponge' || $server eq
 	die "generate-pgpass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.123 2009-10-08 08:42:53 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.124 2009-11-02 10:58:24 matthew Exp $';
 
 use strict;
 require 5.8.0;
