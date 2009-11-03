@@ -6,7 +6,7 @@
 # Copyright (c) 2004 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: backup-stuff,v 1.33 2009-10-30 11:51:42 francis Exp $
+# $Id: backup-stuff,v 1.34 2009-11-03 18:09:52 duncan Exp $
 #
 
 set -e
@@ -72,7 +72,7 @@ for thing in /data/backups/dailyfiles /data/backups/dailydb; do
     debug "date of current backup is $now"
 
     # Find latest backup
-    latest=$( ls -d ${dir}_????????T?????? 2> /dev/null | tail -1 )
+    latest=$( ls -d ${dir}_????????T?????? 2> /dev/null | tail -n 1 )
 
     if [ x$latest = x$target ] ; then
         debug "last backup has same timestamp; waiting and trying again"
