@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.101 2009-10-29 10:08:15 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.102 2009-11-04 16:13:44 matthew Exp $';
 
 package main;
 
@@ -240,6 +240,7 @@ print FH <<END;
 \$site = '$site';
 \$vhost = '$vhost';
 \$vcspath = '$vcspath';
+\$cvs = '$cvs';
 \$site = '$site';
 \$staging = '$conf->{'staging'}';
 \$vhost_first = '$vhost_first';
