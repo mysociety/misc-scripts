@@ -40,6 +40,7 @@ my $database_permissions_main = {
     'mssecure' => ['donate'],
     'bci' => ['bci'],
     'bci-emptyhomes' => ['bci-emptyhomes'],
+    'bci-cities' => ['bci'],
     'bbcparlvid' => ['bbcparlvid'],
     'foi' => ['foi'],
     'survey' => ['survey'],
@@ -131,7 +132,7 @@ if ($server eq 'bitter' || $server eq 'tea' || $server eq 'sponge' || $server eq
 	die "generate-pgpass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.128 2009-11-10 09:54:42 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.129 2009-11-17 16:41:56 louise Exp $';
 
 use strict;
 require 5.8.0;
