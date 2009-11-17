@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.102 2009-11-04 16:13:44 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.103 2009-11-17 17:56:51 louise Exp $';
 
 package main;
 
@@ -344,7 +344,6 @@ sub make_cvs_dirs {
            my $current_root = read_file("$d/Root");
            $current_root =~ s/\s*$//;
            die "CVSROOT in $d is \n\t$current_root\nwhen config says\n\t$cvs_root\n" if ($current_root ne $cvs_root);
-
            if ($cvs_user eq 'anon') {
                chdir("$vhost_dir/mysociety/$cvs_dir");
                # XXX detect errors.  
@@ -506,7 +505,7 @@ END
 sub update_conf_dir {
     my ($conf_dir, $public, $unchecked_schemas) = @_;
     foreach my $glob (glob "$vhost_dir/$vcspath/$conf_dir/*-example") {
-        $glob =~ m#^.*/(.*?)-example$#;
+       $glob =~ m#^.*/(.*?)-example$#;
         my $name_part = $1;
 
         my $conf_file = "$vhost_dir/$vcspath/$conf_dir/$name_part"; # destination file
@@ -525,7 +524,11 @@ sub update_conf_dir {
         my $conf_ugly_file = "$servers_dir/vhosts/$conf_ugly_part.ugly";
         # update the conf/general (or whatever) template in private CVS
         chdir "$servers_dir/vhosts";
-        shell("cvs", "-Q", "update", "$conf_ugly_part.ugly");
+        if ($public) {
+             shell("cvs", "-Q", "update", "$conf_ugly_part.ugly");
+        } else {
+             shell("su", "-", $conf->{'private_cvs_user'}, "-c cd \"$servers_dir/vhosts\" && cvs -Q update $conf_ugly_part.ugly");
+        }
         # update example we'll be comparing against, to make sure no missing entries.
         # For public conf files, use the example in the main public checkout. For 
         # private, use the example in the vhost conf dir.
@@ -538,7 +541,11 @@ sub update_conf_dir {
                 $example_file_dir = "$vhost_dir/$vcspath/$conf_dir";
             }
             chdir $example_file_dir;
-            shell("cvs", "-Q", "update", "$name_part-example");
+            if ($public) {
+                 shell("cvs", "-Q", "update", "$name_part-example");
+            } else {
+                 shell("su", "-", $conf->{'private_cvs_user'}, "-c cd \"$example_file_dir\" && cvs -Q update $name_part-example");
+            }
             $example_file = "$example_file_dir/$name_part-example";
         } elsif ($git) {
             $example_file = mktemp("/tmp/deploy-vhost-$name_part-example-XXXXXXXX");
@@ -650,10 +657,10 @@ sub update_config_and_schemas {
 
     # Generate all conf files from conf/*-example template files e.g. conf/general
     foreach my $conf_dir (@{$conf->{conf_dir}}) {
-         update_conf_dir($conf_dir, 1, \%unchecked_schemas);        
+        update_conf_dir($conf_dir, 1, \%unchecked_schemas);        
     }
     foreach my $conf_dir(@{$conf->{private_conf_dir}}){
-         update_conf_dir($conf_dir, 0, \%unchecked_schemas);
+        update_conf_dir($conf_dir, 0, \%unchecked_schemas);
     }
      
     # exit if there are any schemas not covered by a config
