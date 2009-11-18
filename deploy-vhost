@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.104 2009-11-18 15:24:36 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.105 2009-11-18 15:25:23 louise Exp $';
 
 package main;
 
@@ -356,7 +356,6 @@ sub make_cvs_dirs {
 sub update_cvs {
     my ($cvs_user, $cvs_dirs) = @_;
     foreach my $cvs_dir (@{$cvs_dirs}) {
-        print "DIR $cvs_dir \n"; 
         die "unexpectedly missing cvs directory in update stage" if (! -d "$vhost_dir/mysociety/$cvs_dir/CVS");
         if ($cvs_user eq "") {
             shell("cd \"$vhost_dir/mysociety/$cvs_dir\" && cvs -Q update -dP && chown -R ".$conf->{'user'}.":".$conf->{'user'}." ../");
