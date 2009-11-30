@@ -115,6 +115,7 @@ my $database_permissions_hotpot = {
      
     # Sites
     'fyr' => ['fyr'],
+    'guardian' => ['fyr-guardian'],
 };
 
 my $database_permissions;
@@ -133,7 +134,7 @@ if ($server eq 'bitter' || $server eq 'tea' || $server eq 'sponge' || $server eq
 	die "generate-pgpass not configured for server $server";
 }
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.131 2009-11-25 15:16:26 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.132 2009-11-30 17:50:44 louise Exp $';
 
 use strict;
 require 5.8.0;
