@@ -4,8 +4,9 @@
 # Reads perldoc from a Perl class implementing a RABX interface, and produces a
 # Python include file for talking to that RABX interface via REST/JSON.
 #
+# Depends: libpod-pom-perl, libstring-ediff-perl
 
-my $rcsid = ''; $rcsid .= '$Id: rabxresttopy.pl,v 1.1 2009-02-24 14:49:41 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: rabxresttopy.pl,v 1.2 2009-11-30 13:11:03 matthew Exp $';
 
 use strict;
 
@@ -17,8 +18,6 @@ use mySociety::StringUtils qw(trim);
 
 my $perl_source = $ARGV[0];
 die "Give source .pm file as first parameter" unless defined($perl_source);
-my $main_include_path = $ARGV[1];
-die "Give relative path to mysociety/phplib" unless defined($main_include_path);
 
 my $parser = Pod::POM->new( { warn => 1} );
 my $view = 'Pod::POM::View::Text';
