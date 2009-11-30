@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.106 2009-11-23 18:18:23 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.107 2009-11-30 17:24:09 louise Exp $';
 
 package main;
 
@@ -182,42 +182,12 @@ foreach my $public_dir (@{$conf->{'public_dirs'}}) {
 
 # Make database config settings
 my $database_configs = "";
+my $external_database_configs = "";
 my $rails_database_config = "";
 if (defined $conf->{'databases'}) {
     foreach my $database (@{$conf->{'databases'}}) {
         my $params = $databases->{$database};
-        if ($params->{type} eq 'psql') {
-            $database_configs .= <<END;
-define('OPTION_$params->{prefix}_DB_HOST', '$params->{host}.int.ukcod.org.uk');
-define('OPTION_$params->{prefix}_DB_PORT', $params->{port});
-define('OPTION_$params->{prefix}_DB_NAME', '$database');
-define('OPTION_$params->{prefix}_DB_USER', '$database');
-define('OPTION_$params->{prefix}_DB_PASS', '\${\\(pgpw('$database'))}');
-END
-            # XXX doesn't cope with multiple Rails database configs (as you
-            # have to list them in the yml file in right place, so one text
-            # option can't), oh well
-            if (scalar(@{$conf->{'databases'}}) == 1) {
-                $rails_database_config = <<END;
-    adapter: postgresql
-    database: $database
-    username: $database
-    password: \${\\(pgpw('$database'))}
-    host: $params->{host}.int.ukcod.org.uk
-    port: $params->{port}
-END
-            }
-#define('OPTION_$params->{prefix}_DB_PASS', '!!(*= pgpw('$database') *)!!');
-        } elsif ($params->{type} eq 'mysql') {
-            $database_configs .= <<END;
-define('OPTION_$params->{prefix}_DB_HOST', '$params->{host}.int.ukcod.org.uk');
-define('OPTION_$params->{prefix}_DB_NAME', '$database');
-define('OPTION_$params->{prefix}_DB_USER', '$database');
-define('OPTION_$params->{prefix}_DB_PASS', '\${\\(pgpw('$database'))}');
-END
-        } else {
-            die "unknown database type '$params->{type}'";
-        }
+        db_conf($params, $database);
     }
 }
 
@@ -257,6 +227,9 @@ DONE_DATABASE_CONFIGS
 \$rails_database_config = <<DONE_RAILS_DATABASE_CONFIG;
 $rails_database_config
 DONE_RAILS_DATABASE_CONFIG
+\$external_database_configs = <<DONE_EXTERNAL_DATABASE_CONFIGS;
+$external_database_configs
+DONE_EXTERNAL_DATABASE_CONFIGS
 END
 
 print FH Dumper($conf->{conf_dir});
@@ -319,6 +292,55 @@ if ($action ne "remove"){
 
 #####################################################################
 # Helper functions
+
+
+sub one_db_conf {
+    my ($params, $database, $internal) = @_;
+    my $port_line = '';
+    if ($params->{type} eq 'psql') {
+        $port_line = "define('OPTION_$params->{prefix}_DB_PORT', $params->{port});";
+    }
+    my $network_part = '';
+    if ($internal) {
+        $network_part = 'int.ukcod.org.uk';
+    } else {
+        $network_part = 'ukcod.org.uk';
+    }
+
+    my $conf = <<END;
+define('OPTION_$params->{prefix}_DB_HOST', '$params->{host}.$network_part');
+$port_line
+define('OPTION_$params->{prefix}_DB_NAME', '$database');
+define('OPTION_$params->{prefix}_DB_USER', '$database');
+define('OPTION_$params->{prefix}_DB_PASS', '\${\\(pgpw('$database'))}');
+END
+    return $conf;
+
+}
+
+sub db_conf {
+    my ($params, $database) = @_;
+    if ($params->{type} ne 'mysql' && $params->{type} ne 'psql'){
+        die "unknown database type '$params->{type}'";
+    }
+    $database_configs .= one_db_conf($params, $database, 1);
+    $external_database_configs .= one_db_conf($params, $database, 0);
+    if ($params->{type} eq 'psql') {
+            # XXX doesn't cope with multiple Rails database configs (as you
+            # have to list them in the yml file in right place, so one text
+            # option can't), oh well
+            if (scalar(@{$conf->{'databases'}}) == 1) {
+                $rails_database_config = <<END;
+    adapter: postgresql
+    database: $database
+    username: $database
+    password: \${\\(pgpw('$database'))}
+    host: $params->{host}.int.ukcod.org.uk
+    port: $params->{port}
+END
+            }
+    }
+} 
 
 sub apache_graceful {
     if (-e "/usr/sbin/apache") {
