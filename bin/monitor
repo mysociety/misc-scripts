@@ -9,7 +9,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: monitor,v 1.7 2007-08-02 11:45:05 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: monitor,v 1.8 2009-11-30 12:06:19 francis Exp $';
 
 use strict;
 
@@ -38,6 +38,7 @@ use mySociety::SystemMisc qw(describe_waitval open_log print_log);
 my $testsdir = "$FindBin::Bin/../perllib/tests";
 my $interval = mySociety::Config::get('MONITOR_INTERVAL');
 my $timeout = mySociety::Config::get('MONITOR_TIMEOUT');   # in seconds, for an individual test
+my $repeats_required = mySociety::Config::get('MONITOR_REPEATS_REQUIRED');   # only flags if happens this many times in a row
 
 # minimum interval at which emails are sent out
 my $email_interval = mySociety::Config::get('MONITOR_EMAIL_INTERVAL');
@@ -256,10 +257,10 @@ while (1) {
         $failures{$_} = 0 if (!exists($r->{$_}));
     }
 
-    # remove anything which hasn't failed twice
+    # remove anything which hasn't failed a number of times
     my $second_failure_count;
     foreach (keys %failures) {
-        if ($failures{$_} < 2) {
+        if ($failures{$_} < $repeats_required) {
             delete($r->{$_});
         }
     }

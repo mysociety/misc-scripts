@@ -13,7 +13,7 @@
  * Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
  * Email: francis@mysociety.org; WWW: http://www.mysociety.org
  *
- * $Id: monitoring.conf-example,v 1.5 2007-01-23 15:19:31 francis Exp $
+ * $Id: monitoring.conf-example,v 1.6 2009-11-30 12:06:19 francis Exp $
  * 
  */
 
@@ -26,6 +26,8 @@ define('OPTION_MONITOR_INTERVAL', 300);
 define('OPTION_MONITOR_EMAIL_INTERVAL', 1200);
 // Timeout for individual tests in seconds
 define('OPTION_MONITOR_TIMEOUT', 60);
+// Number of times a test has to fail before it starts telling you
+define('OPTION_MONITOR_REPEATS_REQUIRED', 2);
 
 // PostgreSQL database for monitoring
 define('OPTION_MONITOR_PSQL_USER', 'postgres');
