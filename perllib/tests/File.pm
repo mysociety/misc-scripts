@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: File.pm,v 1.7 2009-03-25 00:02:04 root Exp $
+# $Id: File.pm,v 1.8 2009-11-30 12:00:33 francis Exp $
 #
 
 package File;
@@ -18,7 +18,7 @@ use IO::File;
 use Time::HiRes qw(time);
 
 use constant TEST_FILE_SIZE => 65536;
-use constant MAX_WRITE_TIME => 2;
+use constant MAX_WRITE_TIME => 5;
 
 sub test () {
     # Form list of directories to test from list of mounted file systems.
