@@ -1,6 +1,6 @@
 #!/usr/bin/ruby -w                                                              
 
-unless ARGV.length == 2
+unless ARGV.length == 1
   STDERR.puts <<EOUSAGE
 Usage: git-post-receive-hook-push-to-mirrors <RESPOSITORY-NAME>
 
@@ -11,7 +11,7 @@ EOUSAGE
   exit(1)
 end
 
-repository = "git@GitHub:mysociety/#{ARGV[1]}.git"
+repository = "git@GitHub:mysociety/#{ARGV[0]}.git"
 
 rev_old, rev_new, ref = STDIN.read.split(" ")
 
