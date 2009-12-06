@@ -1,0 +1,44 @@
+#!/bin/sh
+# A hook script for the "post-receive" event.
+#
+# The "post-receive" script is run after receive-pack has accepted a pack
+# and the repository has been updated.  It is passed arguments in through
+# stdin in the form
+#  <oldrev> <newrev> <refname>
+# For example:
+#  aa453216d1b3e49e7f6f98441fa56946ddcd6a20 68f7abf4e6f922807889f52bc043ecd31b79f814 refs/heads/master
+#
+# see contrib/hooks/ for an sample.
+
+set -e
+
+# For a variety of reasons we can't use tee and process substitution
+# here, e.g. those processes aren't child process, so you can't easily
+# wait for them to complete, you can't find the exit value, etc.
+# Instead save standard input to a temporary file and replay it to the
+# other commands.
+
+STDIN_CACHE=`mktemp`
+cat > $STDIN_CACHE
+
+trap "rm -f $STDIN_CACHE" EXIT
+
+# We take the repository name from the current directory - e.g. if the
+# directory is /data/git/public/whatdotheyknow.git/ then we use
+# 'whatdotheyknow' in the subject line of emails and as the basis for
+# the github repository name.
+
+REPOSITORY_NAME=$(basename $(readlink -f $(pwd)) | sed 's/\.git//')
+
+if [ x = x$REPOSITORY_NAME ]
+then
+   echo Failed to find the repository name from $(pwd)
+   echo Aborting post-receive hook.
+   exit 1
+fi
+
+A=/data/mysociety/bin/git-post-receive-hook-push-to-mirrors
+B=/data/mysociety/bin/git-post-receive-hook-email
+
+$A $REPOSITORY_NAME < $STDIN_CACHE
+$B $REPOSITORY_NAME < $STDIN_CACHE

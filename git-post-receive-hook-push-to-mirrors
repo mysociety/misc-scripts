@@ -1,0 +1,24 @@
+#!/usr/bin/ruby -w                                                              
+
+unless ARGV.length == 2
+  STDERR.puts <<EOUSAGE
+Usage: git-post-receive-hook-push-to-mirrors <RESPOSITORY-NAME>
+
+  <RESPOSITORY-NAME> is used to form the github repository URL,
+  e.g. 'whatdotheyknow' means the repository URL will be
+  'git@GitHub:mysociety/whatdotheyknow.git'.
+EOUSAGE
+  exit(1)
+end
+
+repository = "git@GitHub:mysociety/#{ARGV[1]}.git"
+
+rev_old, rev_new, ref = STDIN.read.split(" ")
+
+puts "Now pushing #{ref} to the mysociety repository on github (#{repository})"
+
+if system("git","push",repository,ref)
+  exit(0)
+else
+  exit(1)
+end
