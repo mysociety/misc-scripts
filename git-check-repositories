@@ -1,0 +1,135 @@
+#!/bin/bash
+
+# This script checks all the git repositories in /data/git/public/*.git to
+# check that they are all configured correctly.  It doesn't attempt to fix
+# things, just reports any problems it finds.
+
+GIT_VERSION=$(git --version|sed 's/^git version //')
+MINIMUM_GIT_VERSION=1.6.3.3
+EMAIL_PREFIX="[mySociety:git] "
+
+OUTPUT=$(mktemp)
+trap "rm -f $OUTPUT" EXIT
+
+function check_config {
+    KEY=$1
+    INTENDED_VALUE=$2
+    CONFIGURED_VALUE=$(git config $KEY)
+    if [ x$? != x0 ]
+    then
+        echo There was no $KEY config variable set
+        echo in the repository $d
+    elif [ -n "$INTENDED_VALUE" ] && [ x$CONFIGURED_VALUE != x$INTENDED_VALUE ]
+    then
+        echo The config value for $KEY in $d
+        echo was $CONFIGURED_VALUE when it should be $INTENDED_VALUE
+    fi
+}
+
+function test_header {
+   echo "==== $REPOSITORY_NAME === $1"
+}
+
+(
+    echo "==== Checking the version of git"
+    if dpkg --compare-versions $GIT_VERSION lt $MINIMUM_GIT_VERSION
+    then
+        echo "The version of git in PATH is too old ($GIT_VERSION) -"
+        echo It should be at least $MINIMUM_GIT_VERSION
+    fi
+
+    for d in /data/git/public/*.git
+    do
+        (
+            cd $d
+            REPOSITORY_NAME=$(basename $(readlink -f $(pwd)) | sed 's/\.git//')
+            REPOSITORY_GITHUB="git@GitHub:mysociety/${REPOSITORY_NAME}.git"
+            REPOSITORY_GIT_DAEMON="git://git.mysociety.org/${REPOSITORY_NAME}"
+
+            test_header "Checking that the repository was created --shared"
+            FIND_RESULTS=$(mktemp)
+            find $d -type d \! -perm -02010 -exec ls -ld {} \; > $FIND_RESULTS
+            if [ -s $FIND_RESULTS ]
+            then
+                echo "The following directories didn't have g+s set:"
+                cat $FIND_RESULTS
+            fi
+            test_header "Checking that group ownership is publiccvs"
+            find $d ! -group publiccvs -exec ls -ld {} \; > $FIND_RESULTS
+            if [ -s $FIND_RESULTS ]
+            then
+                echo "The following files and directories weren't group owned by publiccvs:"
+                cat $FIND_RESULTS
+            fi
+            rm -f $FIND_RESULTS
+
+            test_header "Checking that there is no working tree"
+            if [ -d $d/.git ]
+            then
+                echo "There appears to be a .git directory under ${d}"
+                echo "These repositories should have working trees."
+            fi
+
+            # FIXME: find where we should retrieve the mailing list address
+            # from, so that we don't have to store it in the public CVS
+            # repository.  For the moment just check that something is set:
+            test_header "Checking for the mailing list config"
+            check_config hooks.mailinglist
+
+            test_header "Checking for the email prefix config"
+            check_config hooks.emailprefix $EMAIL_PREFIX
+
+            test_header "Checking that git-daemon-export-ok exists"
+            if [ ! -e git-daemon-export-ok ]
+            then
+                echo "You need to touch git-daemon-export-ok in $d"
+                echo "in order to make the repository available via git-daemon"
+            fi
+
+            test_header "Checking that git daemon repository is working"
+            if ! git ls-remote $REPOSITORY_GIT_DAEMON > /dev/null
+            then
+                echo "The repository $REPOSITORY_NAME is not exported by git-daemon"
+                echo "The URL of the repository should be $REPOSITORY_GIT_DAEMON"
+            fi
+
+            test_header "Checking that github repository is working"
+            if ! git ls-remote $REPOSITORY_GITHUB > /dev/null
+            then
+               echo "There was no corresponding repository for $REPOSITORY_NAME on github"
+               echo "It should be $REPOSITORY_GITHUB"
+            fi
+
+            test_header "Checking that non-fastword merges are forbidden"
+            check_config receive.denyNonFastForwards true
+
+            # Get the current version of the post-receive hook from CVS, compare
+            # it to the installed version.
+            test_header "Checking the post-receive hook is up to date"
+            TMP_RECEIVE_HOOK=$(mktemp)
+            ( cd /data/git/public/mysociety && git show master:bin/git-post-receive-hook > $TMP_RECEIVE_HOOK )
+            if ! diff -u $TMP_RECEIVE_HOOK $d/hooks/post-receive
+            then
+                echo "$d/hooks/post-receive differed from the standard post-receive-hook"
+                echo "in version control."
+            fi
+            rm -f $TMP_RECEIVE_HOOK
+
+            test_header "Checking the master branch exists"
+            if ! git rev-parse master > /dev/null
+            then
+                echo There seemed to be no master branch in $d
+            fi
+        )
+    done ) > $OUTPUT 2>&1
+
+# If there are any lines of output that aren't empty or being with =, there
+# was an error, so report everything:
+if egrep -v '^( *$| *=)' $OUTPUT
+then
+    cat $OUTPUT
+    exit 1
+fi
+
+exit 0
+
