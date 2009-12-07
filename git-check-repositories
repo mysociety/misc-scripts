@@ -6,7 +6,7 @@
 
 GIT_VERSION=$(git --version|sed 's/^git version //')
 MINIMUM_GIT_VERSION=1.6.3.3
-EMAIL_PREFIX="[mySociety:git] "
+EMAIL_PREFIX="(git) "
 
 OUTPUT=$(mktemp)
 trap "rm -f $OUTPUT" EXIT
