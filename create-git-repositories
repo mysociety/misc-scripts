@@ -19,22 +19,19 @@ if not os.path.exists(mdir):
 def subdirectory_to_extract(d):
     return os.path.isdir(os.path.join(mdir,x)) and not re.search('^\.',d)
 
-entries = os.listdir("mysociety")
-
-# directories = [ x for x in entries if subdirectory_to_extract(x) ]
-directories = [ "foi","perllib", "phplib", "pylib", "shlib", "jslib", "rblib", "cpplib"] 
+#directories = [ "perllib", "phplib", "pylib", "shlib", "jslib", "rblib", "cpplib"] 
+directories = [ "ycml" ] 
 directory_map = {}
-
 for d in directories:
     directory_map[d] = d
 
 # We might want to overwrite a few of these names when creating
 # repositories:
 
-directory_map["foi"] = "whatdotheyknow"
-#directory_map["bci"] = "fms"
-#directory_map["fyr"] = "wtt"
-#directory_map["ycml"] = "hfymp"
+#directory_map["foi"] = "whatdotheyknow"
+#directory_map["bci"] = "fixmystreet"
+#directory_map["fyr"] = "writetothem"
+directory_map["ycml"] = "hearfromyourmp"
 
 for directory in directories:
     renamed = directory_map[directory] + ".git"

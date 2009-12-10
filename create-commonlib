@@ -6,6 +6,9 @@ import sys
 import re
 
 cdir = "commonlib"
+use_existing = True
+if use_existing:
+    cdir = cdir + "-new"
 
 commonlib_directories = [ "perllib",
                           "phplib",
@@ -64,3 +67,7 @@ for d in commonlib_directories:
     verbose_call( [ "git", "read-tree", "--prefix="+d, "-u", rtb ] )
     verbose_call( [ "git", "commit", "-m", "Merge in '%s' as a subdirectory" % (d,) ] )
     verbose_call( [ "git", "pull", "-s", "subtree", remote_name, "master" ] )
+
+if use_existing:
+    pass
+
