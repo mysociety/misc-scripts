@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.107 2009-11-30 17:24:09 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.108 2009-12-10 12:54:59 francis Exp $';
 
 package main;
 
@@ -91,11 +91,13 @@ my $cvs = 0;
 my $git = 0;
 if (exists($conf->{cvs_dirs})) {
     die "must specify 'cvs_user' in vhost config" if (!exists($conf->{cvs_user}));
+    die "must not specify 'git_user' in vhost config if you have 'cvs_dirs'" if (exists($conf->{git_user}));
     $vcspath = "mysociety";
     $cvs = 1;
 }
 if (exists($conf->{git_repository})) {
     die "must specify 'git_user' in vhost config" if (!exists($conf->{git_user}));
+    die "must not specify 'cvs_user' in vhost config if you have 'git_repository'" if (exists($conf->{cvs_user}));
     $vcspath = $conf->{git_repository};
     $git = 1;
 }
