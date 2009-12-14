@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.108 2009-12-10 12:54:59 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.109 2009-12-14 13:34:30 francis Exp $';
 
 package main;
 
@@ -631,15 +631,27 @@ sub update_conf_dir {
                 my $psql_port = mySociety::Config::get($psql_conf_prefix.'_DB_PORT', 5432);
                 my $psql_user = mySociety::Config::get($psql_conf_prefix.'_DB_USER');
 
-                die "not implemented" if $git;
-                chdir $mysociety_dir;
-                shell("cvs", "-Q", "update", "$psql_schema");
-                chdir $mysociety_bin;
-                # It isn't safe to pass the password over the command line as that can be
-                # seen by other processes, instead put it in in ~/.pgpass (see
-                # mysociety/bin/generate-pgpass). And no, PGPASSWORD isn't safer, as on
-                # some systems the environment can be seen in other processes.
-                shell("./psql-schema-compare", $mysociety_dir.'/'.$psql_schema, $conf->{'user'}, $psql_name, $psql_user, $psql_host, $psql_port);
+                if ($cvs) {
+                    chdir $mysociety_dir;
+                    shell("cvs", "-Q", "update", "$psql_schema");
+                    chdir $mysociety_bin;
+                    # It isn't safe to pass the password over the command line as that can be
+                    # seen by other processes, instead put it in in ~/.pgpass (see
+                    # mysociety/bin/generate-pgpass). And no, PGPASSWORD isn't safer, as on
+                    # some systems the environment can be seen in other processes.
+                    shell("./psql-schema-compare", $mysociety_dir.'/'.$psql_schema, $conf->{'user'}, $psql_name, $psql_user, $psql_host, $psql_port);
+                } elsif ($git) {
+                    my $tmp_psql_schema = mktemp("/tmp/deploy-vhost-psql-schema-XXXXXXXX");
+                    chdir "$vhost_dir/$vcspath";
+                    shell("git show origin/master:$psql_schema >$tmp_psql_schema");
+                    chdir $mysociety_bin;
+                    shell("./psql-schema-compare", $vhost_dir.'/'.$vcspath.'/'.$psql_schema, $conf->{'user'}, $psql_name, $psql_user, $psql_host, $psql_port);
+                    print("temp exit"); exit(1);
+                    unlink $tmp_psql_schema;
+                } else {
+                    die "Unknown version control system";
+                }
+
             }
         }
 
