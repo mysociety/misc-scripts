@@ -74,7 +74,7 @@ su $PARAM_UNIX_USER -c "$PGDUMP --schema-only --schema=public --encoding=UTF-8 -
 #    then
 #        warn "Schema in version control differs from that in pgsql 8.1 database, you need to update it"
 #        warn "host: $PARAM_DB_HOST port: $PARAM_DB_PORT database: $PARAM_DB_NAME; user: $PARAM_DB_USER schema: $PARAM_SCHEMA"
-#        warn "CVS schema: $VCS_SCHEMA_FILE; current schema: $CURRENT_SCHEMA_FILE"
+#        warn "new schema: $VCS_SCHEMA_FILE; current schema: $CURRENT_SCHEMA_FILE"
 #        exit 1
 #    fi
 #else
@@ -92,8 +92,8 @@ su $PARAM_UNIX_USER -c "$PGDUMP --schema-only --schema=public --encoding=UTF-8 -
     then
         warn "Schema in version control differs from that in pgsql database, you need to update it"
         warn "host: $PARAM_DB_HOST port: $PARAM_DB_PORT database: $PARAM_DB_NAME; user: $PARAM_DB_USER schema: $PARAM_SCHEMA"
-        warn "CVS sorted: $VCS_SCHEMA_FILE.sorted; current sorted: $CURRENT_SCHEMA_FILE.sorted"
-        warn "CVS schema: $VCS_SCHEMA_FILE; current schema: $CURRENT_SCHEMA_FILE"
+        warn "new sorted: $VCS_SCHEMA_FILE.sorted; current sorted: $CURRENT_SCHEMA_FILE.sorted"
+        warn "new schema: $VCS_SCHEMA_FILE; current schema: $CURRENT_SCHEMA_FILE"
         exit 1
     fi
 #fi
