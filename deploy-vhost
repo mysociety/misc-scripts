@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.110 2009-12-14 13:54:04 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.111 2009-12-14 16:08:07 francis Exp $';
 
 package main;
 
@@ -98,6 +98,7 @@ if (exists($conf->{cvs_dirs})) {
 if (exists($conf->{git_repository})) {
     die "must specify 'git_user' in vhost config" if (!exists($conf->{git_user}));
     die "must not specify 'cvs_user' in vhost config if you have 'git_repository'" if (exists($conf->{cvs_user}));
+    die "can't have blank 'git_user', use 'anon' for anonymous" if ($conf->{git_user} eq '');
     $vcspath = $conf->{git_repository};
     $git = 1;
 }
@@ -164,9 +165,7 @@ if ($cvs) {
 } elsif ($git) {
     # Initial clone, for git repository that don't exist
     my $git_url_base;
-    if ($conf->{'git_user'} eq "") {
-        $git_url_base = "ssh://git.mysociety.org/data/git/public/";
-    } elsif ($conf->{'git_user'} eq 'anon') {
+    if ($conf->{'git_user'} eq 'anon') {
         $git_url_base = "git://git.mysociety.org/"
     } else {
         $git_url_base = "ssh://" . $conf->{'git_user'} . "\@git.mysociety.org/data/git/public/";
@@ -394,18 +393,15 @@ sub make_git_repository {
    my $d = "$vhost_dir/$git_repository/.git";
    my $git_url = "$git_url_base$git_repository.git";
    if (! -d $d) {
-       if ($git_user eq "") { 
-           shell("cd \"$vhost_dir\" && git clone $git_url");
-       } else {
-           shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir\" && git clone $git_url");
-       }
-       shell("cd \"$vhost_dir/$git_repository\" && git submodule update --init");
+       shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir\" && git clone $git_url");
+       shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir/$git_repository\" && git submodule update --init");
    } else {
        chdir("$vhost_dir/$git_repository");
        my $current_url = `git config --get remote.origin.url`;
        $current_url =~ s/\s*$//;
        die "git remote.origin.url in $d is \n\t$current_url\nwhen config says\n\t$git_url\n" if ($current_url ne $git_url);
 
+       shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir/$git_repository\" && git fetch origin"); # get new stuff so various other parts of script can compare before deploying to working directory
        if ($git_user eq 'anon') {
            shell("$mysociety_bin/git-safe-to-merge .")
        }
@@ -416,11 +412,7 @@ sub make_git_repository {
 sub update_git {
     my ($git_user, $git_repository) = @_;
     die "unexpectedly missing .git directory in update stage" if (! -d "$vhost_dir/$git_repository/.git");
-    if ($git_user eq "") {
-        shell("cd \"$vhost_dir/$git_repository\" && git merge origin/master && git submodule update && chown -R ".$conf->{'user'}.":".$conf->{'user'}." ../");
-    } else {
-        shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir/$git_repository\" && git pull && git submodule update");
-    }
+    shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir/$git_repository\" && git pull && git submodule update");
 }
 
 #####################################################################
@@ -645,7 +637,7 @@ sub update_conf_dir {
                     chdir "$vhost_dir/$vcspath";
                     shell("git show origin/master:$psql_schema >$tmp_psql_schema");
                     chdir $mysociety_bin;
-                    shell("./psql-schema-compare", $vhost_dir.'/'.$vcspath.'/'.$psql_schema, $conf->{'user'}, $psql_name, $psql_user, $psql_host, $psql_port);
+                    shell("./psql-schema-compare", $tmp_psql_schema, $conf->{'user'}, $psql_name, $psql_user, $psql_host, $psql_port);
                     unlink $tmp_psql_schema;
                 } else {
                     die "Unknown version control system";
