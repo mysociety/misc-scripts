@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.109 2009-12-14 13:34:30 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.110 2009-12-14 13:54:04 francis Exp $';
 
 package main;
 
@@ -646,7 +646,6 @@ sub update_conf_dir {
                     shell("git show origin/master:$psql_schema >$tmp_psql_schema");
                     chdir $mysociety_bin;
                     shell("./psql-schema-compare", $vhost_dir.'/'.$vcspath.'/'.$psql_schema, $conf->{'user'}, $psql_name, $psql_user, $psql_host, $psql_port);
-                    print("temp exit"); exit(1);
                     unlink $tmp_psql_schema;
                 } else {
                     die "Unknown version control system";
