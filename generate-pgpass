@@ -8,133 +8,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 # 
 
-# Who can access what databases
-my $database_permissions_main = {
-    # All-seeing power
-    'root' => ['pb', 'ycml', 'rt', 'gaze', 'dadem', 'evel', 'mapit', 'ratty', 'fyr', 'pb-interface', 'pb-livesimply', 'pb-o2', 'pb-staging', 'mswww', 'track', 'list', 'pet', 'pet-testharness', 'donate', 'news', 'bci', 'bci-emptyhomes', 'dress', 'bbcparlvid', 'ycml-cllr', 'foi', 'survey', 'hm', 'guardian-ideabank', 'sitestats', 'col', 'ratty-testharness', 'dadem-guardian', 'ratty-guardian', 'fyr-guardian'],
-     
-    # People
-    'francis' => ['fyr','pb','ycml','mapit','dadem','ratty','evel','pb-staging','ycml-staging','fyr-staging', 'track', 'pet-staging', 'pet', 'bci', 'dress', 'foi', 'col-francis'],
-    'duncan' => ['col-duncan'],
-    'matthew' => ['fyr','pb','ycml','mapit','dadem','ratty','evel','pb-staging','ycml-staging','fyr-staging', 'track', 'pet-staging', 'pet', 'bci', 'bci-emptyhomes', 'dress', 'ycml-cllr', 'bbcparlvid', 'col-matthew'],
-    'etienne' => ['pb-staging','ycml-staging', 'bbcparlvid'],
-    'timsk' => ['pb-staging', 'pb'],
-    'louise' => ['mswww-staging','mswww','news-staging', 'fyr-staging', 'donate-staging', 'news', 'fyr', 'hm-staging', 'hm', 'foi-testharness', 'foi', 'bbcparlvid', 'sitestats', 'bci-louise'],
-    'adam' => ['fyr','pb','mapit','dadem','ratty','evel','fyr-staging', 'foi'],
-    'debbi' => ['bci', 'fyr', 'ycml'],
-    'keith' => ['mswww-staging', 'bci-matthew'],
-    'skenaja' => ['foi'], # so he can do stats and stuff
-
-     # Sites
-    'pb' => ['pb','pb-staging','pb-interface'],
-    'pb-livesimply' => ['pb-livesimply'],
-    'pb-o2' => ['pb-o2'],
-    'ycml' => ['ycml','ycml-staging'],
-    'ycml-cllr' => ['ycml-cllr'],
-    'fyr' => ['fyr','fyr-staging'],
-    'pet' => ['pet','pet-staging'],
-    'dademcron' => ['fyr', 'fyr-staging', 'rt'],
-    'pet-testharness' => ['pet-testharness'],
-    'mswww' => ['mswww'],
-    'mswww-staging' => ['mswww-staging'],
-    'mssecure' => ['donate'],
-    'bci' => ['bci'],
-    'bci-emptyhomes' => ['bci-emptyhomes'],
-    'bci-cities' => ['bci'],
-    'bbcparlvid' => ['bbcparlvid'],
-    'foi' => ['foi'],
-    'survey' => ['survey'],
-    'hm' => ['hm'],
-    'hm-staging' => ['hm-staging'],
-    'ideabank' => ['guardian-ideabank'],
-    'col' => ['col'],
-    'sitestats' => ['sitestats'],
-    
-    # Services
-    'msservices' => ['mapit','dadem','ratty','evel','news','track','gaze'],
-    'msservices-testharness' => ['mapit-testharness','dadem-testharness','ratty-testharness','evel-testharness','news-testharness'],
-};
-
-my $database_permissions_balti = {
-    # All-seeing power
-    'root' => [],
-     
-    # People
-    'matthew' => ['bci-matthew', 'pet-matthew', 'pb-staging', 'hfymp-matthew'],
-    'louise' => ['ratty-testharness','fyr-testharness','news-testharness', 'hm-testharness', 'bci-louise'],
-    'francis' => ['foi-francis'],
-    'timsk' => ['pb-staging', 'pb'],
-
-    # Sites
-    'ycml-testharness' => ['ycml-testharness'],
-    'pb-testharness' => ['pb-testharness'],
-    'pet-testharness' => ['pet-testharness'],
-    'pb-livesimply' => ['pb-livesimply'],
-    'pet' => ['pet','pet-staging'],
-    'fyrharness' => ['fyr-testharness'],
-    'hm-testharness' => ['hm-testharness'],
-
-};
-
-my $database_permissions_steak = {
-    # All-seeing power
-    'root' => ['pet'],
-     
-    # Sites
-    'pet' => ['pet'],
-    'pet-testharness' => ['pet-testharness'],
-    'pet-standby' => ['pet-standby'],
-};
-
-my $database_permissions_whisky_water_peas = {
-    # All-seeing power
-    'root' => ['pb', 'ycml', 'rt', 'gaze', 'dadem', 'evel', 'mapit', 'ratty', 'fyr', 'pb-interface', 'pb-livesimply', 'pb-o2', 'pb-staging', 'mswww', 'track', 'list', 'pet', 'pet-testharness', 'donate', 'news', 'bci', 'bci-emptyhomes', 'dress', 'bbcparlvid', 'ycml-cllr', 'foi', 'survey', 'hm', 'guardian-ideabank', 'sitestats', 'col', 'survey-testharness', 'dadem-guardian', 'ratty-guardian', 'fyr-guardian'],
-     
-    # People
-    'debbi' => ['fyr'],
-    'louise' => ['fyr-louise', 'bci-louise'],
-    'timsk' => ['pb'],
-
-    # Sites
-    'pet' => ['pet'],
-    'msservices' => ['gaze'],
-    'fyr' => ['fyr'],
-    'fyrharness' => ['fyr-testharness'],
-    'bci-testharness' => ['bci-testharness'],
-    'survey-testharness' => ['survey-testharness'],
-    'gc' => ['cities_development'],
-    'ycml-cllr' => ['ycml-cllr'],
-    'pb' => ['pb','pb-staging','pb-interface'],
-
-    'guardian' => ['dadem-guardian', 'ratty-guardian', 'mapit', 'fyr-guardian'],
-};
-
-my $database_permissions_hotpot = {
-    # All-seeing power
-    'root' => [],
-     
-    # Sites
-    'fyr' => ['fyr'],
-    'guardian' => ['fyr-guardian'],
-};
-
-my $database_permissions;
-my $server = (uname())[1];
-if ($server eq 'bitter' || $server eq 'tea' || $server eq 'sponge' || $server eq 'sandwich' || $server eq 'cake' || $server eq 'pudding' || $server eq 'marmite' || $server eq 'stilton') {
-	$database_permissions = $database_permissions_main;
-} elsif ($server eq 'balti') {
-	$database_permissions = $database_permissions_balti;
-} elsif ($server eq 'whisky' || $server eq 'peas') {
-	$database_permissions = $database_permissions_whisky_water_peas;
-} elsif ($server eq 'steak' || $server eq 'water') {
-	$database_permissions = $database_permissions_steak;
-} elsif ($server eq 'hotpot') {
-	$database_permissions = $database_permissions_hotpot;
-} else {
-	die "generate-pgpass not configured for server $server";
-}
-
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.133 2009-12-14 13:11:30 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.134 2009-12-14 15:12:14 matthew Exp $';
 
 use strict;
 require 5.8.0;
@@ -145,7 +19,76 @@ use POSIX;
 
 use mySociety::TempFiles;
 
-foreach my $user (keys %$database_permissions) {
+my $servers_dir = "$FindBin::Bin/../../servers";
+require "$servers_dir/vhosts.pl";
+
+our ($vhosts, $sites, $databases);
+
+# Permissions above the automatic ones, e.g. for people to have access to live
+# databases, or for services that aren't set up as standard.
+my %extra_perms = (
+    'marmite' => {
+        'francis' => ['foi'],
+        'louise' => ['foi'],
+        'adam' => ['foi'],
+        'skenaja' => ['foi'], # so he can do stats and stuff
+    },
+    'sandwich' => {
+        'louise' => ['hm-staging', 'hm', 'foi-testharness'],
+    },
+    'pudding' => {
+        'louise' => ['sitestats'],
+    },
+    'cake' => {
+        'francis' => ['ycml','mapit','dadem','ratty','evel','bci', 'dress'],
+        'matthew' => ['ycml','mapit','dadem','ratty','evel','bci', 'bci-emptyhomes', 'dress', 'bbcparlvid'],
+        'etienne' => ['bbcparlvid'],
+        'louise' => ['news', 'bbcparlvid'],
+        'adam' => ['mapit','dadem','ratty','evel'],
+        'debbi' => ['bci', 'ycml'],
+        # Sites
+        'dademcron' => ['fyr', 'rt'],
+    },
+    'balti' => {
+        'matthew' => ['pb-staging'],
+        'louise' => ['hm-testharness'],
+    },
+    'peas' => {
+        'debbi' => ['fyr'],
+        'timsk' => ['pb'],
+        'matthew' => ['fyr', 'pb', 'ycml-cllr'],
+        'francis' => ['fyr', 'pb'],
+    },
+    'hotpot' => {
+        'fyr' => ['fyr'],
+        'guardian' => ['fyr-guardian'],
+    }
+);
+
+my %perms;
+foreach my $host (keys %extra_perms) {
+    foreach my $user (keys %{$extra_perms{$host}}) {
+        foreach (@{$extra_perms{$host}{$user}}) {
+            $perms{$host}{$user}{$_} = 1;
+            $perms{$host}{'root'}{$_} = 1;
+        }
+    }
+}
+
+foreach (values %$vhosts) {
+    next unless $_->{databases};
+    my $user = $_->{user} || $sites->{$_->{site}}->{user};
+    foreach (@{$_->{databases}}) {
+        $perms{$databases->{$_}{host}}{$user}{$_} = 1;
+        $perms{$databases->{$_}{host}}{'root'}{$_} = 1;
+    }
+}
+
+my $server = (uname())[1];
+my $database_permissions = $perms{$server};
+die "generate-pgpass not configured for server $server" unless $database_permissions;
+
+foreach my $user (sort keys %$database_permissions) {
     my @x = getpwnam($user) or die "$user: getpwnam: $!";
     my ($user_login, $user_pass, $user_uid, $user_gid) = @x;
     my $user_home = $x[7];
@@ -154,7 +97,7 @@ foreach my $user (keys %$database_permissions) {
     $tmph->print("# DO NOT EDIT - edit and rerun generate-pgpass instead\n");
 
     my $databases = $database_permissions->{$user};
-    foreach my $database (@$databases) {
+    foreach my $database (sort keys %$databases) {
         my $password = `$FindBin::Bin/pgpw $database`;
         chomp $password;
         $tmph->print("*:*:$database:$database:$password\n") || throw Oops("$tmpn: write: $!");
