@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.111 2009-12-14 16:08:07 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.112 2009-12-17 21:56:18 francis Exp $';
 
 package main;
 
@@ -403,7 +403,7 @@ sub make_git_repository {
 
        shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir/$git_repository\" && git fetch origin"); # get new stuff so various other parts of script can compare before deploying to working directory
        if ($git_user eq 'anon') {
-           shell("$mysociety_bin/git-safe-to-merge .")
+           shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir/$git_repository\" && $mysociety_bin/git-safe-to-merge .")
        }
    }
    chdir($vhost_dir);
