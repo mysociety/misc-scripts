@@ -6,7 +6,7 @@
 # Copyright (c) 2004 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: backup-stuff,v 1.34 2009-11-03 18:09:52 duncan Exp $
+# $Id: backup-stuff,v 1.35 2009-12-17 16:24:15 francis Exp $
 #
 
 set -e
@@ -85,7 +85,7 @@ for thing in /data/backups/dailyfiles /data/backups/dailydb; do
 
     # make copy of previous backup to speed things up
     if [ x$latest != x ] ; then
-        cp -al $latest $target
+        cp -a $latest $target
     else
         mkdir $target
     fi
