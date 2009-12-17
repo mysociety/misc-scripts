@@ -13,6 +13,8 @@ else
     exit $RESULT
 fi
 
+LOG=`mktemp`
+
 if git cvsimport -o master -C /data/git/migrating/mysociety/ -d :local:/data/cvs/public/ mysociety > $LOG 2>&1
 then
     rm $LOG
