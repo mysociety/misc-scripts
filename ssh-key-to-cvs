@@ -1,8 +1,22 @@
 #!/bin/bash
+# 
+# If run on CVS_SERVER, sets up public key access to BACKUP_CVS_SERVER.
+# If run elsewhere, sets up public key access to cvs.mysociety.org
+
+CVS_SERVER=cake # Probably could be read from vhosts.pl
+BACKUP_CVS_SERVER=peas # Hardcoded in CVS post-commit
 
 if [ ! -e ~/.ssh/id_dsa.pub ]
 then
     ssh-keygen -t dsa
 fi
-cat ~/.ssh/id_dsa.pub | ssh cvs.mysociety.org "mkdir -p ~/.ssh; cat >>~/.ssh/authorized_keys"
+
+if [ `hostname` = $CVS_SERVER ]
+then
+    TO=$BACKUP_CVS_SERVER.ukcod.org.uk
+else
+    TO=cvs.mysociety.org
+fi
+
+cat ~/.ssh/id_dsa.pub | ssh $TO "mkdir -p ~/.ssh; cat >>~/.ssh/authorized_keys"
 
