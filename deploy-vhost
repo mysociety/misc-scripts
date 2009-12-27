@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.112 2009-12-17 21:56:18 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.113 2009-12-27 12:58:48 francis Exp $';
 
 package main;
 
@@ -191,7 +191,6 @@ if (defined $conf->{'databases'}) {
         db_conf($params, $database);
     }
 }
-
 # Make some settings
 $vhost =~ m/^([^.]+)\.(.*)$/;
 my $vhost_first = $1;
@@ -705,7 +704,6 @@ sub update_site {
     } else {
         die "Unknown version control system";
     }
-
     # Run any extra executables
     foreach my $exec_extra (@{$conf->{'exec_extras'}}) {
         chdir("$vhost_dir/$vcspath");
