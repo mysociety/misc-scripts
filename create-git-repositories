@@ -20,7 +20,7 @@ def subdirectory_to_extract(d):
     return os.path.isdir(os.path.join(mdir,x)) and not re.search('^\.',d)
 
 #directories = [ "perllib", "phplib", "pylib", "shlib", "jslib", "rblib", "cpplib"] 
-directories = [ "ycml" ] 
+directories = [ "iso" ] 
 directory_map = {}
 for d in directories:
     directory_map[d] = d
@@ -31,7 +31,8 @@ for d in directories:
 #directory_map["foi"] = "whatdotheyknow"
 #directory_map["bci"] = "fixmystreet"
 #directory_map["fyr"] = "writetothem"
-directory_map["ycml"] = "hearfromyourmp"
+#directory_map["ycml"] = "hearfromyourmp"
+directory_map["iso"] = "mapumental"
 
 for directory in directories:
     renamed = directory_map[directory] + ".git"
