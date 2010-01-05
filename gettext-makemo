@@ -2,13 +2,23 @@
 #
 # bin/gettext-makemo
 # Convert all .po files of translations into .mo files
-#
+# --help - show usage
 # --verbose - show status of all translations
 #
 # Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: gettext-makemo,v 1.13 2008-05-15 16:09:53 matthew Exp $
+# $Id: gettext-makemo,v 1.14 2010-01-05 12:32:57 louise Exp $
+
+# don't expand a glob with no matches to itself
+shopt -s nullglob
+
+if [ $1 = '--help' ]
+then 
+    echo "Usage: gettext-makemo [--help] [--verbose|--quiet] [domain]"
+    echo "If no domain is specified, all files will be converted"
+    exit 0
+fi 
 
 if [ -e ../../locale ]
 then
@@ -32,26 +42,33 @@ then
     MSGFMT_PARAMS=""
 fi
 
-# count number of times Subject: appears in original, times two
-# XXX this needs fixing to do it for each translation domain separately
-SUBJECT_COUNT_ORIG=`grep '^"Subject: ' locale/PledgeBank.po locale/PledgeBank.po | egrep -v "^#" | wc --lines`
-
 for X in locale/*.UTF-8
 do
     if [ -d $X ]
     then
         cd $X/LC_MESSAGES
-
+        ALL_PO="*.po"
+        if [ "$2" != "" ]
+        then         
+            ALL_PO="$2*.po"
+        fi
         # Convert all .po files to .mo files
-        for PO in *.po
+        for PO in $ALL_PO
         do
+            # count number of times Subject: appears in original, times two
+            ORIG="../../$PO"
+            SUBJECT_COUNT_ORIG=0
+            if [ -f $ORIG ]
+            then
+                SUBJECT_COUNT_ORIG=`grep '^"Subject: ' "../../$PO" "../../$PO" | egrep -v "^#" | wc --lines`
+            fi
             MO=${PO/.po/.mo}
             [ "$1" != "--quiet" ] && echo -n "$X $PO: " 
             msgfmt -c $MSGFMT_PARAMS -o $MO $PO
             SUBJECT_COUNT=`grep '^"Subject: ' $PO  | egrep -v "^#" | wc --lines`
-            if [ "$SUBJECT_COUNT" != "$SUBJECT_COUNT_ORIG" ] 
+            if [ "$SUBJECT_COUNT" != "$SUBJECT_COUNT_ORIG" ] && [ "$SUBJECT_COUNT_ORIG" != 0 ] 
             then
-                echo "WARNING: Email 'Subject: ' lines have probably been translated in $X' (got $SUBJECT_COUNT, $SUBJECT_COUNT_ORIG expected)"
+                echo "WARNING: Email 'Subject: ' lines have probably been translated in $X' (got $SUBJECT_COUNT, $SUBJECT_COUNT_ORIG expected from locale/$PO)"
             fi
             cat $PO | ../../../bin/gettext-custom-validations
         done
