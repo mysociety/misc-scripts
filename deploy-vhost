@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.113 2009-12-27 12:58:48 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.114 2010-01-07 13:58:22 louise Exp $';
 
 package main;
 
@@ -705,10 +705,18 @@ sub update_site {
         die "Unknown version control system";
     }
     # Run any extra executables
-    foreach my $exec_extra (@{$conf->{'exec_extras'}}) {
-        chdir("$vhost_dir/$vcspath");
-        `pwd`;
-        shell("su", $conf->{'user'}, "-c $exec_extra");
+    if (exists($conf->{'exec_extras'})) {
+        my %exec_extras = %{$conf->{'exec_extras'}}; 
+        foreach my $exec_extra (@{$exec_extras{'user'}}) {
+            chdir("$vhost_dir/$vcspath");
+            `pwd`;
+            shell("su", $conf->{'user'}, "-c $exec_extra");
+        }
+        foreach my $exec_extra (@{$exec_extras{'root'}}) {
+            chdir("$vhost_dir/$vcspath");
+            `pwd`;
+            shell("$exec_extra");
+        }
     }
 
     # Prompt apache to reread files, on machines which have apache
