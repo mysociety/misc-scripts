@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.115 2010-01-13 15:16:30 duncan Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.116 2010-01-13 15:27:34 duncan Exp $';
 
 package main;
 
@@ -272,7 +272,7 @@ foreach my $daemon (keys %{$conf->{'daemons'}}) {
 	# DWP: Why do we need this update? Aren't we updating the whole repo anyway?
 	shell("cvs", "-Q", "update", "$daemon_mugly_file");
     } elsif ($git) {
-	my $git_repo_path = $vhost_dir . '/' . $git_repository . '/';
+	my $git_repo_path = $vhost_dir . '/' . $conf->{git_repository} . '/';
 	my $daemon_mugly_path = $git_repo_path . '/' . $conf->{conf_dir}->[0] . '/';
 
 	# DWP: If we need it, should update the git repository
