@@ -9,64 +9,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 # 
 
-use DBI;
-
-# Who can access what databases - only one database per user for MySQL
-my $database_permissions_all = {
-    # All-seeing power
-    'root' => ['root'], # see hack below that sets default database to mysql, although user root
-     
-    # People
-    'angie' => ['twfy_staging'],
-    'francis' => ['twfy_staging'],
-    'matthew' => ['twfy_staging'],
-    'louise' => ['twfy_staging'],
-
-    # Sites
-    'twfy-live' => ['twfy'],
-    'twfy-staging' => ['twfy_staging'],
-    'piwik' => ['piwik'],
-    'twfy-testharness' => ['twfy-testharness']
-
-    # Services
-};
-
-my $database_permissions_whisky = {
-     'root' => ['root'],
-     'harry' => ['scenic'],
-     
-     'scenic' => ['scenic']
-};
-
-my $database_permissions_peas = {
-    'root' => ['root'],
-     
-    # People
-    'louise' => ['twfy-testharness'],
-    'matthew' => ['twfy'],
-    'debbi' => ['twfy'],
-    'richard' => ['gny'],
-     
-    # Sites
-    'twfy-testharness' => ['twfy-testharness'],
-    'twfy-live' => ['twfy'],
-    'gc' => ['streetwire'],
-    'gny' => ['gny']
-};
-
-my $database_permissions;
-my $server = (uname())[1];
-if ($server eq 'sponge' || $server eq 'sandwich' || $server eq 'cake' || $server eq 'pudding') {
-	$database_permissions = $database_permissions_all;
-} elsif ($server eq 'whisky') {
-	$database_permissions = $database_permissions_whisky;
-} elsif ($server eq 'peas') {
-	$database_permissions = $database_permissions_peas;
-} else {
-	die "generate-mypass not configured for server $server";
-}
-
-my $rcsid = ''; $rcsid .= '$Id: generate-mypass,v 1.19 2009-12-27 12:57:57 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-mypass,v 1.20 2010-01-15 14:22:52 matthew Exp $';
 
 use strict;
 require 5.8.0;
@@ -74,8 +17,53 @@ require 5.8.0;
 use FindBin;
 use lib "$FindBin::Bin/../perllib";
 use POSIX;
+use DBI;
 
 use mySociety::TempFiles;
+
+require "/data/servers/vhosts.pl";
+
+our ($vhosts, $sites, $databases);
+
+# Who can access what databases, on top of ones automatically generated from vhosts.pl
+# Only one database per user for MySQL
+my %extra_perms = (
+    whisky => {
+        harry => 'scenic',
+    },
+    peas => {
+        louise => 'twfy-testharness',
+        matthew => 'twfy',
+        debbi => 'twfy',
+        richard => 'gny',
+    },
+);
+
+my %perms;
+foreach my $host (keys %extra_perms) {
+    foreach my $user (keys %{$extra_perms{$host}}) {
+        my $db = $extra_perms{$host}{$user};
+        die "$user already has DB $perms{$host}{$user} on $host" if $perms{$host}{$user};
+        $perms{$host}{$user} = $db;
+        $perms{$host}{'root'} = 'root';
+    }
+}
+
+foreach (values %$vhosts) {
+    next unless $_->{databases};
+    my $user = $_->{user} || $sites->{$_->{site}}->{user};
+    foreach (@{$_->{databases}}) {
+        next unless $databases->{$_}{type} eq 'mysql';
+        my $host = $databases->{$_}{host};
+        die "$user already has DB $perms{$host}{$user} on $host" if $perms{$host}{$user};
+        $perms{$host}{$user} = $_;
+        $perms{$host}{'root'} = 'root';
+    }
+}
+
+my $server = (uname())[1];
+my $database_permissions = $perms{$server};
+die "generate-mypass not configured for server $server" unless $database_permissions;
 
 foreach my $user (keys %$database_permissions) {
     my @x = getpwnam($user) or die "$user: getpwnam: $!";
@@ -85,25 +73,20 @@ foreach my $user (keys %$database_permissions) {
     my ($tmpn, $tmph) = mySociety::TempFiles::create_file_to_replace("$user_home/.my.cnf") or die "open: $!";
     $tmph->print("# DO NOT EDIT - edit and rerun generate-mypass instead\n");
 
-    my $databases = $database_permissions->{$user};
-    if (scalar(@$databases) > 1) {
-        die "only one database per user supported in .my.cnf"
+    my $database = $database_permissions->{$user};
+    my $user = $database;
+    if ($database eq "root") {
+        $database = "mysql";
     }
-    foreach my $database (@$databases) {
-        my $user = $database;
-        if ($database eq "root") {
-            $database = "mysql";
-        }
-        my $password = `$FindBin::Bin/pgpw $user`;
-        chomp $password;
-        my $text = <<END;
+    my $password = `$FindBin::Bin/pgpw $user`;
+    chomp $password;
+    my $text = <<END;
 [client]
 user = $user
 password = $password
 ; database = $database ; this upsets lots of the MySQL commands e.g. mysqladmin, mysqldump
 END
-        $tmph->print($text) || throw Oops("$tmpn: write: $!"); 
-    }
+    $tmph->print($text) || throw Oops("$tmpn: write: $!"); 
     $tmph->close();
 
     chmod 0400, $tmpn;
