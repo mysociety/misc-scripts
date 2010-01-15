@@ -9,7 +9,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 # 
 
-my $rcsid = ''; $rcsid .= '$Id: generate-mypass,v 1.20 2010-01-15 14:22:52 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-mypass,v 1.21 2010-01-15 15:26:11 matthew Exp $';
 
 use strict;
 require 5.8.0;
@@ -27,7 +27,7 @@ our ($vhosts, $sites, $databases);
 
 # Who can access what databases, on top of ones automatically generated from vhosts.pl
 # Only one database per user for MySQL
-my %extra_perms = (
+my %perms = (
     whisky => {
         harry => 'scenic',
     },
@@ -39,25 +39,22 @@ my %extra_perms = (
     },
 );
 
-my %perms;
-foreach my $host (keys %extra_perms) {
-    foreach my $user (keys %{$extra_perms{$host}}) {
-        my $db = $extra_perms{$host}{$user};
-        die "$user already has DB $perms{$host}{$user} on $host" if $perms{$host}{$user};
-        $perms{$host}{$user} = $db;
-        $perms{$host}{'root'} = 'root';
-    }
-}
-
 foreach (values %$vhosts) {
     next unless $_->{databases};
     my $user = $_->{user} || $sites->{$_->{site}}->{user};
+    my $hosts = $_->{servers}; # Want access from the servers the site is deployed on
     foreach (@{$_->{databases}}) {
         next unless $databases->{$_}{type} eq 'mysql';
-        my $host = $databases->{$_}{host};
-        die "$user already has DB $perms{$host}{$user} on $host" if $perms{$host}{$user};
-        $perms{$host}{$user} = $_;
-        $perms{$host}{'root'} = 'root';
+        push @$hosts, $databases->{$_}{host}; # And the server the database is on
+        foreach my $host (@$hosts) {
+            die "$user already has DB $perms{$host}{$user} on $host" if $perms{$host}{$user} && $perms{$host}{$user} ne $_;
+            if ($host eq $databases->{$_}{host}) {
+                $perms{$host}{$user} = $_;
+            } else {
+                $perms{$host}{$user} = [ $_, $host ];
+            }
+            $perms{$host}{'root'} = 'root';
+        }
     }
 }
 
@@ -74,6 +71,11 @@ foreach my $user (keys %$database_permissions) {
     $tmph->print("# DO NOT EDIT - edit and rerun generate-mypass instead\n");
 
     my $database = $database_permissions->{$user};
+    my $host;
+    if (ref $database) {
+        $host = $database->[1] . '.int.ukcod.org.uk';
+        $database = $database->[0];
+    }
     my $user = $database;
     if ($database eq "root") {
         $database = "mysql";
@@ -86,6 +88,7 @@ user = $user
 password = $password
 ; database = $database ; this upsets lots of the MySQL commands e.g. mysqladmin, mysqldump
 END
+    $text .= "host = $host\n" if $host;
     $tmph->print($text) || throw Oops("$tmpn: write: $!"); 
     $tmph->close();
 
