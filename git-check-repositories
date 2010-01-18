@@ -132,7 +132,6 @@ function check_no_github {
     DIFF=`echo -e "$NO_REPO_ERROR\n$GIT_HANG_ERROR" | diff $TMP_ERR -`
     if [ -n "$DIFF" ]
     then
-       echo $DIFF
        echo "A request for private repository $REPOSITORY_NAME on github was not immediately hung up on"
     fi
     rm -f $TMP_ERR    
