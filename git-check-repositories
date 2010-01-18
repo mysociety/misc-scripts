@@ -7,6 +7,7 @@
 GIT_VERSION=$(git --version|sed 's/^git version //')
 MINIMUM_GIT_VERSION=1.6.3.3
 EMAIL_PREFIX="(git) "
+GIT_HANG_ERROR="fatal: The remote end hung up unexpectedly"
 
 OUTPUT=$(mktemp)
 trap "rm -f $OUTPUT" EXIT
@@ -43,7 +44,7 @@ function check_shared_flag {
 }
 
 function check_group_ownership {
-    GROUP = $1
+    GROUP=$1
     test_header "Checking that group ownership is $GROUP"
     FIND_RESULTS=$(mktemp)
     find $d ! -group $GROUP -exec ls -ld {} \; > $FIND_RESULTS
@@ -89,12 +90,16 @@ function check_no_anonymous_access {
     fi
     
     test_header "Checking there is no git daemon repository"
-    if git ls-remote $REPOSITORY_GIT_DAEMON > /dev/null
+    TMP_ERR=$(mktemp)
+    git ls-remote $REPOSITORY_GIT_DAEMON > /dev/null 2> $TMP_ERR
+
+    # Produce output for anything but a hang up  from the git daemon repository
+    DIFF=`echo "$GIT_HANG_ERROR" | diff $TMP_ERR -`
+    if [ -n "$DIFF" ]
     then
-        echo "The private repository $REPOSITORY_NAME is being exported by git-daemon"
-        echo "The URL of the repository is $REPOSITORY_GIT_DAEMON"
+        echo "The git daemon repository $REPOSITORY_NAME did not hang up immediately"
     fi
-    
+    rm -f $TMP_ERR
 }
 
 function check_email_config_vars {
@@ -119,10 +124,18 @@ function check_github {
 
 function check_no_github {
     test_header "Checking that there is no github repository of a private repository"
-    if git ls-remote $REPOSITORY_GITHUB > /dev/null
+    TMP_ERR=$(mktemp)
+    git ls-remote $REPOSITORY_GITHUB > /dev/null 2> $TMP_ERR
+ 
+    # Produce output for anything but a hang up from the github repository
+    NO_REPO_ERROR="ERROR: mysociety/$REPOSITORY_NAME doesn't exist yet. Did you enter it correctly?"
+    DIFF=`echo -e "$NO_REPO_ERROR\n$GIT_HANG_ERROR" | diff $TMP_ERR -`
+    if [ -n "$DIFF" ]
     then
-       echo "There was a repository for private repository $REPOSITORY_NAME on github"
-    fi    
+       echo $DIFF
+       echo "A request for private repository $REPOSITORY_NAME on github was not immediately hung up on"
+    fi
+    rm -f $TMP_ERR    
 }
 
 function check_no_non_fastword_merges {
@@ -133,7 +146,7 @@ function check_no_non_fastword_merges {
 function check_post_receive_hook {
     # Get the current version of the post-receive hook from CVS, compare
     # it to the installed version.
-    HOOK_FILE = $1
+    HOOK_FILE=$1
     test_header "Checking the post-receive hook is up to date"
     TMP_RECEIVE_HOOK=$(mktemp)
     ( cd /data/git/public/mysociety && git show master:bin/$HOOK_FILE > $TMP_RECEIVE_HOOK )
@@ -204,7 +217,7 @@ function check_master_branch_exists {
             
             check_no_working_tree
             
-            check_email_config_vars
+#            check_email_config_vars
             
             check_no_anonymous_access
             
@@ -212,12 +225,12 @@ function check_master_branch_exists {
             
             check_no_non_fastword_merges
             
-            check_post_receive_hook "git-post-receive-hook"
+#            check_post_receive_hook "git-post-receive-hook"
             
             check_master_branch_exists
             
         )
-    done ) > $OUTPUT 2>&1
+    done  ) > $OUTPUT 2>&1
 
 
 
