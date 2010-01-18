@@ -1,0 +1,29 @@
+#!/bin/bash
+
+LOG=`mktemp`
+
+if git cvsimport -o master -C /data/git/private/mysociety/ -d :local:/data/cvs/private/ mysociety > $LOG 2>&1
+then
+    rm $LOG
+else
+    RESULT=$?
+    echo "git cvsimport failed:"
+    cat $LOG
+    rm $LOG
+    exit $RESULT
+fi
+chmod -R o-r /data/git/private
+
+LOG=`mktemp`
+
+if git cvsimport -o master -C /data/git/private_migrating/mysociety/ -d :local:/data/cvs/private/ mysociety > $LOG 2>&1
+then
+    rm $LOG
+else
+    RESULT=$?
+    echo "git cvsimport failed:"
+    cat $LOG
+    rm $LOG
+    exit $RESULT
+fi  
+chmod -R o-r /data/git/private_migrating
