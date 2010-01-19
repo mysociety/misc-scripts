@@ -55,7 +55,7 @@ do
     # Now check that the submodule version in origin/master
     # is actually available in the submodule:
     cd $S
-    git show --quiet $V > /dev/null 2> /dev/null || die "Error: Submodule '$S' commit '$V' not found in `pwd` (submodule hasn't been pushed, perhaps?)"
+    git show $V > /dev/null 2> /dev/null || die "Error: Submodule '$S' commit '$V' not found in `pwd` (submodule hasn't been pushed, perhaps?)"
     cd -
 done
 
