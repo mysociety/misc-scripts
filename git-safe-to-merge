@@ -10,6 +10,8 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
+#set -x # debug
+
 FULL_SCRIPT_COMMAND=$(readlink -f $0)
 SCRIPT_COMMAND=$(basename $FULL_SCRIPT_COMMAND)
 
@@ -44,7 +46,7 @@ do
     D=$(readlink -f $S)
 
     # Get the version of the submodule that is committed in origin/master:
-    V=`git rev-parse origin/master:$s`
+    V=`git rev-parse origin/master:$S`
 
     # Recursively check that the submodule is similarly
     # safe to merge:
@@ -52,7 +54,9 @@ do
 
     # Now check that the submodule version in origin/master
     # is actually available in the submodule:
-    git show --quiet $S > /dev/null 2> /dev/null || die "Error: Submodule version not found (submodule hasn't been pushed, perhaps?)"
+    cd $S
+    git show --quiet $V > /dev/null 2> /dev/null || die "Error: Submodule '$S' commit '$V' not found in `pwd` (submodule hasn't been pushed, perhaps?)"
+    cd -
 done
 
 
