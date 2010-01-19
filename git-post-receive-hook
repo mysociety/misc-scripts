@@ -28,7 +28,9 @@ trap "rm -f $STDIN_CACHE" EXIT
 # 'whatdotheyknow' in the subject line of emails and as the basis for
 # the github repository name.
 
-REPOSITORY_NAME=$(basename $(readlink -f $(pwd)) | sed 's/\.git//')
+REPOSITORY_PATH=$(readlink -f $(pwd))
+REPOSITORY_NAME=$(basename $REPOSITORY_PATH | sed 's/\.git//')
+REPOSITORY_TYPE=$(dirname $REPOSITORY_PATH | sed 's/\/data\/git\///')
 
 if [ x = x$REPOSITORY_NAME ]
 then
@@ -37,8 +39,20 @@ then
    exit 1
 fi
 
+if [ x = x$REPOSITORY_TYPE ]
+then
+   echo "Failed to find the repository type (public/private) from $(pwd)"
+   echo Aborting post-receive hook.
+   exit 1
+fi
+
 A=/data/mysociety/bin/git-post-receive-hook-push-to-mirrors
 B=/data/mysociety/bin/git-post-receive-hook-email
 
-$A $REPOSITORY_NAME < $STDIN_CACHE
+if [ $REPOSITORY_TYPE = 'public' ] 
+then
+   $A $REPOSITORY_NAME < $STDIN_CACHE
+fi
+
 $B $REPOSITORY_NAME < $STDIN_CACHE
+
