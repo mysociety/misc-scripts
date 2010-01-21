@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.118 2010-01-21 15:20:48 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.119 2010-01-21 16:24:01 louise Exp $';
 
 package main;
 
@@ -753,7 +753,7 @@ sub update_site {
            update_git($conf->{'private_git_user'}, $private_git_repository);
            if (exists($conf->{'private_git_dirs'})){
                foreach my $private_dir (@{$conf->{'private_git_dirs'}}) {
-                   shell("ln -sf $vhost_dir/$private_git_repository/$private_dir $vhost_dir/$git_repository/$private_dir");
+                   shell("ln -snf $vhost_dir/$private_git_repository/$private_dir $vhost_dir/$git_repository/$private_dir");
                }
            }
         }
