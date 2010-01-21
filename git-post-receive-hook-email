@@ -1,5 +1,10 @@
 #!/bin/sh
 
+# HOW TO TEST CHANGES TO THIS SCRIPT
+# $ cd /data/git/public/whatdotheyknow.git
+# $ /data/mysociety/bin/git-post-receive-hook-email whatdotheyknow refs/heads/master 62ca0a8e5c6bc27ddd0a43c8ea14d9a76f3bd709 73533e9157634f67517c2f5c6b84df81aefc1ff8
+# That won't send an email, but instead show the email on stdout.
+
 # This script is /usr/share/doc/git-core/contrib/hooks/post-receive-email
 # with a small modification: taking $projectdesc on the command line.
 
@@ -213,11 +218,7 @@ generate_email_header()
 	X-Git-Oldrev: $oldrev
 	X-Git-Newrev: $newrev
 
-	This is an automated email from the git hooks/post-receive script. It was
-	generated because a ref change was pushed to the repository containing
-	the project "$projectdesc".
-
-	The $refname_type, $short_refname has been ${change_type}d
+	The $refname_type, $short_refname has been ${change_type}d on project "$projectdesc"
 	EOF
 }
 
@@ -399,9 +400,7 @@ generate_update_branch_email()
 
 	echo ""
 	if [ -z "$rewind_only" ]; then
-		echo "Those revisions listed above that are new to this repository have"
-		echo "not appeared on any other notification email; so we list those"
-		echo "revisions in full, below."
+        echo "New revisions in full:"
 
 		echo ""
 		echo $LOGBEGIN
