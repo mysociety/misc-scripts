@@ -216,7 +216,7 @@ function check_master_branch_exists {
             
             check_no_working_tree
             
-#            check_email_config_vars
+            check_email_config_vars
             
             check_no_anonymous_access
             
@@ -224,7 +224,7 @@ function check_master_branch_exists {
             
             check_no_non_fastword_merges
             
-#            check_post_receive_hook "git-post-receive-hook"
+            check_post_receive_hook "git-post-receive-hook"
             
             check_master_branch_exists
             
