@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.117 2010-01-13 16:11:04 duncan Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.118 2010-01-21 15:20:48 louise Exp $';
 
 package main;
 
@@ -171,6 +171,11 @@ if ($cvs) {
         $git_url_base = "ssh://" . $conf->{'git_user'} . "\@git.mysociety.org/data/git/public/";
     }
     make_git_repository($git_url_base, $conf->{'git_user'}, $conf->{'git_repository'});
+    if (exists($conf->{'private_git_repository'})){
+        die "must specify 'private_git_user' in vhost config" if (!exists($conf->{'private_git_user'}));
+        $git_url_base = "ssh://" . $conf->{'private_git_user'} . "\@git.mysociety.org/data/git/private/";
+        make_git_repository($git_url_base, $conf->{'private_git_user'}, $conf->{'private_git_repository'});
+    }
 } else {
     die "Unknown version control system";
 }
@@ -409,15 +414,28 @@ sub make_git_repository {
    my $d = "$vhost_dir/$git_repository/.git";
    my $git_url = "$git_url_base$git_repository.git";
    if (! -d $d) {
-       shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir\" && git clone $git_url");
-       shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir/$git_repository\" && git submodule update --init");
+       my $clone_command = "cd \"$vhost_dir\" && git clone $git_url";
+       my $submodule_command = "cd \"$vhost_dir/$git_repository\" && git submodule update --init";
+       if ($git_user eq 'root') {
+           shell($clone_command);
+           shell("$submodule_command && chown -R ".$conf->{'user'}.":".$conf->{'user'}." ../");
+       } else {
+           shell("su", "-", $conf->{'user'}, "-c $clone_command");
+           shell("su", "-", $conf->{'user'}, "-c $submodule_command");
+       }
    } else {
        chdir("$vhost_dir/$git_repository");
        my $current_url = `git config --get remote.origin.url`;
        $current_url =~ s/\s*$//;
        die "git remote.origin.url in $d is \n\t$current_url\nwhen config says\n\t$git_url\n" if ($current_url ne $git_url);
 
-       shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir/$git_repository\" && git fetch origin"); # get new stuff so various other parts of script can compare before deploying to working directory
+       # get new stuff so various other parts of script can compare before deploying to working directory
+       my $fetch_command = "cd \"$vhost_dir/$git_repository\" && git fetch origin";
+       if ($git_user eq 'root') {
+           shell("$fetch_command && chown -R ".$conf->{'user'}.":".$conf->{'user'}." ../");
+       } else {
+           shell("su", "-", $conf->{'user'}, "-c $fetch_command"); 
+       }
        if ($git_user eq 'anon') {
            shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir/$git_repository\" && $mysociety_bin/git-safe-to-merge .")
        }
@@ -428,7 +446,12 @@ sub make_git_repository {
 sub update_git {
     my ($git_user, $git_repository) = @_;
     die "unexpectedly missing .git directory in update stage" if (! -d "$vhost_dir/$git_repository/.git");
-    shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir/$git_repository\" && git pull && git submodule update");
+    my $update_command = "git pull && git submodule update ";
+    if ($git_user eq 'root') {
+        shell("cd \"$vhost_dir/$git_repository\" && $update_command && chown -R ".$conf->{'user'}.":".$conf->{'user'}." ../");
+    } else {
+        shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir/$git_repository\" && $update_command");
+    }
 }
 
 #####################################################################
@@ -577,7 +600,11 @@ sub update_conf_dir {
             $example_file = "$example_file_dir/$name_part-example";
         } elsif ($git) {
             $example_file = mktemp("/tmp/deploy-vhost-$name_part-example-XXXXXXXX");
-            chdir "$vhost_dir/$vcspath";
+            if ($public) { 
+                chdir "$vhost_dir/$vcspath";
+            } else {
+                chdir "$vhost_dir/" . $conf->{'private_git_repository'};
+            }
             shell("git show origin/master:$conf_dir/$name_part-example >$example_file");
         } else {
             die "Unknown version control system";
@@ -717,7 +744,19 @@ sub update_site {
         }
     } elsif ($git) {
         # Update from git
-        update_git($conf->{'git_user'}, $conf->{'git_repository'});
+        my $git_repository =  $conf->{'git_repository'};
+        update_git($conf->{'git_user'}, $git_repository);
+
+        # softlink any private dirs into the public directory structure
+        if (exists($conf->{'private_git_repository'})){
+           my $private_git_repository = $conf->{'private_git_repository'};
+           update_git($conf->{'private_git_user'}, $private_git_repository);
+           if (exists($conf->{'private_git_dirs'})){
+               foreach my $private_dir (@{$conf->{'private_git_dirs'}}) {
+                   shell("ln -sf $vhost_dir/$private_git_repository/$private_dir $vhost_dir/$git_repository/$private_dir");
+               }
+           }
+        }
     } else {
         die "Unknown version control system";
     }
