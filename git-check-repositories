@@ -157,6 +157,40 @@ function check_post_receive_hook {
     rm -f $TMP_RECEIVE_HOOK   
 }
 
+function check_repository {
+    PRIVACY=$1
+
+    if [ "$PRIVACY" != 'private' -a "$PRIVACY" != 'public' ]; then
+        echo "Internal error, PRIVACY set to $PRIVACY"
+        exit 1
+    fi
+
+    check_shared_flag
+
+    if [ "$PRIVACY" = 'private' ]; then
+        check_group_ownership 'privatecvs'
+    elif [ "$PRIVACY" = 'public' ]; then
+        check_group_ownership 'publiccvs'
+    fi
+
+    check_no_working_tree
+    check_email_config_vars
+
+    if [ "$PRIVACY" = 'private' ]
+    then
+        check_no_anonymous_access
+        check_no_github
+    elif [ "$PRIVACY" = 'public' ]
+    then
+        check_anonymous_access
+        check_github
+    fi
+
+    check_no_non_fastword_merges
+    check_post_receive_hook "git-post-receive-hook"
+    check_master_branch_exists
+}
+
 function check_master_branch_exists {
     test_header "Checking the master branch exists"
     if ! git rev-parse master > /dev/null
@@ -181,24 +215,8 @@ function check_master_branch_exists {
             REPOSITORY_NAME=$(basename $(readlink -f $(pwd)) | sed 's/\.git//')
             REPOSITORY_GITHUB="git@GitHub:mysociety/${REPOSITORY_NAME}.git"
             REPOSITORY_GIT_DAEMON="git://git.mysociety.org/${REPOSITORY_NAME}"
-
-            check_shared_flag
             
-            check_group_ownership 'publiccvs'
-
-            check_no_working_tree
-
-            check_email_config_vars
-
-            check_anonymous_access
-
-            check_github
-
-            check_no_non_fastword_merges
-            
-            check_post_receive_hook "git-post-receive-hook"
-
-            check_master_branch_exists
+            check_repository public
         )
     done
      
@@ -209,25 +227,8 @@ function check_master_branch_exists {
             REPOSITORY_NAME=$(basename $(readlink -f $(pwd)) | sed 's/\.git//')
             REPOSITORY_GITHUB="git@GitHub:mysociety/${REPOSITORY_NAME}.git"
             REPOSITORY_GIT_DAEMON="git://git.mysociety.org/${REPOSITORY_NAME}"
-            
-            check_shared_flag
-            
-            check_group_ownership 'privatecvs'
-            
-            check_no_working_tree
-            
-            check_email_config_vars
-            
-            check_no_anonymous_access
-            
-            check_no_github
-            
-            check_no_non_fastword_merges
-            
-            check_post_receive_hook "git-post-receive-hook"
-            
-            check_master_branch_exists
-            
+
+            check_repository private
         )
     done  ) > $OUTPUT 2>&1
 
