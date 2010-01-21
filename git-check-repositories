@@ -6,11 +6,21 @@
 
 GIT_VERSION=$(git --version|sed 's/^git version //')
 MINIMUM_GIT_VERSION=1.6.3.3
-EMAIL_PREFIX="(git) "
+EMAIL_PREFIX="" # we don't really need this prefix, it's kind of obvious
 GIT_HANG_ERROR="fatal: The remote end hung up unexpectedly"
 
 OUTPUT=$(mktemp)
 trap "rm -f $OUTPUT" EXIT
+
+function check_config_present {
+    KEY=$1
+    CONFIGURED_VALUE=$(git config $KEY)
+    if [ x$? != x0 ]
+    then
+        echo There was no $KEY config variable set
+        echo in the repository $d
+    fi
+}
 
 function check_config {
     KEY=$1
@@ -20,10 +30,10 @@ function check_config {
     then
         echo There was no $KEY config variable set
         echo in the repository $d
-    elif [ -n "$INTENDED_VALUE" ] && [ x$CONFIGURED_VALUE != x$INTENDED_VALUE ]
+    elif [ "x$CONFIGURED_VALUE" != "x$INTENDED_VALUE" ]
     then
         echo The config value for $KEY in $d
-        echo was $CONFIGURED_VALUE when it should be $INTENDED_VALUE
+        echo was \"$CONFIGURED_VALUE\" when it should be \"$INTENDED_VALUE\"
     fi
 }
 
@@ -107,10 +117,13 @@ function check_email_config_vars {
     # from, so that we don't have to store it in the public CVS
     # repository.  For the moment just check that something is set:
     test_header "Checking for the mailing list config"
-    check_config hooks.mailinglist
+    check_config_present hooks.mailinglist
 
     test_header "Checking for the email prefix config"
     check_config hooks.emailprefix $EMAIL_PREFIX    
+
+    test_header "Checking that diffs are included in emails"
+    check_config hooks.showrev "git show -C %s; echo"
 }
 
 function check_github {
@@ -167,21 +180,19 @@ function check_repository {
 
     check_shared_flag
 
-    if [ "$PRIVACY" = 'private' ]; then
-        check_group_ownership 'privatecvs'
-    elif [ "$PRIVACY" = 'public' ]; then
-        check_group_ownership 'publiccvs'
-    fi
-
     check_no_working_tree
     check_email_config_vars
 
     if [ "$PRIVACY" = 'private' ]
     then
+        check_group_ownership 'privatecvs'
+
         check_no_anonymous_access
         check_no_github
     elif [ "$PRIVACY" = 'public' ]
     then
+        check_group_ownership 'publiccvs'
+
         check_anonymous_access
         check_github
     fi
