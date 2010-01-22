@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: PB.pm,v 1.5 2008-10-13 08:34:51 francis Exp $
+# $Id: PB.pm,v 1.6 2010-01-22 16:18:51 francis Exp $
 #
 
 package PB;
@@ -54,6 +54,7 @@ sub test () {
     # 99th percentile signup interval is about 6 hours
     # Got bored of errors from even that, so am going for 12 hours.
     # By 2008-10-13, 12 hours wasn't enough either, going for 18.
+    # By 2009-01-22, upped to 36 hours
 
     my $last_signup_age =
             time() - dbh()->selectrow_array('
@@ -63,7 +64,7 @@ sub test () {
                         limit 1');
 
     printf("last signup was %d minutes ago", int($last_signup_age / 60))
-        if ($last_signup_age > (18 * 3600));
+        if ($last_signup_age > (36 * 3600));
 
     dbh()->disconnect();
 }
