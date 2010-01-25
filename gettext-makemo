@@ -8,12 +8,12 @@
 # Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: gettext-makemo,v 1.15 2010-01-25 15:16:10 louise Exp $
+# $Id: gettext-makemo,v 1.16 2010-01-25 15:21:11 louise Exp $
 
 # don't expand a glob with no matches to itself
 shopt -s nullglob
 
-ORIGINAL_PATH=$(readlink -f $0)
+ORIGINAL_PATH=$(dirname $0)
 if [ $1 = '--help' ]
 then 
     echo "Usage: gettext-makemo [--help] [--verbose|--quiet] [domain]"
