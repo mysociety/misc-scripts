@@ -8,7 +8,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 # 
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.134 2009-12-14 15:12:14 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.135 2010-01-26 01:33:52 francis Exp $';
 
 use strict;
 require 5.8.0;
@@ -17,7 +17,10 @@ use FindBin;
 use lib "$FindBin::Bin/../perllib";
 use POSIX;
 
+use Data::Dumper;
+
 use mySociety::TempFiles;
+use mySociety::ServerClass;
 
 my $servers_dir = "$FindBin::Bin/../../servers";
 require "$servers_dir/vhosts.pl";
@@ -26,6 +29,7 @@ our ($vhosts, $sites, $databases);
 
 # Permissions above the automatic ones, e.g. for people to have access to live
 # databases, or for services that aren't set up as standard.
+# XXX these should be moved into flags in vhosts.pl
 my %extra_perms = (
     'marmite' => {
         'francis' => ['foi'],
@@ -65,6 +69,7 @@ my %extra_perms = (
     }
 );
 
+# begin with the overrides from above ...
 my %perms;
 foreach my $host (keys %extra_perms) {
     foreach my $user (keys %{$extra_perms{$host}}) {
@@ -75,12 +80,23 @@ foreach my $host (keys %extra_perms) {
     }
 }
 
+# ... add in logging as the data base user on the same server
 foreach (values %$vhosts) {
     next unless $_->{databases};
     my $user = $_->{user} || $sites->{$_->{site}}->{user};
     foreach (@{$_->{databases}}) {
         $perms{$databases->{$_}{host}}{$user}{$_} = 1;
         $perms{$databases->{$_}{host}}{'root'}{$_} = 1;
+    }
+}
+
+# ... on backup hosts, give root access to all databases
+foreach my $database_name (keys %$databases) {
+    my $database_info = $databases->{$database_name};
+    if ($database_info->{backup}) {
+        foreach my $server (mySociety::ServerClass::all_servers_in_class("backups")) {
+            $perms{$server}{'root'}{$database_name} = 1;
+        }
     }
 }
 
