@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.119 2010-01-21 16:24:01 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.120 2010-01-27 20:47:29 francis Exp $';
 
 package main;
 
@@ -55,6 +55,7 @@ sub make_symlink {
 sub pgpw {
     $_ = shift;
     $_ = `/data/mysociety/bin/pgpw $_`;
+    die "pgpw failed with error code $?" if $? > 0;
     s/\s+$//;
     return $_;
 }
@@ -271,19 +272,18 @@ foreach my $daemon (keys %{$conf->{'daemons'}}) {
     my $daemon_mugly_path = "";
 
     if ($cvs) {
-	# XXX assume daemon is configured from first conf_dir.
-	$daemon_mugly_path = $mysociety_dir . '/' . $conf->{conf_dir}->[0] . '/';
-	chdir $daemon_mugly_path;
-	
-	# DWP: Why do we need this update? Aren't we updating the whole repo anyway?
-	shell("cvs", "-Q", "update", "$daemon_mugly_file");
+        # XXX assume daemon is configured from first conf_dir.
+        $daemon_mugly_path = $mysociety_dir . '/' . $conf->{conf_dir}->[0] . '/';
+        chdir $daemon_mugly_path;
+
+        # DWP: Why do we need this update? Aren't we updating the whole repo anyway?
+        shell("cvs", "-Q", "update", "$daemon_mugly_file");
     } elsif ($git) {
-	my $git_repo_path = $vhost_dir . '/' . $conf->{git_repository} . '/';
-	$daemon_mugly_path = $git_repo_path . '/' . $conf->{conf_dir}->[0] . '/';
+        my $git_repo_path = $vhost_dir . '/' . $conf->{git_repository} . '/';
+        $daemon_mugly_path = $git_repo_path . '/' . $conf->{conf_dir}->[0] . '/';
 
-	# DWP: If we need it, should update the git repository XXX
-	chdir $daemon_mugly_path;
-
+        # DWP: If we need it, should update the git repository XXX
+        chdir $daemon_mugly_path;
     } else {
 	die "Unknown version control system";
     }
@@ -328,7 +328,7 @@ sub one_db_conf {
     } else {
         $network_part = 'ukcod.org.uk';
     }
-
+ 
     my $conf = <<END;
 define('OPTION_$params->{prefix}_DB_HOST', '$params->{host}.$network_part');
 $port_line
