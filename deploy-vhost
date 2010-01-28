@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.121 2010-01-28 00:33:08 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.122 2010-01-28 10:53:03 louise Exp $';
 
 package main;
 
@@ -100,8 +100,13 @@ if (exists($conf->{git_repository})) {
     die "must specify 'git_user' in vhost config" if (!exists($conf->{git_user}));
     die "must not specify 'cvs_user' in vhost config if you have 'git_repository'" if (exists($conf->{cvs_user}));
     die "can't have blank 'git_user', use 'anon' for anonymous" if ($conf->{git_user} eq '');
+    $conf->{'git_branch'} = 'master' if (!exists($conf->{'git_branch'}));
     $vcspath = $conf->{git_repository};
     $git = 1;
+}
+
+if (exists($conf->{private_git_repository})) {
+    $conf->{'private_git_branch'} = 'master' if (!exists($conf->{'private_git_branch'}));
 }
 
 # Verify that this server is listed for this vhost
@@ -444,9 +449,9 @@ sub make_git_repository {
 }
 
 sub update_git {
-    my ($git_user, $git_repository) = @_;
+    my ($git_user, $git_repository, $git_branch) = @_;
     die "unexpectedly missing .git directory in update stage" if (! -d "$vhost_dir/$git_repository/.git");
-    my $update_command = "git pull && git submodule update ";
+    my $update_command = "git checkout $git_branch && git pull origin $git_branch && git submodule update ";
     if ($git_user eq 'root') {
         shell("cd \"$vhost_dir/$git_repository\" && $update_command && chown -R ".$conf->{'user'}.":".$conf->{'user'}." ../");
     } else {
@@ -746,12 +751,12 @@ sub update_site {
     } elsif ($git) {
         # Update from git
         my $git_repository =  $conf->{'git_repository'};
-        update_git($conf->{'git_user'}, $git_repository);
+        update_git($conf->{'git_user'}, $git_repository, $conf->{'git_branch'});
 
         # softlink any private dirs into the public directory structure
         if (exists($conf->{'private_git_repository'})){
            my $private_git_repository = $conf->{'private_git_repository'};
-           update_git($conf->{'private_git_user'}, $private_git_repository);
+           update_git($conf->{'private_git_user'}, $private_git_repository, $conf->{'private_git_branch'});
            if (exists($conf->{'private_git_dirs'})){
                foreach my $private_dir (@{$conf->{'private_git_dirs'}}) {
                    shell("ln -snf $vhost_dir/$private_git_repository/$private_dir $vhost_dir/$git_repository/$private_dir");
