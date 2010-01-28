@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.120 2010-01-27 20:47:29 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.121 2010-01-28 00:33:08 francis Exp $';
 
 package main;
 
@@ -690,19 +690,20 @@ sub update_conf_dir {
         }
 
         # Check MySQL databases are up to date
-        foreach my $mysql_schema (@{$conf->{'mysql_schemas'}}) {
-           my $mysql_name = mySociety::Config::get('DB_NAME', 0);
+        foreach my $mysql_conf_prefix (keys %{$conf->{'mysql_schemas'}}) {
+            my $mysql_schema = $conf->{'mysql_schemas'}->{$mysql_conf_prefix};
+            my $mysql_name = mySociety::Config::get($mysql_conf_prefix.'_DB_NAME', 0);
 
            # It's OK for the configuration info for a DB to be absent from
            # any given conf file, as long as it's in one of them
            if ($mysql_name) {
-                if (exists($unchecked_schemas->{$mysql_schema})){
-                   delete $unchecked_schemas->{$mysql_schema};
+                if (exists($unchecked_schemas->{$mysql_conf_prefix})){
+                    delete $unchecked_schemas->{$mysql_conf_prefix};
                 }
 
-                my $mysql_host = mySociety::Config::get('DB_HOST', 'localhost');
-                my $mysql_port = mySociety::Config::get('DB_PORT', 3306);
-                my $mysql_user = mySociety::Config::get('DB_USER');
+                my $mysql_host = mySociety::Config::get($mysql_conf_prefix.'_DB_HOST', 'localhost');
+                my $mysql_port = mySociety::Config::get($mysql_conf_prefix.'_DB_PORT', 3306);
+                my $mysql_user = mySociety::Config::get($mysql_conf_prefix.'_DB_USER');
 
                 die "not implemented" if $git;
                 chdir $mysociety_dir;
@@ -719,7 +720,7 @@ sub update_conf_dir {
 # Check that config files and database files have been updated
 sub update_config_and_schemas {
     # Make a list of all the database schemas to be checked
-    my %unchecked_schemas = map {$_ => 1} keys %{$conf->{'psql_schemas'}}, @{$conf->{mysql_schemas}};
+    my %unchecked_schemas = map {$_ => 1} keys %{$conf->{'psql_schemas'}}, keys %{$conf->{'mysql_schemas'}};
 
     # Generate all conf files from conf/*-example template files e.g. conf/general
     foreach my $conf_dir (@{$conf->{conf_dir}}) {
