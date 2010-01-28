@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.122 2010-01-28 10:53:03 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.123 2010-01-28 11:20:38 louise Exp $';
 
 package main;
 
@@ -451,7 +451,7 @@ sub make_git_repository {
 sub update_git {
     my ($git_user, $git_repository, $git_branch) = @_;
     die "unexpectedly missing .git directory in update stage" if (! -d "$vhost_dir/$git_repository/.git");
-    my $update_command = "git checkout $git_branch && git pull origin $git_branch && git submodule update ";
+    my $update_command = "git fetch origin $git_branch:$git_branch && git checkout $git_branch && git merge $git_branch && git submodule update ";
     if ($git_user eq 'root') {
         shell("cd \"$vhost_dir/$git_repository\" && $update_command && chown -R ".$conf->{'user'}.":".$conf->{'user'}." ../");
     } else {
