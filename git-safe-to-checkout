@@ -51,7 +51,7 @@ do
 
     # Recursively check that the submodule is similarly
     # safe to merge:
-    $FULL_SCRIPT_COMMAND $D $git_ref
+    $FULL_SCRIPT_COMMAND $D $V
 
     # Now check that the submodule version in the remote branch
     # is actually available in the submodule:
