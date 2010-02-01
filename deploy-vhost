@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.123 2010-01-28 11:20:38 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.124 2010-02-01 12:45:17 louise Exp $';
 
 package main;
 
@@ -64,7 +64,7 @@ sub pgpw {
 
 # Read in configuration file
 our ($vhosts, $sites, $databases);
-require "$servers_dir/vhosts.pl";
+require "$servers_dir/vhosts-louise.pl";
 
 # Check command line parameters, look up in config file
 die "Specify virtual host name as first parameter, deploy/stop/update/start/remove as second parameter" if scalar(@ARGV) != 2;
@@ -100,13 +100,13 @@ if (exists($conf->{git_repository})) {
     die "must specify 'git_user' in vhost config" if (!exists($conf->{git_user}));
     die "must not specify 'cvs_user' in vhost config if you have 'git_repository'" if (exists($conf->{cvs_user}));
     die "can't have blank 'git_user', use 'anon' for anonymous" if ($conf->{git_user} eq '');
-    $conf->{'git_branch'} = 'master' if (!exists($conf->{'git_branch'}));
+    $conf->{'git_ref'} = 'origin/master' if (!exists($conf->{'git_ref'}));
     $vcspath = $conf->{git_repository};
     $git = 1;
 }
 
 if (exists($conf->{private_git_repository})) {
-    $conf->{'private_git_branch'} = 'master' if (!exists($conf->{'private_git_branch'}));
+    $conf->{'private_git_ref'} = 'origin/master' if (!exists($conf->{'private_git_ref'}));
 }
 
 # Verify that this server is listed for this vhost
@@ -176,11 +176,11 @@ if ($cvs) {
     } else {
         $git_url_base = "ssh://" . $conf->{'git_user'} . "\@git.mysociety.org/data/git/public/";
     }
-    make_git_repository($git_url_base, $conf->{'git_user'}, $conf->{'git_repository'});
+    make_git_repository($git_url_base, $conf->{'git_user'}, $conf->{'git_repository'}, $conf->{'git_ref'});
     if (exists($conf->{'private_git_repository'})){
         die "must specify 'private_git_user' in vhost config" if (!exists($conf->{'private_git_user'}));
         $git_url_base = "ssh://" . $conf->{'private_git_user'} . "\@git.mysociety.org/data/git/private/";
-        make_git_repository($git_url_base, $conf->{'private_git_user'}, $conf->{'private_git_repository'});
+        make_git_repository($git_url_base, $conf->{'private_git_user'}, $conf->{'private_git_repository'}, $conf->{'private_git_ref'});
     }
 } else {
     die "Unknown version control system";
@@ -415,7 +415,7 @@ sub update_cvs {
 }
 
 sub make_git_repository {
-   my ($git_url_base, $git_user, $git_repository) = @_;
+   my ($git_url_base, $git_user, $git_repository, $git_ref) = @_;
    my $d = "$vhost_dir/$git_repository/.git";
    my $git_url = "$git_url_base$git_repository.git";
    if (! -d $d) {
@@ -442,16 +442,16 @@ sub make_git_repository {
            shell("su", "-", $conf->{'user'}, "-c $fetch_command"); 
        }
        if ($git_user eq 'anon') {
-           shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir/$git_repository\" && $mysociety_bin/git-safe-to-merge .")
+           shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir/$git_repository\" && $mysociety_bin/git-safe-to-checkout . $git_ref")
        }
    }
    chdir($vhost_dir);
 }
 
 sub update_git {
-    my ($git_user, $git_repository, $git_branch) = @_;
+    my ($git_user, $git_repository, $git_ref) = @_;
     die "unexpectedly missing .git directory in update stage" if (! -d "$vhost_dir/$git_repository/.git");
-    my $update_command = "git fetch origin $git_branch:$git_branch && git checkout $git_branch && git merge $git_branch && git submodule update ";
+    my $update_command = "git fetch origin && git checkout $git_ref && git submodule update ";
     if ($git_user eq 'root') {
         shell("cd \"$vhost_dir/$git_repository\" && $update_command && chown -R ".$conf->{'user'}.":".$conf->{'user'}." ../");
     } else {
@@ -751,12 +751,12 @@ sub update_site {
     } elsif ($git) {
         # Update from git
         my $git_repository =  $conf->{'git_repository'};
-        update_git($conf->{'git_user'}, $git_repository, $conf->{'git_branch'});
+        update_git($conf->{'git_user'}, $git_repository, $conf->{'git_ref'});
 
         # softlink any private dirs into the public directory structure
         if (exists($conf->{'private_git_repository'})){
            my $private_git_repository = $conf->{'private_git_repository'};
-           update_git($conf->{'private_git_user'}, $private_git_repository, $conf->{'private_git_branch'});
+           update_git($conf->{'private_git_user'}, $private_git_repository, $conf->{'private_git_ref'});
            if (exists($conf->{'private_git_dirs'})){
                foreach my $private_dir (@{$conf->{'private_git_dirs'}}) {
                    shell("ln -snf $vhost_dir/$private_git_repository/$private_dir $vhost_dir/$git_repository/$private_dir");
