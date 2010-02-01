@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.124 2010-02-01 12:45:17 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.125 2010-02-01 12:46:05 louise Exp $';
 
 package main;
 
@@ -64,7 +64,7 @@ sub pgpw {
 
 # Read in configuration file
 our ($vhosts, $sites, $databases);
-require "$servers_dir/vhosts-louise.pl";
+require "$servers_dir/vhosts.pl";
 
 # Check command line parameters, look up in config file
 die "Specify virtual host name as first parameter, deploy/stop/update/start/remove as second parameter" if scalar(@ARGV) != 2;
