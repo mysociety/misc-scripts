@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.128 2010-02-02 16:47:08 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.129 2010-02-02 16:53:06 francis Exp $';
 
 package main;
 
@@ -505,7 +505,7 @@ sub check_packages {
         } elsif ($git) {
             my $tmp_packages = mktemp("/tmp/deploy-vhost-packages-XXXXXXXX");
             chdir "$vhost_dir/$vcspath";
-            shell("git show origin/master:$conf_dir/packages >$tmp_packages");
+            shell("git show $git_ref:$conf_dir/packages >$tmp_packages");
             shell("/data/mysociety/bin/check-packages-installed", "$tmp_packages");
             unlink $tmp_packages;
         } else {
@@ -613,7 +613,7 @@ sub update_conf_dir {
             } else {
                 chdir "$vhost_dir/" . $conf->{'private_git_repository'};
             }
-            shell("git show origin/master:$conf_dir/$name_part-example >$example_file");
+            shell("git show $git_ref:$conf_dir/$name_part-example >$example_file");
         } else {
             die "Unknown version control system";
         }
@@ -686,7 +686,7 @@ sub update_conf_dir {
                 } elsif ($git) {
                     my $tmp_psql_schema = mktemp("/tmp/deploy-vhost-psql-schema-XXXXXXXX");
                     chdir "$vhost_dir/$vcspath";
-                    shell("git show origin/master:$psql_schema >$tmp_psql_schema");
+                    shell("git show $git_ref:$psql_schema >$tmp_psql_schema");
                     chdir $mysociety_bin;
                     shell("./psql-schema-compare", $tmp_psql_schema, $conf->{'user'}, $psql_name, $psql_user, $psql_host, $psql_port);
                     unlink $tmp_psql_schema;
