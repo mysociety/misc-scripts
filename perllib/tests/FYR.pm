@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: FYR.pm,v 1.11 2007-11-05 10:20:02 francis Exp $
+# $Id: FYR.pm,v 1.12 2010-02-02 17:11:37 matthew Exp $
 #
 
 package FYR;
@@ -18,7 +18,7 @@ use POSIX qw();
 use mySociety::Config;
 use mySociety::DBHandle qw(dbh);
 
-use constant FYR_CONF_DIR => '/data/vhost/www.writetothem.com/mysociety/fyr/conf';
+use constant FYR_CONF_DIR => '/data/vhost/www.writetothem.com/writetothem/conf';
 
 sub test () {
     return if (!-d FYR_CONF_DIR || !-e FYR_CONF_DIR . "/general");
