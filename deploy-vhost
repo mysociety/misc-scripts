@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.125 2010-02-01 12:46:05 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.126 2010-02-02 12:51:04 louise Exp $';
 
 package main;
 
@@ -816,7 +816,8 @@ sub start_site {
             foreach my $conf_dir (@{$conf->{conf_dir}}) {
                 my $tmp_crontab_ugly = mktemp("/tmp/deploy-vhost-crontab.ugly-XXXXXXXX");
                 chdir "$vhost_dir/$vcspath";
-                shell("git show origin/master:$conf_dir/crontab.ugly >$tmp_crontab_ugly");
+                my $git_ref = $conf->{'git_ref'};
+                shell("git show $git_ref:$conf_dir/crontab.ugly >$tmp_crontab_ugly");
                 shell("$mysociety_bin/mugly", "-O", $cron_name, "-p", "$settings_file", "$tmp_crontab_ugly");
                 unlink $tmp_crontab_ugly;
             }
