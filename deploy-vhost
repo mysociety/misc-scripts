@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.126 2010-02-02 12:51:04 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.127 2010-02-02 14:59:14 francis Exp $';
 
 package main;
 
@@ -281,7 +281,9 @@ foreach my $daemon (keys %{$conf->{'daemons'}}) {
         $daemon_mugly_path = $mysociety_dir . '/' . $conf->{conf_dir}->[0] . '/';
         chdir $daemon_mugly_path;
 
-        # DWP: Why do we need this update? Aren't we updating the whole repo anyway?
+        # XXX This update is a bit of a hack in CVS, to let us get the future version
+        # from the global CVS directory before deploying it. Under git we won't
+        # need to do that.
         shell("cvs", "-Q", "update", "$daemon_mugly_file");
     } elsif ($git) {
         my $git_repo_path = $vhost_dir . '/' . $conf->{git_repository} . '/';
@@ -290,7 +292,7 @@ foreach my $daemon (keys %{$conf->{'daemons'}}) {
         # DWP: If we need it, should update the git repository XXX
         chdir $daemon_mugly_path;
     } else {
-	die "Unknown version control system";
+        die "Unknown version control system";
     }
     
     my $daemon_mugly = $daemon_mugly_path . $daemon_mugly_file;
