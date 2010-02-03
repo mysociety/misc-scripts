@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.130 2010-02-02 17:26:14 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.131 2010-02-03 10:10:38 louise Exp $';
 
 package main;
 
@@ -608,13 +608,15 @@ sub update_conf_dir {
             }
             $example_file = "$example_file_dir/$name_part-example";
         } elsif ($git) {
+            my $git_ref;
             $example_file = mktemp("/tmp/deploy-vhost-$name_part-example-XXXXXXXX");
             if ($public) { 
                 chdir "$vhost_dir/$vcspath";
+                $git_ref = $conf->{'git_ref'};
             } else {
                 chdir "$vhost_dir/" . $conf->{'private_git_repository'};
+                $git_ref = $conf->{'private_git_ref'};
             }
-            my $git_ref = $conf->{'git_ref'};
             shell("git show $git_ref:$conf_dir/$name_part-example >$example_file");
         } else {
             die "Unknown version control system";
