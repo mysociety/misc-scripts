@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.133 2010-02-03 14:41:28 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.134 2010-02-03 17:49:56 root Exp $';
 
 package main;
 
@@ -721,13 +721,26 @@ sub update_conf_dir {
                 my $mysql_port = mySociety::Config::get($mysql_conf_prefix.'_DB_PORT', 3306);
                 my $mysql_user = mySociety::Config::get($mysql_conf_prefix.'_DB_USER');
 
-                die "not implemented" if $git;
-                chdir $mysociety_dir;
-                shell("cvs", "-Q", "update", "$mysql_schema");
-                chdir $mysociety_bin;
+                my $schema_full_path;
+                if ($cvs) {
+                    chdir $mysociety_dir;
+                    shell("cvs", "-Q", "update", "$mysql_schema");
+                    $schema_full_path = $mysociety_dir.'/'.$mysql_schema
+                } elsif ($git) {
+                    $schema_full_path = mktemp("/tmp/deploy-vhost-mysociety-schema.sql-XXXXXXXX");
+                    chdir "$vhost_dir/$vcspath";
+                    my $git_ref = $conf->{'git_ref'};
+                    shell("git show $git_ref:$mysql_schema >$schema_full_path");
+                } else {
+                    die "Unknown version control system";
+                }
                 # It isn't safe to pass the password over the command line or in the
                 # environment as that can be seen by other processes.
-                shell("./mysql-schema-compare", $mysociety_dir.'/'.$mysql_schema, $conf->{'user'}, $mysql_name, $mysql_user, $mysql_host, $mysql_port);
+                chdir $mysociety_bin;
+                shell("./mysql-schema-compare", $schema_full_path, $conf->{'user'}, $mysql_name, $mysql_user, $mysql_host, $mysql_port);
+                if ($git) {
+                    unlink($schema_full_path);
+                }
             }
         }
     }
