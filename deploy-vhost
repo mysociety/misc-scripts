@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.131 2010-02-03 10:10:38 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.132 2010-02-03 14:12:00 francis Exp $';
 
 package main;
 
@@ -422,8 +422,8 @@ sub make_git_repository {
    my $d = "$vhost_dir/$git_repository/.git";
    my $git_url = "$git_url_base$git_repository.git";
    if (! -d $d) {
-       my $clone_command = "cd \"$vhost_dir\" && git clone $git_url";
-       my $submodule_command = "cd \"$vhost_dir/$git_repository\" && git submodule update --init";
+       my $clone_command = "cd \"$vhost_dir\" && git clone --no-checkout $git_url && cd \"$git_repository\" && git checkout $git_ref";
+       my $submodule_command = "cd \"$vhost_dir/$git_repository\" && git_ref &&git submodule update --init";
        if ($git_user eq 'root') {
            shell($clone_command);
            shell("$submodule_command && chown -R ".$conf->{'user'}.":".$conf->{'user'}." ../");
