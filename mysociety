@@ -51,6 +51,9 @@ COMMAND is one of:
     	Show debugging information for mysociety command
 
 Extra parameters are passed through to underlying deploy-... script.
+
+Set MYSOCIETY_DEBUG=1 to enable extra debugging (currently this just shows "shell"
+commands that the mySociety Perl scripts call).
 END
 	exit
 }
