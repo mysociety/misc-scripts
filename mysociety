@@ -30,7 +30,7 @@ COMMAND is one of:
         Deploy, then run test script on VHOST, e.g. testharness.pet.mysociety.org
 
     dns
-        Update the DNS configuration on the current host
+        Update the DNS configuration on all hosts in the nameserver archetype
     email
         Update the exim virtual mail configuration on the current host
 
@@ -60,23 +60,25 @@ if [ $1 = "--help" ] ; then
     show_help
 fi
 
+function in_archetype {
+    ARCHETYPE=$1
+    # Obtain list of servers in archetype
+    SERVERS=`echo $ARCHETYPE | cat - /data/servers/serverclass | \
+        sed 's/#.*//' | awk '
+        BEGIN { ORS=" " } {
+            if (NR == 1) classname = $1; 
+            else if ($2 == classname) print $1
+        }'`
+}
+
 # Obtain hostname
 HOST=`hostname`
 if [ x$HOST = x ] ; then
     die "can't establish hostname"
 fi
 
-# Set Debian version
-DEBIAN_VERSION="`cat /etc/debian_version`"
-
-if [ "$DEBIAN_VERSION" = "3.1" ] ; then
-    BASE="base"
-    ARCHETYPES_DIR=""
-else
-    BASE="base-etch"
-    ARCHETYPES_DIR="archetypes"
-fi
-
+BASE="base-etch"
+ARCHETYPES_DIR="archetypes"
 
 # Obtain archetype
 cd /data/servers
@@ -95,12 +97,8 @@ if [ "x$ARCHETYPES" = "x" ] ; then
 fi
 
 # Obtain list of other servers in BASE archetype
-BASE_ARCHETYPE=`echo $BASE | cat - /data/servers/serverclass | \
-    sed 's/#.*//' | awk '
-    BEGIN { ORS=" " } {
-        if (NR == 1) classname = $1; 
-        else if ($2 == classname) print $1
-    }'`
+in_archetype $BASE
+BASE_ARCHETYPE=$SERVERS
 
 COMMAND=$1
 # This should always shift now, as we're checking for empty $1 at the top
@@ -217,7 +215,12 @@ END
         ;;
 
     dns)
-        exec /data/mysociety/bin/deploy-dns "$@"
+        in_archetype "nameserver"
+        for X in $SERVERS
+        do
+            echo " -- on $X..."
+            ssh $X "/data/mysociety/bin/deploy-dns $@" || echo " -- ...failed"
+        done
         ;;
 
     email)
@@ -258,15 +261,8 @@ END
     archetype | arch)
         ARCHETYPE=$1
         shift || die "specify an archetype (try --help for help)"
-        # Obtain list of servers in archetype
-        LOOP_ARCHETYPE=`echo $ARCHETYPE | cat - /data/servers/serverclass | \
-            sed 's/#.*//' | awk '
-            BEGIN { ORS=" " } {
-                if (NR == 1) classname = $1; 
-                else if ($2 == classname) print $1
-            }'`
-
-        for X in $LOOP_ARCHETYPE
+        in_archetype $ARCHETYPE
+        for X in $SERVERS
         do
             echo " -- on $X..."
             ssh $X "$@" || echo " -- ...failed"

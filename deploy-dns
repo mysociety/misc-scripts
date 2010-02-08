@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.26 2009-11-04 00:13:15 adam Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.27 2010-02-08 17:02:10 matthew Exp $';
 
 use strict;
 
@@ -185,7 +185,7 @@ try {
     }
 
     chdir("/data/servers/dns") || throw Oops("/data/servers/dns: $!");
-    shell("cvs", "-Q", "update", "-dP");
+    shell("cvs", "update", "-dP");
 
     # Get the list of files under CVS control from CVS/Entries. This is nasty,
     # but the alternatives are worse.
