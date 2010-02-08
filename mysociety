@@ -41,8 +41,6 @@ COMMAND is one of:
     diff
         "cvs diff -u" all of /data/servers and /data/mysociety
 
-    class COMMAND
-        Run a command on all machines in the same principal class as this one
     base COMMAND
         Run a command on all machines (which are in the same base class as this one)
     archetype/arch <archetype>
@@ -95,15 +93,6 @@ ARCHETYPES=`echo $HOST | cat - /data/servers/serverclass | \
 if [ "x$ARCHETYPES" = "x" ] ; then
     die "don't know archetypes for this host ($HOST), add to /data/servers/serverclass"
 fi
-PRINCIPAL_ARCHETYPE=`echo $ARCHETYPES | sed "s/ /\n/g" | tail --lines=1`
-
-# Obtain list of other servers in same principal archetype
-SAME_ARCHETYPE=`echo $PRINCIPAL_ARCHETYPE | cat - /data/servers/serverclass | \
-    sed 's/#.*//' | awk '
-    BEGIN { ORS=" " } {
-        if (NR == 1) classname = $1; 
-        else if ($2 == classname) print $1
-    }'`
 
 # Obtain list of other servers in BASE archetype
 BASE_ARCHETYPE=`echo $BASE | cat - /data/servers/serverclass | \
@@ -258,14 +247,6 @@ END
         cvs -Q diff -u
         ;;
 
-    class)
-        for X in $SAME_ARCHETYPE
-        do
-            echo " -- on $X..."
-            ssh $X "$@" || echo " -- ...failed"
-        done
-        ;;
-
     base)
         for X in $BASE_ARCHETYPE
         do
@@ -296,8 +277,6 @@ END
         echo "HOST: $HOST"
         echo "ARCHETYPES: $ARCHETYPES"
         echo "ARCHETYPES_DIR: $ARCHETYPES_DIR"
-        echo "PRINCIPAL_ARCHETYPE: $PRINCIPAL_ARCHETYPE"
-        echo "SAME_ARCHETYPE: $SAME_ARCHETYPE"
         echo "BASE_ARCHETYPE: $BASE_ARCHETYPE"
         echo "BASE: $BASE"
         ;;
