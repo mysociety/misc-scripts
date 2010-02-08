@@ -96,10 +96,6 @@ if [ "x$ARCHETYPES" = "x" ] ; then
     die "don't know archetypes for this host ($HOST), add to /data/servers/serverclass"
 fi
 
-# Obtain list of other servers in BASE archetype
-in_archetype $BASE
-BASE_ARCHETYPE=$SERVERS
-
 COMMAND=$1
 # This should always shift now, as we're checking for empty $1 at the top
 shift || die "specify a command (try --help for help)"
@@ -215,12 +211,11 @@ END
         ;;
 
     dns)
-        in_archetype "nameserver"
-        for X in $SERVERS
-        do
-            echo " -- on $X..."
-            ssh $X "/data/mysociety/bin/deploy-dns $@" || echo " -- ...failed"
-        done
+        if [ "$1" = "--all" ] ; then
+            exec /data/mysociety/bin/mysociety archetype nameserver mysociety dns
+        else
+            exec /data/mysociety/bin/deploy-dns "$@"
+        fi
         ;;
 
     email)
@@ -251,11 +246,7 @@ END
         ;;
 
     base)
-        for X in $BASE_ARCHETYPE
-        do
-            echo " -- on $X..."
-            ssh $X "$@" || echo " -- ...failed"
-        done
+        exec /data/mysociety/bin/mysociety archetype $BASE "$@"
         ;;
 
     archetype | arch)
@@ -273,7 +264,6 @@ END
         echo "HOST: $HOST"
         echo "ARCHETYPES: $ARCHETYPES"
         echo "ARCHETYPES_DIR: $ARCHETYPES_DIR"
-        echo "BASE_ARCHETYPE: $BASE_ARCHETYPE"
         echo "BASE: $BASE"
         ;;
 
