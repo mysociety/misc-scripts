@@ -170,6 +170,13 @@ function check_post_receive_hook {
     rm -f $TMP_RECEIVE_HOOK   
 }
 
+function check_license_present {
+    if ! git show HEAD:LICENSE.txt >/dev/null 2>/dev/null
+    then
+        echo "There is no LICENSE.txt file (in HEAD at any rate)"
+    fi
+}
+
 function check_repository {
     PRIVACY=$1
 
@@ -195,6 +202,8 @@ function check_repository {
 
         check_anonymous_access
         check_github
+
+        check_license_present
     fi
 
     check_no_non_fastword_merges
