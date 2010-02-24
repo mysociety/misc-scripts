@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.134 2010-02-03 17:49:56 root Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.135 2010-02-24 16:18:58 louise Exp $';
 
 package main;
 
@@ -85,7 +85,7 @@ foreach my $key ( keys %$site_conf ) { $conf->{$key} = $site_conf->{$key}; }
 foreach my $key ( keys %$vhost_conf ) { $conf->{$key} = $vhost_conf->{$key}; }
 die "must specify 'servers' in vhost config" if (!exists($conf->{servers}));
 die "must specify 'staging' in vhost config" if (!exists($conf->{staging}));
-die "must specify one of 'cvs_dirs' or 'git_repository' in vhost config" if (!exists($conf->{cvs_dirs}) && !exists($conf->{git_repository}) );
+die "must specify one of 'cvs_dirs' or 'git_repository' or 'private_git_repository' in vhost config" if (!exists($conf->{cvs_dirs}) && !exists($conf->{git_repository}) && !exists($conf->{private_git_repository}));
 die "must specify 'cvs_dirs' or 'git_repository' (not both) in vhost config" if (exists($conf->{cvs_dirs}) && exists($conf->{git_repository}) );
 my $vcspath;
 my $cvs = 0;
@@ -107,6 +107,10 @@ if (exists($conf->{git_repository})) {
 
 if (exists($conf->{private_git_repository})) {
     $conf->{'private_git_ref'} = 'origin/master' if (!exists($conf->{'private_git_ref'}));
+    die "must specify 'private_git_user' in vhost config" if (!exists($conf->{private_git_user}));
+    die "can't have blank 'private_git_user'" if ($conf->{private_git_user} eq '');
+    $vcspath = $conf->{git_repository} if (!$vcspath);
+    $git = 1;
 }
 
 # Verify that this server is listed for this vhost
@@ -176,7 +180,9 @@ if ($cvs) {
     } else {
         $git_url_base = "ssh://" . $conf->{'git_user'} . "\@git.mysociety.org/data/git/public/";
     }
-    make_git_repository($git_url_base, $conf->{'git_user'}, $conf->{'git_repository'}, $conf->{'git_ref'});
+    if (exists($conf->{'git_repository'})){
+        make_git_repository($git_url_base, $conf->{'git_user'}, $conf->{'git_repository'}, $conf->{'git_ref'});
+    }
     if (exists($conf->{'private_git_repository'})){
         die "must specify 'private_git_user' in vhost config" if (!exists($conf->{'private_git_user'}));
         $git_url_base = "ssh://" . $conf->{'private_git_user'} . "\@git.mysociety.org/data/git/private/";
