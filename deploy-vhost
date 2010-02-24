@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.135 2010-02-24 16:18:58 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.136 2010-02-24 16:37:58 louise Exp $';
 
 package main;
 
@@ -109,7 +109,7 @@ if (exists($conf->{private_git_repository})) {
     $conf->{'private_git_ref'} = 'origin/master' if (!exists($conf->{'private_git_ref'}));
     die "must specify 'private_git_user' in vhost config" if (!exists($conf->{private_git_user}));
     die "can't have blank 'private_git_user'" if ($conf->{private_git_user} eq '');
-    $vcspath = $conf->{git_repository} if (!$vcspath);
+    $vcspath = $conf->{private_git_repository} if (!$vcspath);
     $git = 1;
 }
 
@@ -175,12 +175,12 @@ if ($cvs) {
 } elsif ($git) {
     # Initial clone, for git repository that don't exist
     my $git_url_base;
-    if ($conf->{'git_user'} eq 'anon') {
-        $git_url_base = "git://git.mysociety.org/"
-    } else {
-        $git_url_base = "ssh://" . $conf->{'git_user'} . "\@git.mysociety.org/data/git/public/";
-    }
     if (exists($conf->{'git_repository'})){
+        if ($conf->{'git_user'} eq 'anon') {
+            $git_url_base = "git://git.mysociety.org/"
+        } else {
+            $git_url_base = "ssh://" . $conf->{'git_user'} . "\@git.mysociety.org/data/git/public/";
+        }
         make_git_repository($git_url_base, $conf->{'git_user'}, $conf->{'git_repository'}, $conf->{'git_ref'});
     }
     if (exists($conf->{'private_git_repository'})){
@@ -514,7 +514,12 @@ sub check_packages {
         } elsif ($git) {
             my $tmp_packages = mktemp("/tmp/deploy-vhost-packages-XXXXXXXX");
             chdir "$vhost_dir/$vcspath";
-            my $git_ref = $conf->{'git_ref'};
+            my $git_ref;
+            if ($conf->{'git_repository'}) {
+               $git_ref = $conf->{'git_ref'};
+            } else {
+               $git_ref = $conf->{'private_git_ref'};
+            }
             shell("git show $git_ref:$conf_dir/packages >$tmp_packages");
             shell("/data/mysociety/bin/check-packages-installed", "$tmp_packages");
             unlink $tmp_packages;
