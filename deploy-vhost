@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.136 2010-02-24 16:37:58 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.137 2010-02-24 17:24:35 louise Exp $';
 
 package main;
 
@@ -785,9 +785,11 @@ sub update_site {
         }
     } elsif ($git) {
         # Update from git
-        my $git_repository =  $conf->{'git_repository'};
-        update_git($conf->{'git_user'}, $git_repository, $conf->{'git_ref'});
-
+        my $git_repository;
+        if (exists($conf->{'git_repository'})) {
+            $git_repository =  $conf->{'git_repository'};
+            update_git($conf->{'git_user'}, $git_repository, $conf->{'git_ref'});
+        }
         # softlink any private dirs into the public directory structure
         if (exists($conf->{'private_git_repository'})){
            my $private_git_repository = $conf->{'private_git_repository'};
