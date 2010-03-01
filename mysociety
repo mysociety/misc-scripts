@@ -15,7 +15,7 @@ fi
 
 show_help () {
 	cat <<END
-Usage: mysociety COMMAND [OPTIONS]
+Usage: mysociety [-u] COMMAND [OPTIONS]
 
 COMMAND is one of:
     config
@@ -52,9 +52,21 @@ Extra parameters are passed through to underlying deploy-... script.
 
 Set MYSOCIETY_DEBUG=1 to enable extra debugging (currently this just shows "shell"
 commands that the mySociety Perl scripts call).
+
+The "-u" parameter indicates that this instance is running on a
+user-mode linux virtual machine.  The effect of this is to prevent
+the config and vhost from attempting to update anything from the
+private CVS repository.
+
 END
 	exit
 }
+
+if [ $1 = "-u" ] ; then
+    UML=1
+    UML_OPTION="-u"
+    shift
+fi
 
 if [ $1 = "--help" ] ; then
     show_help
@@ -82,7 +94,10 @@ ARCHETYPES_DIR="archetypes"
 
 # Obtain archetype
 cd /data/servers
-cvs -Q update serverclass
+if [ x = x$UML ]
+then
+    cvs -Q update serverclass
+fi
 if [ ! -e /data/servers/serverclass ] ; then
     die "/data/servers/serverclass: No such file or directory"
 fi
@@ -107,7 +122,10 @@ case $COMMAND in
         # update and make the settings file
         SETTINGS_FILE=/etc/mysociety/config-settings.pl
         cd /data/servers/machines
-        cvs -Q update -dP $HOST.pl
+        if [ x = x$UML ]
+        then
+            cvs -Q update -dP $HOST.pl
+        fi
         cp /data/servers/machines/$HOST.pl $SETTINGS_FILE
         cat >>$SETTINGS_FILE <<END
 
@@ -152,7 +170,10 @@ END
             # test for local changes
             for ARCHETYPE in $ARCHETYPES
             do
-                cvs -Q update -dP $ARCHETYPE
+                if [ x = x$UML ]
+                then
+                    cvs -Q update -dP $ARCHETYPE
+                fi
                 /data/mysociety/bin/deploy-configuration --check-existing --save-file=/var/lib/deploy-configuration-$ARCHETYPE.tar /data/servers/$ARCHETYPES_DIR/$ARCHETYPE $SETTINGS_FILE "$@" || FAILED=yes
             done
             # if failed, exit
@@ -167,7 +188,7 @@ END
         do
             /data/mysociety/bin/deploy-configuration --save-file=/var/lib/deploy-configuration-$ARCHETYPE.tar /data/servers/$ARCHETYPES_DIR/$ARCHETYPE $SETTINGS_FILE "$@"
         done
-        /data/mysociety/bin/deploy-logger "Deployed configuration for archetypes \"$ARCHETYPES\" with settings \"$HOST.pl\""
+        /data/mysociety/bin/deploy-logger $UML_OPTION "Deployed configuration for archetypes \"$ARCHETYPES\" with settings \"$HOST.pl\""
         # check all packages installed
         for PACKAGE_FILE in `find /etc/mysociety/packages.d/ ! -name "*~" ! -name "*.swp" -type f`
         do
@@ -190,7 +211,7 @@ END
             shift || die "specify a virtual host"
         fi
         # deploy vhost
-        /data/mysociety/bin/deploy-vhost $VHOST $COMMAND "$@"
+        /data/mysociety/bin/deploy-vhost $UML_OPTION $VHOST $COMMAND "$@"
         # special code to set up dademcron user and cron job
         if [ "$VHOST" = "services.mysociety.org" -a $( hostname ) = cake ]; then
             /data/vhost/services.mysociety.org/mysociety/services/DaDem/bin/setup-dademcron
@@ -203,7 +224,7 @@ END
         # update code (which also does apachectl graceful, so killing
         # any FastCGI processes holding the database open, so the test script
         # can drop and reload the database)
-        /data/mysociety/bin/deploy-vhost $VHOST deploy "$@"
+        /data/mysociety/bin/deploy-vhost $UML_OPTION $VHOST deploy "$@"
         # sleep for a few seconds to allow the Apache processes mentioned above to die
         sleep 10
         # launch test script

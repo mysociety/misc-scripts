@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.138 2010-02-24 17:41:07 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.139 2010-03-01 20:52:46 mark Exp $';
 
 package main;
 
@@ -31,6 +31,16 @@ use File::Copy;
 use File::Temp qw(tempfile mktemp);
 
 our $verbose = $ENV{VERBOSE} ? 1 : 0;
+
+sub deploy_logger {
+    my $message = shift;
+    my $uml = shift;
+    if ($uml) {
+        shell("/data/mysociety/bin/deploy-logger", "-u", $message);
+    } else {
+        shell("/data/mysociety/bin/deploy-logger", $message);
+    }
+}
 
 #####################################################################
 # General functions
@@ -65,6 +75,12 @@ sub pgpw {
 # Read in configuration file
 our ($vhosts, $sites, $databases);
 require "$servers_dir/vhosts.pl";
+
+our $uml = 0;
+if( ($#ARGV >= 0) && ($ARGV[0] eq "-u") ) {
+    $uml = 1;
+    shift @ARGV;
+}
 
 # Check command line parameters, look up in config file
 die "Specify virtual host name as first parameter, deploy/stop/update/start/remove as second parameter" if scalar(@ARGV) != 2;
@@ -291,8 +307,11 @@ foreach my $daemon (keys %{$conf->{'daemons'}}) {
         # XXX This update is a bit of a hack in CVS, to let us get the future version
         # from the global CVS directory before deploying it. Under git we don't
         # do that, instead we use "git show" to get the future version directly.
-        shell("cvs", "-Q", "update", "$daemon_mugly_file");
-
+        if( $uml ) {
+            print STDERR "Not running cvs update on $daemon_mugly_path due to -u\n";
+        } else {
+             shell("cvs", "-Q", "update", "$daemon_mugly_file");
+        }
         $daemon_mugly = $daemon_mugly_path . $daemon_mugly_file;
     } elsif ($git) {
         $daemon_mugly = mktemp("/tmp/daemon-mugly-file-XXXXXXXX");
@@ -481,23 +500,23 @@ update_config_and_schemas();
 
 if ($action eq "stop") {
     stop_site();
-    shell("/data/mysociety/bin/deploy-logger", "Stopped vhost $vhost");
+    deploy_logger("Stopped vhost $vhost",$uml);
 } elsif ($action eq "update") {
     update_site();
-    shell("/data/mysociety/bin/deploy-logger", "Updated vhost $vhost");
+    deploy_logger("Updated vhost $vhost",$uml);
 } elsif ($action eq "start") {
     start_site();
-    shell("/data/mysociety/bin/deploy-logger", "Started vhost $vhost");
+    deploy_logger("Started vhost $vhost",$uml);
 } elsif ($action eq "deploy") {
     stop_site();
     update_site();
     start_site();
-    shell("/data/mysociety/bin/deploy-logger", "Deployed vhost $vhost")
+    deploy_logger("Deployed vhost $vhost",$uml)
         unless $vhost =~ /testharness/;
 } elsif ($action eq "remove") {
     stop_site();
     remove_site();
-    shell("/data/mysociety/bin/deploy-logger", "Removed vhost $vhost");
+    deploy_logger("Removed vhost $vhost",$uml);
 } else {
     die "unknown action";
 }
@@ -507,7 +526,11 @@ sub check_packages {
     foreach my $conf_dir ((@{$conf->{conf_dir}}, @{$conf->{private_conf_dir}})) {
         if ($cvs) {
             chdir "$mysociety_dir/$conf_dir";
-            shell("cvs", "-Q", "update", "packages");
+            if( $uml ) {
+                print STDERR "Not running cvs update in $mysociety_dir/$conf_dir due to -u\n";
+            } else {
+                shell("cvs", "-Q", "update", "packages");
+            }
             if (-e "packages") {
                 shell("/data/mysociety/bin/check-packages-installed", "packages")
             }
@@ -602,7 +625,11 @@ sub update_conf_dir {
         my $conf_ugly_file = "$servers_dir/vhosts/$conf_ugly_part.ugly";
         # update the conf/general (or whatever) template in private CVS
         chdir "$servers_dir/vhosts";
-        shell("cvs", "-Q", "update", "$conf_ugly_part.ugly");
+        if( $uml ) {
+            print STDERR "Not updating $conf_ugly_part.ugly due to -u\n";
+        } else {
+            shell("cvs", "-Q", "update", "$conf_ugly_part.ugly");
+        }
         # update example we'll be comparing against, to make sure no missing entries.
         # For public conf files, use the example in the main public checkout. For 
         # private, use the example in the vhost conf dir.
@@ -615,10 +642,14 @@ sub update_conf_dir {
                 $example_file_dir = "$vhost_dir/$vcspath/$conf_dir";
             }
             chdir $example_file_dir;
-            if ($public  || $conf->{'private_cvs_user'} eq '') {
-                 shell("cvs", "-Q", "update", "$name_part-example");
+            if( $uml ) {
+                print STDERR "Not cvs updating $name_part-example due to -u\n";
             } else {
-                 shell("su", "-", $conf->{'private_cvs_user'}, "-c cd \"$example_file_dir\" && cvs -Q update $name_part-example");
+                if ($public  || $conf->{'private_cvs_user'} eq '') {
+                    shell("cvs", "-Q", "update", "$name_part-example");
+                } else {
+                    shell("su", "-", $conf->{'private_cvs_user'}, "-c cd \"$example_file_dir\" && cvs -Q update $name_part-example");
+                }
             }
             $example_file = "$example_file_dir/$name_part-example";
         } elsif ($git) {
@@ -694,7 +725,11 @@ sub update_conf_dir {
 
                 if ($cvs) {
                     chdir $mysociety_dir;
-                    shell("cvs", "-Q", "update", "$psql_schema");
+                    if( $uml ) {
+                        print STDERR "Not cvs updating $psql_schema due to -u\n";
+                    } else {
+                        shell("cvs", "-Q", "update", "$psql_schema");
+                    }
                     chdir $mysociety_bin;
                     # It isn't safe to pass the password over the command line as that can be
                     # seen by other processes, instead put it in in ~/.pgpass (see
@@ -735,7 +770,11 @@ sub update_conf_dir {
                 my $schema_full_path;
                 if ($cvs) {
                     chdir $mysociety_dir;
-                    shell("cvs", "-Q", "update", "$mysql_schema");
+                    if( $uml ) {
+                        print STDERR "Not cvs updating $mysql_schema due to -u\n";
+                    } else {
+                        shell("cvs", "-Q", "update", "$mysql_schema");
+                    }
                     $schema_full_path = $mysociety_dir.'/'.$mysql_schema
                 } elsif ($git) {
                     $schema_full_path = mktemp("/tmp/deploy-vhost-mysociety-schema.sql-XXXXXXXX");
@@ -846,7 +885,11 @@ sub start_site {
         if ($cvs) {
             chdir $mysociety_dir;
             foreach my $conf_dir (@{$conf->{conf_dir}}) {
-                shell("cvs", "-Q", "update", "$conf_dir/crontab.ugly");
+                if( $uml ) {
+                    print STDERR "Not running cvs update on $conf_dir/crontab.ugly due to -u\n";
+                } else {
+                    shell("cvs", "-Q", "update", "$conf_dir/crontab.ugly");
+                }
                 shell("$mysociety_bin/mugly", "-O", $cron_name, "-p", "$settings_file", "$mysociety_dir/$conf_dir/crontab.ugly");
             }
         } elsif ($git) {
