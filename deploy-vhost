@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.139 2010-03-01 20:52:46 mark Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.140 2010-03-02 07:57:29 louise Exp $';
 
 package main;
 
@@ -521,10 +521,9 @@ if ($action eq "stop") {
     die "unknown action";
 }
 
-sub check_packages {
-    # Check Debian packages are all installed, if there is a conf/packages file
-    foreach my $conf_dir ((@{$conf->{conf_dir}}, @{$conf->{private_conf_dir}})) {
-        if ($cvs) {
+sub check_package_file {
+    my ($conf_dir, $public) = @_;
+    if ($cvs) {
             chdir "$mysociety_dir/$conf_dir";
             if( $uml ) {
                 print STDERR "Not running cvs update in $mysociety_dir/$conf_dir due to -u\n";
@@ -533,22 +532,33 @@ sub check_packages {
             }
             if (-e "packages") {
                 shell("/data/mysociety/bin/check-packages-installed", "packages")
-            }
+            }  
         } elsif ($git) {
             my $tmp_packages = mktemp("/tmp/deploy-vhost-packages-XXXXXXXX");
-            chdir "$vhost_dir/$vcspath";
             my $git_ref;
-            if ($conf->{'git_repository'}) {
-               $git_ref = $conf->{'git_ref'};
+            if ($public) {
+                chdir "$vhost_dir/$conf->{'git_repository'}";
+                $git_ref = $conf->{'git_ref'};
             } else {
-               $git_ref = $conf->{'private_git_ref'};
-            }
+                chdir "$vhost_dir/$conf->{'private_git_repository'}";
+                $git_ref = $conf->{'private_git_ref'};
+            }             
             shell("git show $git_ref:$conf_dir/packages >$tmp_packages");
             shell("/data/mysociety/bin/check-packages-installed", "$tmp_packages");
             unlink $tmp_packages;
-        } else {
-            die "Unknown version control system";
-        }
+       } else {
+           die "Unknown version control system";
+       }
+
+}
+
+sub check_packages {
+    # Check Debian packages are all installed, if there is a conf/packages file
+    foreach my $conf_dir (@{$conf->{conf_dir}}) {
+        check_package_file($conf_dir, 1);
+    }
+    foreach my $conf_dir (@{$conf->{private_conf_dir}}) {
+        check_package_file($conf_dir, 0);
     }
 }
 
