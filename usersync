@@ -2,7 +2,15 @@
 #
 # usersync:
 # Synchronises users and groups between a remote machine and the local machine.
-# If there are conflicts, gives an error.
+#
+# If there are conflicts in correspondence between name and uid, gives an
+# error. 
+#
+# If there are conflicts in other values, such as login shell or full name, it
+# uses the value from the remote machine. This is assuming a model where
+# basically you sync account in a stream, originating in one central server.
+#
+# For passwords, it uses the when field, so the last changed should win.
 #
 # Licensed under the Affero General Public License.
 #
@@ -10,7 +18,7 @@
 # Email: chris@ex-parrot.com; WWW: http://www.ex-parrot.com/~chris/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: usersync,v 1.6 2006-12-15 12:22:19 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: usersync,v 1.7 2010-03-11 16:16:18 francis Exp $';
 my $VERSION = "0.1";
 
 use strict;
@@ -299,9 +307,9 @@ sub synchronise_passwd ($$$) {
 
     # Reconstruct remainder of two password files.
     foreach (sort keys %ln) {
-        # assume other fields are the same; they should be.
-        $newlocal  .= sprintf("%s:%s:%d:%d:%s:%s:%s\n", @{$ln{$_}});
-        $newremote .= sprintf("%s:%s:%d:%d:%s:%s:%s\n", @{$ln{$_}});
+        # take remote version for other fields (even if they differ)
+        $newlocal  .= sprintf("%s:%s:%d:%d:%s:%s:%s\n", @{$rn{$_}});
+        $newremote .= sprintf("%s:%s:%d:%d:%s:%s:%s\n", @{$rn{$_}});
     }
 
     return ($newlocal, $newremote);
