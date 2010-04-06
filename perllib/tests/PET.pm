@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: PET.pm,v 1.4 2008-11-17 15:16:30 francis Exp $
+# $Id: PET.pm,v 1.5 2010-04-06 10:47:49 matthew Exp $
 #
 
 package PET;
@@ -40,6 +40,8 @@ sub test () {
         return;
     }
     mySociety::Config::set_file(PET_CONF_DIR . "/general");
+
+    return if mySociety::Config::get('SIGNING_DISABLED');
 
     mySociety::DBHandle::configure(
             Name => mySociety::Config::get('PET_DB_NAME'),
