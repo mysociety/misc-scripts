@@ -8,7 +8,7 @@
 # Email: chris@ex-parrot.com; WWW: http://www.ex-parrot.com/~chris/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: create-homedirs,v 1.2 2005-12-19 16:31:24 maint Exp $';
+my $rcsid = ''; $rcsid .= '$Id: create-homedirs,v 1.3 2010-04-20 10:59:06 francis Exp $';
 
 use strict;
 require 5.8.0;
@@ -26,7 +26,7 @@ sub stderr (@) {
 }
 
 while (my $p = User::pwent::getpwent()) {
-    next if ($p->uid() < $minuid || $p->uid() > $maxuid || -d $p->dir());
+    next if ($p->uid() < $minuid || $p->uid() > $maxuid || -d $p->dir() || $p->dir() !~ /^\/home\//);
     if (-e $p->dir()) {
         stderr($p->dir(), " exists but is not a directory\n");
         next;
