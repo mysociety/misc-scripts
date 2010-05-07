@@ -9,7 +9,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: mysociety-create-databases,v 1.7 2010-05-06 14:55:27 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: mysociety-create-databases,v 1.8 2010-05-07 14:07:17 francis Exp $';
 
 package main;
 
@@ -96,13 +96,8 @@ foreach my $database (keys %{$databases}) {
             }
 
             # Give user permissions on database
-            if ($params->{readonly}) {
-                print "\tgranting read-only permissions for user to access database '$database'\n" if $::verbose;
-                $dbh->do("grant select on database \"$database\" to \"$database\" ");
-            } else {
-                print "\tgranting permissions for user to access database '$database'\n" if $::verbose;
-                $dbh->do("grant all on database \"$database\" to \"$database\" ");
-            }
+            print "\tgranting permissions for user to access database '$database'\n" if $::verbose;
+            $dbh->do("grant all on database \"$database\" to \"$database\" ");
             if ($testharness) {
                 print "\tgiving user '$database' createdb (as testharness database)\n" if $::verbose;
                 $dbh->do("alter user \"$database\" with createdb");
@@ -122,9 +117,6 @@ foreach my $database (keys %{$databases}) {
             $dbh->do("create database if not exists `$database`");
 
             # Create user with same name as database
-            if ($params->{readonly}) {
-                die "read only not implemented yet for MySQL";
-            }
             my $password = pgpw($database);
             $dbh->do("grant all on `$database`.* to `$database` identified by '$password'");
         }
