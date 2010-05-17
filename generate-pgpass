@@ -8,7 +8,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 # 
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.138 2010-04-20 08:29:16 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.139 2010-05-17 13:36:20 francis Exp $';
 
 use strict;
 require 5.8.0;
@@ -71,6 +71,9 @@ my %extra_perms = (
     'tea' => {
         'guardian' => ['gut', 'fyr-guardian'],
     },
+    'bitter' => {
+
+    }
 );
 
 # begin with the overrides from above ...
