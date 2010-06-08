@@ -6,7 +6,7 @@
 #
 # Depends: libpod-pom-perl, libstring-ediff-perl
 
-my $rcsid = ''; $rcsid .= '$Id: rabxresttorb.pl,v 1.2 2010-06-08 13:57:04 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: rabxresttorb.pl,v 1.3 2010-06-08 15:00:04 louise Exp $';
 
 use strict;
 
@@ -26,7 +26,7 @@ my $view = 'Pod::POM::View::Text';
 my $pom = $parser->parse_file($perl_source) || die $parser->error();
 
 # find items representing functions and display them
-my ($rabx_namespace, $rb_namespace, $conf_name);
+my ($rabx_namespace, $rb_namespace, $rb_module, $conf_name);
 sub process_functions {
     my $parent = shift;
     foreach my $content ($parent->content()) {
@@ -41,10 +41,11 @@ sub process_functions {
             my $function_name = shift @params;
             # Print the help comment
             my $comment = $view->view_item($content);
-            $comment =~ s/$function_name/${rb_namespace}_$function_name/g;
+            $comment =~ s/$function_name/${rb_module}.$function_name/g;
             chomp $comment;
             chomp $comment;
             $comment = trim($comment);
+            $comment =~ s/^(.*)/      #$1/mg;
             # Create list of ruby variables with defaults for optional params
             my $optional = 0;
             my @opt_args;
@@ -69,13 +70,13 @@ sub process_functions {
             my $call_list = join(", ", @call_args);
             # Print out ruby function
             print <<END;
-def $function_name($opt_list)
-=begin 
+    def ${rb_module}.$function_name($opt_list)
+
 $comment
-=end
-  result = do_call_rest_rabx('${rabx_namespace}.${function_name}'$opt_list_no_default)
-  return result
-end
+
+      result = do_call_rest_rabx('${rabx_namespace}.${function_name}'$opt_list_no_default)
+      return result
+    end
 
 END
         }
@@ -95,7 +96,7 @@ sub process_constants {
             $comment =~ s/\n/ /g;
             $comment =~ s/\s$//gs;
             $comment =~ s/^\s//gs;
-            print "$constant = $value        # $comment\n";
+            print "    $constant = $value        # $comment\n";
         }
     }
 }
@@ -112,9 +113,11 @@ foreach my $head1 ($pom->head1()) {
         $rabx_namespace = trim($view->view_text($head1));
         if ($rabx_namespace eq 'FYR.Queue') {
             $rb_namespace = 'msg';
+            $rb_module = 'FYRQueue';
             $conf_name = 'FYR_QUEUE';
         } else {
             $rb_namespace = lc $rabx_namespace;
+            $rb_module = $rabx_namespace;
             $conf_name = uc $rabx_namespace;
         }
     }
@@ -138,10 +141,14 @@ print <<END;
 require 'config'
 require 'rabx'
 
-def do_call_rest_rabx(*params)
-  base_url = MySociety::Config.get("${conf_name}_URL")
-  return MySociety::RABX.call_rest_rabx(base_url, params)
-end
+module MySociety
+  
+  module ${rb_module}
+  
+    def do_call_rest_rabx(*params)
+      base_url = MySociety::Config.get("${conf_name}_URL")
+      return MySociety::RABX.call_rest_rabx(base_url, params)
+    end
 
 END
 
@@ -157,6 +164,8 @@ foreach my $head1 ($pom->head1()) {
 
 # print footer
 print <<END;
+  end
+end
 END
 
 
