@@ -6,7 +6,7 @@
 #
 # Depends: libpod-pom-perl, libstring-ediff-perl
 
-my $rcsid = ''; $rcsid .= '$Id: rabxresttorb.pl,v 1.1 2010-06-08 13:37:44 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: rabxresttorb.pl,v 1.2 2010-06-08 13:57:04 louise Exp $';
 
 use strict;
 
@@ -73,8 +73,8 @@ def $function_name($opt_list)
 =begin 
 $comment
 =end
-    result = do_call_rest_rabx('${rabx_namespace}.${function_name}'$opt_list_no_default)
-    return result
+  result = do_call_rest_rabx('${rabx_namespace}.${function_name}'$opt_list_no_default)
+  return result
 end
 
 END
