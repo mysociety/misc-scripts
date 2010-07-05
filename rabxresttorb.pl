@@ -6,7 +6,7 @@
 #
 # Depends: libpod-pom-perl, libstring-ediff-perl
 
-my $rcsid = ''; $rcsid .= '$Id: rabxresttorb.pl,v 1.3 2010-06-08 15:00:04 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: rabxresttorb.pl,v 1.4 2010-07-05 08:16:18 louise Exp $';
 
 use strict;
 
@@ -74,7 +74,7 @@ sub process_functions {
 
 $comment
 
-      result = do_call_rest_rabx('${rabx_namespace}.${function_name}'$opt_list_no_default)
+      result = ${rb_module}.do_call_rest_rabx('${rabx_namespace}.${function_name}'$opt_list_no_default)
       return result
     end
 
@@ -145,7 +145,7 @@ module MySociety
   
   module ${rb_module}
   
-    def do_call_rest_rabx(*params)
+    def ${rb_module}.do_call_rest_rabx(*params)
       base_url = MySociety::Config.get("${conf_name}_URL")
       return MySociety::RABX.call_rest_rabx(base_url, params)
     end
