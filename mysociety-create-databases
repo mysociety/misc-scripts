@@ -9,7 +9,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: mysociety-create-databases,v 1.8 2010-05-07 14:07:17 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: mysociety-create-databases,v 1.9 2010-07-09 11:30:45 matthew Exp $';
 
 package main;
 
@@ -92,7 +92,9 @@ foreach my $database (keys %{$databases}) {
                 if ($testharness) {
                     $owner_clause = "owner \"$database\"" 
                 }
-                $dbh->do("create database \"$database\" $owner_clause encoding 'SQL_ASCII'");
+                my $template_clause = '';
+                $template_clause = ' template "template_postgis"' if $params->{geo};
+                $dbh->do("create database \"$database\" $owner_clause $template_clause encoding 'SQL_ASCII'");
             }
 
             # Give user permissions on database
