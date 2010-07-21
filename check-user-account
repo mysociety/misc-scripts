@@ -23,11 +23,9 @@ fi
 
 if [ -e /usr/bin/atq ]
 then
-    echo "NOT TESTED"
-    exit
     if atq | grep $THE_USER
     then
-        echo "<--- $THE_USER has at jobs to run"
+        echo "<--- $THE_USER has at(1) jobs"
     fi
 fi
 
