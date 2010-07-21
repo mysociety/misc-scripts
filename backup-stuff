@@ -6,7 +6,7 @@
 # Copyright (c) 2004 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: backup-stuff,v 1.35 2009-12-17 16:24:15 francis Exp $
+# $Id: backup-stuff,v 1.36 2010-07-21 10:53:35 francis Exp $
 #
 
 set -e
@@ -14,9 +14,15 @@ PATH=/software/bin:$PATH
 
 RSYNC_RSH=ssh
 export RSYNC_RSH
-# --delete is to delete files no longer in the backup, but in previous copy we
+# * --delete is to delete files no longer in the backup, but in previous copy we
 # use to speed up backup
-rsyncopts="--inplace -raq --delete"
+# * --partial is in case it is interrupted, at least we have something to work off
+# for the next day (hopefully)
+# * We don't use --inplace as it slows down transfers of "gzip --rsyncable" SQL
+# dumps, "(5) the efficiency of rsync’s delta-transfer algorithm may be reduced
+# if some data in the destination file is overwritten before it can be copied
+# to a position later in the file"
+rsyncopts="--partial -raq --delete"
 
 if tty 2>&1 > /dev/null ; then
     function debug () {
