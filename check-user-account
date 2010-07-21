@@ -1,0 +1,45 @@
+#!/bin/bash
+#
+# check-user-account
+# Show anything a given user account is doing on this machine
+# 
+# See:
+# http://www.unixguide.net/unix/comp-unix-admin.shtml#14
+#
+# Copyright (c) 2010 UK Citizens Online Democracy. All rights reserved.
+# Email: francis@mysociety.org; WWW: http://www.mysociety.org/
+#
+
+#set -x
+
+THE_USER=$1
+THE_HOME=$(eval echo ~$THE_USER)
+
+if [ -e /var/spool/cron/crontabs/$THE_USER ]
+then
+    cat /var/spool/cron/crontabs/$THE_USER
+    echo "<--- $THE_USER has a crontab"
+fi
+
+if [ -e /usr/bin/atq ]
+then
+    echo "NOT TESTED"
+    exit
+    if atq | grep $THE_USER
+    then
+        echo "<--- $THE_USER has at jobs to run"
+    fi
+fi
+
+if ps --no-headers -U $THE_USER
+then
+    echo "<--- $THE_USER has processes running"
+fi
+
+if [ -e $THE_HOME/.forward ]
+then
+    cat $THE_HOME/.forward
+    echo "<--- $THE_USER has a .forward file"
+fi
+
+
