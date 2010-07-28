@@ -8,7 +8,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: check-vhosts,v 1.1 2006-08-09 10:00:38 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: check-vhosts,v 1.2 2010-07-28 10:48:28 francis Exp $';
 
 package main;
 
@@ -49,18 +49,21 @@ foreach my $server ( keys (%$servers_to_vhosts) ) {
 
     # Get list of expected
     my $expected_vhosts = $servers_to_vhosts->{$server};
+    push @{$expected_vhosts}, "default.ukcod.org.uk"; # server should have own vhost
     print "Expected: " . Dumper($expected_vhosts) if $verbose;
-    push @{$expected_vhosts}, $server . ".ukcod.org.uk"; # server should have own vhost
-    push @{$expected_vhosts}, "apache2-default"; # common Apache 2 packages (for "ab") have this
-    push @{$expected_vhosts}, "debian.mysociety.org"; # all bitter class have this
 
     # Get list in /data/vhost on server
     my $deployed_vhosts;
     my $vhost_list = "$servers_dir/state/$server/vhost-list";
     open FH, $vhost_list or die "$vhost_list not found";
     while (<FH>) {
-        @_ = split;
-        push @{$deployed_vhosts}, $_[8] if $_[0] ne 'total';
+        $_ =~ s/\s+$//;
+        $_ =~ s/^\s+//;
+        if (m/^(debian.mysociety.org|index.html|wdg-html-validator.html)$/) {
+            # just ignore these - files from Debian packaging or our config system
+            next;
+        } 
+        push @{$deployed_vhosts}, $_;
     }
     print "Deployed: " . Dumper($deployed_vhosts) if $verbose;
 
