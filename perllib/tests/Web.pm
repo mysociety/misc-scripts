@@ -8,7 +8,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Web.pm,v 1.22 2010-07-29 15:24:46 louise Exp $
+# $Id: Web.pm,v 1.23 2010-07-29 17:21:34 louise Exp $
 #
 
 package Web;
@@ -61,7 +61,7 @@ my @pages = qw(
         https://secure.mysociety.org/cvstrac/
         https://secure.mysociety.org/track/webbug.png
         
-        http://briefencounters.mysociety.org
+        http://briefencounters.mysociety.org/
         http://briefencounters.mysociety.org/stops/whitechapel-london/the-tower-of-london-stop-tb
 
         http://gaze.mysociety.org/gaze?R1%3A0%2C37%3AGaze.get_radius_containing_population%2CL1%3A3%2CT14%3A51.41281945404%2CT17%3A-0.29430381185079%2CT6%3A200000%2C
