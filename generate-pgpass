@@ -8,7 +8,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 # 
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.141 2010-07-09 11:30:45 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.142 2010-08-02 14:52:10 matthew Exp $';
 
 use strict;
 require 5.8.0;
@@ -43,12 +43,12 @@ my %extra_perms = (
     'pudding' => {
     },
     'cake' => {
-        'francis' => ['ycml','mapit','dadem','ratty','evel','bci', 'dress'],
-        'matthew' => ['ycml','mapit','dadem','ratty','evel','bci', 'bci-emptyhomes', 'dress', 'bbcparlvid'],
+        'francis' => ['ycml','mapit','dadem','ratty','evel', 'dress'],
+        'matthew' => ['ycml','mapit','dadem','ratty','evel', 'bci-emptyhomes', 'dress', 'bbcparlvid'],
         'etienne' => ['bbcparlvid'],
         'louise' => ['news', 'bbcparlvid'],
         'adam' => ['mapit','dadem','ratty','evel'],
-        'debbi' => ['bci', 'ycml'],
+        'debbi' => ['ycml'],
         # Sites
         'dademcron' => ['fyr', 'rt'],
     },
@@ -71,7 +71,9 @@ my %extra_perms = (
         'guardian' => ['gut', 'fyr-guardian'],
     },
     'bitter' => {
-        'matthew' => ['mapit-new'],
+        'matthew' => ['mapit-new', 'bci'],
+        'debbi' => ['bci'],
+        'francis' => ['bci'],
         'louise' => ['sitestats'],
     }
 );
