@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: PostgreSQL.pm,v 1.20 2009-10-23 09:11:18 keith Exp $
+# $Id: PostgreSQL.pm,v 1.21 2010-08-03 10:35:17 root Exp $
 #
 
 package PostgreSQL;
@@ -19,7 +19,6 @@ use Data::Dumper;
 my $SERVERCLASSFILE="/data/servers/serverclass";
 my $MACHINECONFIGDIR="/data/servers/machines/";
 my $debian_version="";
-my @mysql_only_database_machines=qw(sponge whisky peas pudding bitter tea balti);
 
 sub check_old_queries($$$$$$) {
     my ($dbh, $age, $exceptions, $postgresql_server, $postgresql_port, $user) = @_;
@@ -50,11 +49,7 @@ sub test() {
     my $user = mySociety::Config::get('MONITOR_PSQL_USER');
     my $pass = mySociety::Config::get('MONITOR_PSQL_PASS');
     foreach my $server (@postgresql_servers) {
-        if(grep(/$server/, @mysql_only_database_machines)) {
-            next;
-        }
         # Get machine OS version
-
         open(MACHINEFILE, '<', $MACHINECONFIGDIR . $server . ".pl") or die ("Cannot open $MACHINECONFIGDIR : $!") ;
         my @debian_version = grep {/\$debian_version/} <MACHINEFILE>;
         my ($key, $version)  = split("\"", $debian_version[0]);
