@@ -29,7 +29,7 @@ COMMAND is one of:
     test VHOST
         Deploy, then run test script on VHOST, e.g. testharness.pet.mysociety.org
 
-    dns
+    dns --all
         Update the DNS configuration on all hosts in the nameserver archetype
     email
         Update the exim virtual mail configuration on the current host
