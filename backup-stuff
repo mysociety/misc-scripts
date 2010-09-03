@@ -6,7 +6,7 @@
 # Copyright (c) 2004 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: backup-stuff,v 1.37 2010-07-21 11:02:41 francis Exp $
+# $Id: backup-stuff,v 1.38 2010-09-03 09:30:05 francis Exp $
 #
 
 set -e
@@ -39,37 +39,28 @@ fi
 deletefastcycle="fyr mapit evel twfy"
 fastcycle=$( date +%Y%m%dT%H%M%S --date='1 week ago')
 slowcycle=$( date +%Y%m%dT%H%M%S --date='6 weeks ago')
-for X in _data_backups_dailydb_????????T??????; do
+for X in _data_backups_????????T??????; do
     # Delete older than fast cycle
-    if [[ "$X" < "_data_backups_dailydb_$fastcycle" ]]; then
+    if [[ "$X" < "_data_backups_$fastcycle" ]]; then
         #echo "delete fast cycle: $X"
         chmod u+w $X
         for Y in $deletefastcycle
         do
             #echo "deleting fast cycle: $X $Y"
-            rm -f $X/$Y.*
+            rm -fr $X/$Y.*
         done
         chmod u-w $X
     fi
     # Delete older than slow cycle
-    if [[ "$X" < "_data_backups_dailydb_$slowcycle" ]]; then
+    if [[ "$X" < "_data_backups_$slowcycle" ]]; then
         #echo "deleting slow cycle: $X"
-        chmod u+w $X
-        rm -fr $X
-    fi
-done
-# .. and old backups of files
-for X in _data_backups_dailyfiles_????????T??????; do
-    # Delete older than slow cycle
-    if [[ "$X" < "_data_backups_dailyfiles_$slowcycle" ]]; then
-        #echo "delete slow cycle: $X"
         chmod u+w $X
         rm -fr $X
     fi
 done
 
 # Get daily copy of backups from server
-for thing in /data/backups/dailyfiles /data/backups/dailydb; do
+for thing in /data/backups; do
     dir=$( echo $thing | sed s@/@_@g )
     now=$( date +%Y%m%dT%H%M%S )
     target=${dir}_$now
