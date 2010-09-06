@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-email,v 1.18 2010-05-26 12:41:01 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-email,v 1.19 2010-09-06 16:01:26 adam Exp $';
 
 use strict;
 
@@ -225,7 +225,7 @@ try {
         my $text = read_file($domain) or throw Oops("$domain: $!");
         $f->print($text) or throw Oops("$name: $!");
         $f->close() or throw Oops("$name: $!");
-        chmod(0440, $name) or throw Oops("$name: chmod: $!");
+        chmod(0444, $name) or throw Oops("$name: 4chmod: $!");
         chown($file_uid, $file_gid, $name) or throw Oops("$name: chown: $!");
         rename($name, "$destination/$domain") or throw Oops("$name: rename: $!");
     }
