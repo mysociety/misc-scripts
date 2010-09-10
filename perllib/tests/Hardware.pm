@@ -3,7 +3,7 @@
 # Hardware.pm:
 # Check various hardware statuses
 #
-# $Id: Hardware.pm,v 1.2 2009-05-13 02:53:57 keith Exp $
+# $Id: Hardware.pm,v 1.3 2010-09-10 18:16:07 francis Exp $
 #
 
 package Hardware;
@@ -23,8 +23,8 @@ sub test () {
         if ($f) {
             print "$f";
         }
-        exit(0);
-    } 
+        return;
+   } 
 
     # For some Dell machines
     if ( -e "/usr/sbin/omreport" ) {
@@ -53,7 +53,7 @@ sub test () {
                 }
             }
         }
-        exit(0);
+        return;
     }
 }
 
