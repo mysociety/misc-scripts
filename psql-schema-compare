@@ -78,6 +78,14 @@ su $PARAM_UNIX_USER -c "$PGDUMP --schema-only --schema=public --encoding=UTF-8 -
 #        exit 1
 #    fi
 #else
+
+    CURRENT_SCHEMA_SIZE=`stat -c %s $CURRENT_SCHEMA_FILE`
+    if [ "$CURRENT_SCHEMA_SIZE" -lt 300 ]
+    then
+        echo "Live database appears to have NO TABLES - you probably need to run psql DBNAME USERNAME < SCHEMA_PATH"
+        exit 1
+    fi
+
     # Note:  Using sort here is completely evil.  It is because
     # older verions of pg_dump (i.e. PostgreSQL 7.4) don't output the tables in
     # a stable order.  The above code would get confused it a column was moved
