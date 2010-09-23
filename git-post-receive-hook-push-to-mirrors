@@ -12,13 +12,16 @@ EOUSAGE
 end
 
 repository = "git@GitHub:mysociety/#{ARGV[0]}.git"
+result = 0
 
-rev_old, rev_new, ref = STDIN.read.split(" ")
+STDIN.each do |line|
+  rev_old, rev_new, ref = line.chomp.split(" ")
 
-puts "Now pushing #{ref} to the mysociety repository on github (#{repository})"
+  puts "Now pushing #{ref} to the mysociety repository on github (#{repository})"
 
-if system("git","push",repository,ref)
-  exit(0)
-else
-  exit(1)
+  unless system("git","push",repository,ref)
+    result = 1
+  end
 end
+
+exit(result)
