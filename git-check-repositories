@@ -66,6 +66,18 @@ function check_group_ownership {
     rm -f $FIND_RESULTS  
 }
 
+function check_no_world_access {
+    test_header "Checking that repository is not world-anything"
+    FIND_RESULTS=$(mktemp)
+    find $d -perm /007 -exec ls -ld {} \; > $FIND_RESULTS
+    if [ -s $FIND_RESULTS ]
+    then
+        NUM_FILES=`cat $FIND_RESULTS | wc -l`
+        echo "$NUM_FILES files and directories are world-accessible, please fix"
+    fi
+    rm -f $FIND_RESULTS  
+}
+
 function check_no_working_tree {
     test_header "Checking that there is no working tree"
     if [ -d $d/.git ]
@@ -160,14 +172,11 @@ function check_post_receive_hook {
     # it to the installed version.
     HOOK_FILE=$1
     test_header "Checking the post-receive hook is up to date"
-    TMP_RECEIVE_HOOK=$(mktemp)
-    ( cd /data/git/public/mysociety && git show master:bin/$HOOK_FILE > $TMP_RECEIVE_HOOK )
-    if ! diff -u $TMP_RECEIVE_HOOK $d/hooks/post-receive
+    if ! diff -u /data/mysociety/bin/$HOOK_FILE $d/hooks/post-receive
     then
         echo "$d/hooks/post-receive differed from the standard post-receive-hook $HOOK_FILE"
         echo "in version control."
     fi
-    rm -f $TMP_RECEIVE_HOOK   
 }
 
 function check_license_present {
@@ -193,7 +202,7 @@ function check_repository {
     if [ "$PRIVACY" = 'private' ]
     then
         check_group_ownership 'privatecvs'
-
+        check_no_world_access
         check_no_anonymous_access
         check_no_github
     elif [ "$PRIVACY" = 'public' ]
