@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.141 2010-09-14 13:48:24 dave Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.142 2010-10-04 22:43:38 matthew Exp $';
 
 package main;
 
@@ -83,7 +83,7 @@ if( ($#ARGV >= 0) && ($ARGV[0] eq "-u") ) {
 }
 
 # Check command line parameters, look up in config file
-die "Specify virtual host name as first parameter, deploy/stop/update/start/remove as second parameter" if scalar(@ARGV) != 2;
+die "Specify virtual host name as first parameter, deploy/stop/update/start/remove as second parameter" if scalar(@ARGV) < 2;
 my $vhost = $ARGV[0];
 my $vhost_conf = $vhosts->{$vhost};
 die "vhost '$vhost' is not in vhosts.pl" if !$vhost_conf;
@@ -94,6 +94,9 @@ die "site '$site' is not in vhosts.pl" if !$site_conf;
 my $vhost_dir = "/data/vhost/$vhost";
 my $action = $ARGV[1];
 die "Specify 'deploy', 'stop', 'update', 'start' or 'remove' as second parameter" if $action ne "deploy" && $action ne "stop" && $action ne "update" && $action ne "start" && $action ne 'remove';
+
+my $flush = 0;
+$flush = 1 if @ARGV > 2 && $ARGV[2] eq '--flush';
 
 # Merge vhost and site configs together
 my $conf;
@@ -515,6 +518,10 @@ if ($action eq "stop") {
     start_site();
     deploy_logger("Deployed vhost $vhost",$uml)
         unless $vhost =~ /testharness/;
+    if ($flush) {
+        `echo "flush_all\\n" | nc -q 1 localhost 11211`;
+        `/etc/init.d/varnish restart`;
+    }
 } elsif ($action eq "remove") {
     stop_site();
     remove_site();
