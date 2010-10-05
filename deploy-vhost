@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.142 2010-10-04 22:43:38 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.143 2010-10-05 09:31:10 matthew Exp $';
 
 package main;
 
@@ -519,8 +519,8 @@ if ($action eq "stop") {
     deploy_logger("Deployed vhost $vhost",$uml)
         unless $vhost =~ /testharness/;
     if ($flush) {
-        `echo "flush_all\\n" | nc -q 1 localhost 11211`;
-        `/etc/init.d/varnish restart`;
+        print `echo flush_all | nc -v -v -q 1 localhost 11211`;
+        print `/etc/init.d/varnish restart`;
     }
 } elsif ($action eq "remove") {
     stop_site();
