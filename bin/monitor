@@ -9,7 +9,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: monitor,v 1.9 2010-10-08 15:46:54 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: monitor,v 1.10 2010-10-08 16:45:03 matthew Exp $';
 
 use strict;
 
@@ -36,6 +36,7 @@ use mySociety::EmailUtil qw(send_email);
 use mySociety::SystemMisc qw(describe_waitval open_log print_log);
 
 my $testsdir = "$FindBin::Bin/../perllib/tests";
+use lib "$FindBin::Bin/../perllib/tests";
 my $interval = mySociety::Config::get('MONITOR_INTERVAL');
 my $timeout = mySociety::Config::get('MONITOR_TIMEOUT');   # in seconds, for an individual test
 my $repeats_required = mySociety::Config::get('MONITOR_REPEATS_REQUIRED');   # only flags if happens this many times in a row
