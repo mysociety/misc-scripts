@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Hosts.pm,v 1.14 2010-05-20 07:29:15 francis Exp $
+# $Id: Hosts.pm,v 1.15 2010-10-08 15:46:54 matthew Exp $
 #
 
 package Hosts;
@@ -37,6 +37,8 @@ my @hostlist = qw(
 
 
 use constant NPINGS => 10;
+
+sub email() { return 'serious'; }
 
 sub test () {
     return if !mySociety::Config::get('RUN_EXTRA_SERVERS_TESTS');

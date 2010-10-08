@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: DNS.pm,v 1.3 2008-09-02 19:41:28 keith Exp $
+# $Id: DNS.pm,v 1.4 2010-10-08 15:46:54 matthew Exp $
 #
 
 package DNS;
@@ -22,6 +22,8 @@ my @records = (
         [qw(ukcod.org.uk.                   MX)],
         [qw(101.230.111.82.in-addr.arpa.    PTR)]
     );
+
+sub email() { return 'serious'; }
 
 sub test () {
     return if !mySociety::Config::get('RUN_EXTRA_SERVERS_TESTS');

@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Load.pm,v 1.1 2006-03-24 18:28:14 chris Exp $
+# $Id: Load.pm,v 1.2 2010-10-08 15:46:54 matthew Exp $
 #
 
 package Load;
@@ -16,6 +16,8 @@ use strict;
 use IO::File;
 
 use constant MAX_ACCEPTABLE_LOAD => 15;
+
+sub email() { return 'sysadmin'; }
 
 sub test () {
     my $f = new IO::File("/proc/loadavg", O_RDONLY);

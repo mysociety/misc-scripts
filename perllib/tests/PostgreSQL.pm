@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: PostgreSQL.pm,v 1.21 2010-08-03 10:35:17 root Exp $
+# $Id: PostgreSQL.pm,v 1.22 2010-10-08 15:46:54 matthew Exp $
 #
 
 package PostgreSQL;
@@ -36,6 +36,8 @@ sub check_old_queries($$$$$$) {
         print "PostgreSQL query taking more than $age; server:$postgresql_server; database:$datname; user:$usename; process: $procpid; query:$current_query\n";
     }
 }
+
+sub email() { return 'sysadmin'; }
 
 sub test() {
     return if !mySociety::Config::get('RUN_EXTRA_SERVERS_TESTS');

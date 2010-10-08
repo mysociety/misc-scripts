@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Memory.pm,v 1.7 2009-08-27 10:20:16 keith Exp $
+# $Id: Memory.pm,v 1.8 2010-10-08 15:46:54 matthew Exp $
 #
 
 package Memory;
@@ -16,6 +16,8 @@ use strict;
 use IO::File;
 
 use constant MIN_SWAP_FRACTION => 0.50; # % of swap that must be free
+
+sub email() { return 'sysadmin'; }
 
 sub test () {
     # The format of /proc/meminfo differs between 2.4 and 2.6 series kernels

@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: YCML.pm,v 1.9 2010-02-02 17:11:37 matthew Exp $
+# $Id: YCML.pm,v 1.10 2010-10-08 15:46:54 matthew Exp $
 #
 
 package YCML;
@@ -19,6 +19,8 @@ use mySociety::Config;
 use mySociety::DBHandle qw(dbh);
 
 use constant YCML_CONF_DIR => '/data/vhost/www.hearfromyourmp.com/hearfromyourmp/conf';
+
+sub email() { return 'cron-hearfromyourmp'; }
 
 sub test () {
     return if (!-d YCML_CONF_DIR || !-e YCML_CONF_DIR . "/general");

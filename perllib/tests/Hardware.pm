@@ -3,7 +3,7 @@
 # Hardware.pm:
 # Check various hardware statuses
 #
-# $Id: Hardware.pm,v 1.3 2010-09-10 18:16:07 francis Exp $
+# $Id: Hardware.pm,v 1.4 2010-10-08 15:46:54 matthew Exp $
 #
 
 package Hardware;
@@ -11,6 +11,8 @@ package Hardware;
 use strict;
 
 use IO::File;
+
+sub email() { return 'hardware'; }
 
 sub test () {
 

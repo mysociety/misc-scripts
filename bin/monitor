@@ -9,7 +9,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: monitor,v 1.8 2009-11-30 12:06:19 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: monitor,v 1.9 2010-10-08 15:46:54 matthew Exp $';
 
 use strict;
 
@@ -42,8 +42,6 @@ my $repeats_required = mySociety::Config::get('MONITOR_REPEATS_REQUIRED');   # o
 
 # minimum interval at which emails are sent out
 my $email_interval = mySociety::Config::get('MONITOR_EMAIL_INTERVAL');
-# email recipient
-my $email_recipient = mySociety::Config::get('MONITOR_EMAIL');
 
 # do_one_test TEST
 # Run the named TEST (name of perl module, without the ".pm" suffix), and
@@ -154,8 +152,8 @@ sub do_one_test ($) {
 }
 
 # do_tests
-# Perform tests, returning a reference of a hash of name-of-test to reference
-# to list of errors reported.
+# Perform tests, returning a reference of a hash of name-of-test to
+# email address and reference to list of errors reported.
 sub do_tests () {
     my $results = { };
     opendir(D, $testsdir);
@@ -164,8 +162,10 @@ sub do_tests () {
 
         my $name = $1;
 
+        eval "use $name;";
+        my $email = eval "${name}::email;";
         my @r = do_one_test($name);
-        $results->{$name} = \@r if (@r);
+        $results->{$name} = [ $email, \@r ] if (@r);
     }
     closedir(D);
 
@@ -177,7 +177,7 @@ sub do_tests () {
 sub do_email ($) {
     my $results = shift;
 
-    print_log('debug', "sending email to $email_recipient");
+    print_log('debug', "sending emails");
 
     # We must not block here, so fork twice and have the first child exit; the
     # second is a child of init and we can forget about it. If we don't manage
@@ -206,8 +206,7 @@ sub do_email ($) {
     }
 
     # second child
-    
-
+    my $email_recipient = $results->{$_}[0] . '@mysociety.org';
     my $failures = join(' ', sort keys %$results);
     my $email = <<EOF;
 From: root
@@ -217,7 +216,7 @@ Subject: System monitor failures: $failures
 EOF
     foreach (sort keys %$results) {
         $email .= "$_\n"
-                    . join('', map { "  $_\n" } @{$results->{$_}})
+                    . join('', map { "  $_\n" } @{$results->{$_}[1]})
                     . "\n";
     }
 
@@ -245,7 +244,7 @@ while (1) {
     my $r = do_tests();
     foreach my $name (sort keys %$r) {
         print_log('err', "$name: test failed; details follow");
-        foreach (@{$r->{$name}}) {
+        foreach (@{$r->{$name}[1]}) {
             print_log('err', "$name- $_");
         }
         $failures{$name} ||= 0;

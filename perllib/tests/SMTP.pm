@@ -9,7 +9,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: SMTP.pm,v 1.3 2007-04-23 08:38:52 francis Exp $
+# $Id: SMTP.pm,v 1.4 2010-10-08 15:46:54 matthew Exp $
 #
 
 package SMTP;
@@ -18,6 +18,8 @@ use strict;
 
 use POSIX qw(EINPROGRESS EALREADY);
 use Net::SMTP;
+
+sub email() { return 'sysadmin'; }
 
 sub test () {
     my $smtp = new Net::SMTP('localhost', Timeout => 5);

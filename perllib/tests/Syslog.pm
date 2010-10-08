@@ -9,7 +9,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Syslog.pm,v 1.2 2008-08-22 09:29:27 matthew Exp $
+# $Id: Syslog.pm,v 1.3 2010-10-08 15:46:54 matthew Exp $
 #
 
 package Syslog;
@@ -24,6 +24,8 @@ use POSIX;
 my $logfile = "/var/log/all.log";
 # XXX Hack as I'm fed up of emails
 $logfile = '/var/log/messages' unless -e $logfile;
+
+sub email() { return 'sysadmin'; }
 
 sub test () {
     my $st1 = stat($logfile);

@@ -8,7 +8,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Web.pm,v 1.23 2010-07-29 17:21:34 louise Exp $
+# $Id: Web.pm,v 1.24 2010-10-08 15:46:54 matthew Exp $
 #
 
 package Web;
@@ -76,6 +76,8 @@ use constant GET_RESPONSELINE_TIME_MAX_YCML_LEAGUE => 20;
 use constant GET_HEADERS_TIME_MAX => 5;
 use constant GET_BODY_TIME_MAX => 10;
 use constant TOTAL_TIME_MAX => 20;
+
+sub email() { return 'sysadmin'; }
 
 sub test () {
     return if !mySociety::Config::get('RUN_EXTRA_SERVERS_TESTS');

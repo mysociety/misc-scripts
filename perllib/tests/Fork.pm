@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Fork.pm,v 1.1 2006-03-24 21:19:18 chris Exp $
+# $Id: Fork.pm,v 1.2 2010-10-08 15:46:54 matthew Exp $
 #
 
 package Fork;
@@ -14,6 +14,8 @@ package Fork;
 use strict;
 
 use POSIX;
+
+sub email() { return 'sysadmin'; }
 
 sub test () {
     my $pid = fork();

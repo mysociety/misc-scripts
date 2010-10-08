@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: PB.pm,v 1.6 2010-01-22 16:18:51 francis Exp $
+# $Id: PB.pm,v 1.7 2010-10-08 15:46:54 matthew Exp $
 #
 
 package PB;
@@ -19,6 +19,8 @@ use mySociety::Config;
 use mySociety::DBHandle qw(dbh);
 
 use constant PB_CONF_DIR => '/data/vhost/www.pledgebank.com/mysociety/pb/conf';
+
+sub email() { return 'cron-pledgebank'; }
 
 sub test () {
     return if (!-d PB_CONF_DIR || !-e PB_CONF_DIR . "/general");

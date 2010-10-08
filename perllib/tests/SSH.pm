@@ -5,7 +5,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: SSH.pm,v 1.15 2010-05-20 07:29:41 francis Exp $
+# $Id: SSH.pm,v 1.16 2010-10-08 15:46:54 matthew Exp $
 #
 
 package SSH;
@@ -33,6 +33,8 @@ my @hostlist = qw(
         stilton.ukcod.org.uk
     );
 
+
+sub email() { return 'sysadmin'; }
 
 sub test () {
     return if !mySociety::Config::get('RUN_EXTRA_SERVERS_TESTS');

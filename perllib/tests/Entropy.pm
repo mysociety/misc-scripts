@@ -6,7 +6,7 @@
 # Copyright (c) 2007 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Entropy.pm,v 1.1 2007-04-04 14:14:39 francis Exp $
+# $Id: Entropy.pm,v 1.2 2010-10-08 15:46:54 matthew Exp $
 #
 
 package Entropy;
@@ -16,6 +16,8 @@ use strict;
 use IO::File;
 
 use constant MIN_ENTROPY => 10; # amount of entropy to expect
+
+sub email() { return 'sysadmin'; }
 
 sub test () {
     my $f = new IO::File('/proc/sys/kernel/random/entropy_avail', O_RDONLY);
