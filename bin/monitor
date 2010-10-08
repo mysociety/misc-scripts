@@ -9,7 +9,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: monitor,v 1.11 2010-10-08 17:07:19 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: monitor,v 1.12 2010-10-08 17:27:00 matthew Exp $';
 
 use strict;
 
@@ -214,7 +214,7 @@ sub do_email ($) {
     }
 
     my %emails;
-    foreach my $email_recipient (keys %$failures_by_recipient) {
+    foreach my $email_recipient (keys %failures_by_recipient) {
         my $failures = join(' ', sort @{$failures_by_recipient{$email_recipient}});
         my $email = <<EOF;
 From: root
