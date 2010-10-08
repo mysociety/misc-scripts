@@ -9,7 +9,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: monitor,v 1.10 2010-10-08 16:45:03 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: monitor,v 1.11 2010-10-08 17:07:19 matthew Exp $';
 
 use strict;
 
@@ -207,28 +207,34 @@ sub do_email ($) {
     }
 
     # second child
-    my $email_recipient = $results->{$_}[0] . '@mysociety.org';
-    my $failures = join(' ', sort keys %$results);
-    my $email = <<EOF;
+    my %failures_by_recipient;
+    foreach (sort keys %$results) {
+        my $email_recipient = $results->{$_}[0] . '@mysociety.org';
+        push @{$failures_by_recipient{$email_recipient}}, $_;
+    }
+
+    my %emails;
+    foreach my $email_recipient (keys %$failures_by_recipient) {
+        my $failures = join(' ', sort @{$failures_by_recipient{$email_recipient}});
+        my $email = <<EOF;
 From: root
 To: $email_recipient
 Subject: System monitor failures: $failures
 
 EOF
-    foreach (sort keys %$results) {
-        $email .= "$_\n"
+        foreach (sort @{$failures_by_recipient{$email_recipient}}) {
+            $email .= "$_\n"
                     . join('', map { "  $_\n" } @{$results->{$_}[1]})
                     . "\n";
-    }
-
-    $email .= <<EOF;
+        }
+        $email .= <<EOF;
 -- 
 $rcsid
 EOF
-
-    my $r = send_email($email, 'root', $email_recipient);
-    if ($r != mySociety::EmailUtil::EMAIL_SUCCESS) {
-        print_log('err', "failed to send email");
+        my $r = send_email($email, 'root', $email_recipient);
+        if ($r != mySociety::EmailUtil::EMAIL_SUCCESS) {
+            print_log('err', "failed to send email to $email_recipient");
+        }
     }
     exit(0);
 }
