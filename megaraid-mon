@@ -1,0 +1,50 @@
+#!/bin/sh -f
+#
+# Check status of RAID volumes on amr(4) controllers using the LSI MegaRC
+# utility.  If any logical drive has a status other than OPTIMAL, or any
+# physical disks has a status other that ONLINE, display the full status
+# for the adapter.  If more than one adapter exists, add additional unit
+# numbers to $adapters.
+#
+# Borrowed for mySociety from
+# http://lists.freebsd.org/pipermail/freebsd-questions/2006-June/125470.html
+#
+# $Id: megaraid-mon,v 1.1 2010-10-12 09:07:27 alexjs Exp $
+#
+# Set some variables
+adapters="0"
+binary="/data/mysociety/bin/megarc"
+sed="/bin/sed"
+egrep="/bin/egrep"
+
+if [ ! -x $binary ]
+then
+  echo "$binary not found"
+  exit 1
+fi
+
+# Change to the right directory
+cd $(dirname $0)
+
+for adapter in $adapters; do
+   status=`$binary -ldinfo -a${adapter} -Lall -nolog |\
+     $sed '1,$s/^M//' |\
+      $sed '1,/Information Of Logical Drive/d'` ||\
+    echo "Failed to get RAID status for AMR adapter ${adapter}"
+
+ echo "${status}" |\
+     $egrep '^   Logical Drive : .*:  Status: .*$' |\
+    $egrep -qv 'OPTIMAL$'
+ drives=$?
+
+   echo "${status}" |\
+     $egrep '^ [0-9]+' |\
+     $egrep -qv 'ONLINE$'
+  disks=$?
+
+ if [ ${drives} -ne 1 -o ${disks} -ne 1 ]; then
+     echo ""
+     echo "AMR RAID status (adapter ${adapter}):"
+    echo "${status}"
+  fi
+done
