@@ -55,6 +55,12 @@ function check_shared_flag {
 
 function check_group_ownership {
     GROUP=$1
+    
+    test_header "Checking that expected group ownership is known"
+    if [ "$GROUP" = "" ] 
+    then 
+        echo "The expected group for files in this repository has not been set in the git-check-repositories script"
+    fi
     test_header "Checking that group ownership is $GROUP"
     FIND_RESULTS=$(mktemp)
     find $d ! -group $GROUP -exec ls -ld {} \; > $FIND_RESULTS
@@ -179,6 +185,21 @@ function check_post_receive_hook {
     fi
 }
 
+function get_expected_private_owner {
+   if [ "$REPOSITORY_NAME" = 'gut' ]
+   then
+       EXPECTED_OWNER="privategit-gut"
+   elif [ "$REPOSITORY_NAME" = 'writetothem_cities' ]
+   then 
+       EXPECTED_OWNER="privategit-cities"
+   elif [ "$REPOSITORY_NAME" = 'fixmystreet_cities' ]
+   then 
+       EXPECTED_OWNER="privategit-cities"
+   else
+       EXPECTED_OWNER=""
+   fi
+}
+
 function check_license_present {
     if ! git show HEAD:LICENSE.txt >/dev/null 2>/dev/null
     then
@@ -201,7 +222,8 @@ function check_repository {
 
     if [ "$PRIVACY" = 'private' ]
     then
-        check_group_ownership 'privatecvs'
+        get_expected_private_owner 
+        check_group_ownership $EXPECTED_OWNER
         check_no_world_access
         check_no_anonymous_access
         check_no_github
