@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.145 2010-10-11 09:39:25 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.146 2010-10-18 16:51:53 louise Exp $';
 
 package main;
 
@@ -126,8 +126,6 @@ if (exists($conf->{git_repository})) {
 
 if (exists($conf->{private_git_repository})) {
     $conf->{'private_git_ref'} = 'origin/master' if (!exists($conf->{'private_git_ref'}));
-    die "must specify 'private_git_user' in vhost config" if (!exists($conf->{private_git_user}));
-    die "can't have blank 'private_git_user'" if ($conf->{private_git_user} eq '');
     $vcspath = $conf->{private_git_repository} if (!$vcspath);
     $git = 1;
 }
@@ -205,9 +203,8 @@ if ($cvs) {
         make_git_repository($git_url_base, $conf->{'git_user'}, $conf->{'git_repository'}, $conf->{'git_ref'});
     }
     if (exists($conf->{'private_git_repository'})){
-        die "must specify 'private_git_user' in vhost config" if (!exists($conf->{'private_git_user'}));
-        $git_url_base = "ssh://" . $conf->{'private_git_user'} . "\@git.mysociety.org/data/git/private/";
-        make_git_repository($git_url_base, $conf->{'private_git_user'}, $conf->{'private_git_repository'}, $conf->{'private_git_ref'});
+        $git_url_base = "ssh://" . $conf->{'user'} . "\@git.mysociety.org/data/git/private/";
+        make_git_repository($git_url_base, $conf->{'user'}, $conf->{'private_git_repository'}, $conf->{'private_git_ref'});
     }
 } else {
     die "Unknown version control system";
@@ -852,7 +849,7 @@ sub update_site {
         # softlink any private dirs into the public directory structure
         if (exists($conf->{'private_git_repository'})){
            my $private_git_repository = $conf->{'private_git_repository'};
-           update_git($conf->{'private_git_user'}, $private_git_repository, $conf->{'private_git_ref'});
+           update_git($conf->{'user'}, $private_git_repository, $conf->{'private_git_ref'});
            if (exists($conf->{'private_git_dirs'})){
                foreach my $private_dir (@{$conf->{'private_git_dirs'}}) {
                    shell("ln -snf $vhost_dir/$private_git_repository/$private_dir $vhost_dir/$git_repository/$private_dir");
