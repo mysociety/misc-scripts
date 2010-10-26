@@ -9,7 +9,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 # 
 
-my $rcsid = ''; $rcsid .= '$Id: generate-mypass,v 1.22 2010-01-15 15:28:45 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-mypass,v 1.23 2010-10-26 16:52:57 adam Exp $';
 
 use strict;
 require 5.8.0;
@@ -27,6 +27,8 @@ our ($vhosts, $sites, $databases);
 
 # Who can access what databases, on top of ones automatically generated from vhosts.pl
 # Only one database per user for MySQL
+
+# XXX seems to be going reverse a-z
 my %perms = (
     whisky => {
         harry => 'scenic',
@@ -36,6 +38,9 @@ my %perms = (
         matthew => 'twfy',
         debbi => 'twfy',
         richard => 'gny',
+    },
+    balti => {
+        adam => 'cacti',
     },
 );
 
