@@ -75,7 +75,7 @@ function check_group_ownership {
 function check_no_world_access {
     test_header "Checking that repository is not world-anything"
     FIND_RESULTS=$(mktemp)
-    find $d ! -type l -perm /007 -exec ls -ld {} \; > $FIND_RESULTS
+    find $d -maxdepth 1 ! -type l -perm /007 -exec ls -ld {} \; > $FIND_RESULTS
     if [ -s $FIND_RESULTS ]
     then
         NUM_FILES=`cat $FIND_RESULTS | wc -l`
