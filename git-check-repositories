@@ -195,6 +195,9 @@ function get_expected_private_owner {
    elif [ "$REPOSITORY_NAME" = 'fixmystreet_cities' ]
    then 
        EXPECTED_OWNER="privategit-cities"
+   elif [ "$REPOSITORY_NAME" = 'wtf' ]
+   then
+       EXPECTED_OWNER="privategit-wtf"
    else
        EXPECTED_OWNER=""
    fi
