@@ -89,7 +89,7 @@ if [ x$HOST = x ] ; then
     die "can't establish hostname"
 fi
 
-BASE="base-etch"
+BASE="base"
 ARCHETYPES_DIR="archetypes"
 
 # Obtain archetype
