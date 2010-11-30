@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.146 2010-10-18 16:51:53 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.147 2010-11-30 14:46:04 seb Exp $';
 
 package main;
 
@@ -195,11 +195,13 @@ if ($cvs) {
     # Initial clone, for git repository that don't exist
     my $git_url_base;
     if (exists($conf->{'git_repository'})){
-        if ($conf->{'git_user'} eq 'anon') {
-            $git_url_base = "git://git.mysociety.org/"
-        } else {
-            $git_url_base = "ssh://" . $conf->{'git_user'} . "\@git.mysociety.org/data/git/public/";
-        }
+        if (!exists($conf->{'git_url_base'})) {
+	    if ($conf->{'git_user'} eq 'anon') {
+		$git_url_base = "git://git.mysociety.org/"
+	    } else {
+		$git_url_base = "ssh://" . $conf->{'git_user'} . "\@git.mysociety.org/data/git/public/";
+	    }
+	}
         make_git_repository($git_url_base, $conf->{'git_user'}, $conf->{'git_repository'}, $conf->{'git_ref'});
     }
     if (exists($conf->{'private_git_repository'})){
