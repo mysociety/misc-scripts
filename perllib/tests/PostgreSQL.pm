@@ -6,19 +6,16 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: PostgreSQL.pm,v 1.22 2010-10-08 15:46:54 matthew Exp $
+# $Id: PostgreSQL.pm,v 1.23 2010-12-11 02:24:18 matthew Exp $
 #
 
 package PostgreSQL;
 
 use strict;
-
 use DBI;
-use Data::Dumper;
 
-my $SERVERCLASSFILE="/data/servers/serverclass";
-my $MACHINECONFIGDIR="/data/servers/machines/";
-my $debian_version="";
+my $SERVERCLASSFILE = "/data/servers/serverclass";
+my $MACHINECONFIGDIR = "/data/servers/machines/";
 
 sub check_old_queries($$$$$$) {
     my ($dbh, $age, $exceptions, $postgresql_server, $postgresql_port, $user) = @_;
@@ -42,27 +39,20 @@ sub email() { return 'sysadmin'; }
 sub test() {
     return if !mySociety::Config::get('RUN_EXTRA_SERVERS_TESTS');
 
-    my $port;
-
     open(SERVERFILE, '<', $SERVERCLASSFILE ) or die ("Cannot open $SERVERCLASSFILE : $!");
-    my @postgresql_servers = map {/^(\w+)/} grep {!/^#/ && /\bdatabase\b/} <SERVERFILE>;
+    my @postgresql_servers = map { /^(\w+)/ } grep { !/^#/ && /\bdatabase\b/ } <SERVERFILE>;
     close(SERVERFILE);
 
     my $user = mySociety::Config::get('MONITOR_PSQL_USER');
     my $pass = mySociety::Config::get('MONITOR_PSQL_PASS');
+    our ($debian_version, $location);
     foreach my $server (@postgresql_servers) {
         # Get machine OS version
-        open(MACHINEFILE, '<', $MACHINECONFIGDIR . $server . ".pl") or die ("Cannot open $MACHINECONFIGDIR : $!") ;
-        my @debian_version = grep {/\$debian_version/} <MACHINEFILE>;
-        my ($key, $version)  = split("\"", $debian_version[0]);
-        close(MACHINEFILE);
+        do $MACHINECONFIGDIR . $server . ".pl" or die "Cannot open $MACHINECONFIGDIR$server.pl : $!";
 
-        if($version eq "lenny") {
-            $port = 5434
-        } else {
-            $port = 5433
-        }
+        next unless $location eq 'bricklane';
 
+        my $port = ($debian_version eq "lenny") ? 5434 : 5433;
         my $postgresql_server = $server . ".int.ukcod.org.uk";
         # Connect to database
         my $dbh = DBI->connect("dbi:Pg:dbname=template1;host=$postgresql_server;port=$port", $user, $pass);
