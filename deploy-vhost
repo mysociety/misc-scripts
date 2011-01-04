@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.148 2010-11-30 15:30:41 seb Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.149 2011-01-04 11:45:51 matthew Exp $';
 
 package main;
 
@@ -499,21 +499,22 @@ sub update_git {
 #####################################################################
 # Shut down services, update, start services
 
-# XXX bit nasty that we have to always call this. Should split into separate
-# check and live update functions. But mainly harmless to update live config
-# so hey.
-update_config_and_schemas();
+# XXX Bit annoying that the global things above (e.g. Apache config), are done
+# even if we're just stopping/starting. Should split into separate check and
+# live update functions. But mainly harmless to update live config so hey.
 
 if ($action eq "stop") {
     stop_site();
     deploy_logger("Stopped vhost $vhost",$uml);
 } elsif ($action eq "update") {
+    update_config_and_schemas();
     update_site();
     deploy_logger("Updated vhost $vhost",$uml);
 } elsif ($action eq "start") {
     start_site();
     deploy_logger("Started vhost $vhost",$uml);
 } elsif ($action eq "deploy") {
+    update_config_and_schemas();
     stop_site();
     update_site();
     start_site();
