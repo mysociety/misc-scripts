@@ -213,7 +213,7 @@ END
         # deploy vhost
         /data/mysociety/bin/deploy-vhost $UML_OPTION $VHOST $COMMAND "$@"
         # special code to set up dademcron user and cron job
-        if [ "$VHOST" = "services.mysociety.org" -a $( hostname ) = cake ]; then
+        if [ "$VHOST" = "services.mysociety.org" -a $( hostname ) = majestic ]; then
             /data/vhost/services.mysociety.org/mysociety/services/DaDem/bin/setup-dademcron
         fi
         ;;
