@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.149 2011-01-04 11:45:51 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.150 2011-01-17 18:10:08 matthew Exp $';
 
 package main;
 
@@ -133,7 +133,7 @@ if (exists($conf->{private_git_repository})) {
 # Verify that this server is listed for this vhost
 my $hostname = `hostname`;
 chomp($hostname);
-die "'$hostname' is not a vhost for '$vhost'" if !grep { m/^$hostname$/ } @{$conf->{'servers'}};
+die "'$hostname' is not a vhost for '$vhost'" if (!grep { m/^$hostname$/ } @{$conf->{'servers'}}) && $action ne 'remove';
 
 # Look up some values
 my ($user_login, $user_pass, $user_uid, $user_gid, 
