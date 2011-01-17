@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: PostgreSQL.pm,v 1.23 2010-12-11 02:24:18 matthew Exp $
+# $Id: PostgreSQL.pm,v 1.24 2011-01-17 22:15:02 matthew Exp $
 #
 
 package PostgreSQL;
@@ -40,7 +40,7 @@ sub test() {
     return if !mySociety::Config::get('RUN_EXTRA_SERVERS_TESTS');
 
     open(SERVERFILE, '<', $SERVERCLASSFILE ) or die ("Cannot open $SERVERCLASSFILE : $!");
-    my @postgresql_servers = map { /^(\w+)/ } grep { !/^#/ && /\bdatabase\b/ } <SERVERFILE>;
+    my @postgresql_servers = map { /^(\w+)/ } grep { !/^#/ && /\bdatabase-psql\b/ } <SERVERFILE>;
     close(SERVERFILE);
 
     my $user = mySociety::Config::get('MONITOR_PSQL_USER');
