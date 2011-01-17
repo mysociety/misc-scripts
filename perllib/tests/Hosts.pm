@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Hosts.pm,v 1.15 2010-10-08 15:46:54 matthew Exp $
+# $Id: Hosts.pm,v 1.16 2011-01-17 20:49:36 adam Exp $
 #
 
 package Hosts;
@@ -31,7 +31,6 @@ my @hostlist = qw(
         peas.ukcod.org.uk
         whisky.ukcod.org.uk
 
-        marmite.ukcod.org.uk
         stilton.ukcod.org.uk
     );
 
