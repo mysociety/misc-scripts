@@ -8,7 +8,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 # 
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.146 2011-01-16 23:30:10 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.147 2011-01-19 15:22:30 matthew Exp $';
 
 use strict;
 require 5.8.0;
@@ -31,64 +31,47 @@ our ($vhosts, $sites, $databases);
 # databases, or for services that aren't set up as standard.
 # XXX these should be moved into flags in vhosts.pl
 my %extra_perms = (
-    'marmite' => {
-        'francis' => ['foi'],
-        'louise' => ['foi'],
-        'adam' => ['foi'],
-        'skenaja' => ['foi'], # so he can do stats and stuff
-    },
-    'sandwich' => {
-        'louise' => ['hm-staging', 'hm', 'foi-testharness'],
-    },
-    'pudding' => {
-    },
-    'cake' => {
-        'francis' => ['ycml','mapit','dadem','ratty','evel', 'dress'],
-        'matthew' => ['ycml','mapit','dadem','ratty','evel', 'bci-emptyhomes', 'dress', 'bbcparlvid'],
-        'etienne' => ['bbcparlvid'],
-        'louise' => ['news', 'bbcparlvid'],
-        'adam' => ['mapit','dadem','ratty','evel'],
-        'debbi' => ['ycml'],
-        # Sites
-        'dademcron' => ['fyr', 'rt'],
-    },
-    'balti' => {
-        'matthew' => ['pb-staging'],
-        'louise' => ['hm-testharness'],
-        'louise' => ['gut-louise'],
-    },
-    'peas' => {
-        'debbi' => ['fyr'],
-        'timsk' => ['pb'],
-        'matthew' => ['fyr', 'pb', 'ycml-cllr'],
-        'francis' => ['fyr', 'pb'],
-    },
+    # XXX
     'hotpot' => {
         'fyr' => ['fyr'],
         'guardian' => ['fyr-guardian'],
     },
-    'tea' => {
-        'guardian' => ['gut', 'fyr-guardian'],
-    },
-    'bitter' => {
-        'matthew' => ['mapit-new', 'bci'],
-        'debbi' => ['bci'],
-        'francis' => ['bci'],
-        'louise' => ['sitestats'],
+
+    'arrow' => {
+        'louise' => ['news'],
+        'matthew' => ['mapit'],
     },
     'comet' => {
     },
     'fury' => {
-    },
-    'phoenix' => {
-    },
-    'rocket' => {
-    },
-    'samson' => {
-    },
-    'wildfire' => {
+        'matthew' => ['pb-staging'],
+        'louise' => ['hm-testharness', 'gut-louise', 'foi-testharness'],
     },
     'majestic' => {
+        'louise' => ['sitestats'],
+        'matthew' => ['dadem','evel'],
+        'dademcron' => ['fyr'],
+    },
+    'phoenix' => {
+        'debbi' => ['fyr', 'ycml'],
+        'timsk' => ['pb'],
+        'matthew' => ['fyr', 'pb', 'ycml', 'ycml-cllr'],
+        'louise' => ['hm'],
+    },
+    'rocket' => {
+        'debbi' => ['bci'],
+        'matthew' => ['bci', 'bci-emptyhomes'],
+        'guardian' => ['gut', 'fyr-guardian'],
+    },
+    'samson' => {
+        'matthew' => ['bbcparlvid'],
+        'louise' => ['bbcparlvid'],
+    },
+    'wildfire' => {
+        'francis' => ['foi'],
+        'louise' => ['foi'],
+        'adam' => ['foi'],
+        'skenaja' => ['foi'], # so he can do stats and stuff
     },
 );
 
