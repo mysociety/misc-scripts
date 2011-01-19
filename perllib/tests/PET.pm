@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: PET.pm,v 1.6 2010-10-08 15:46:54 matthew Exp $
+# $Id: PET.pm,v 1.7 2011-01-19 17:24:22 louise Exp $
 #
 
 package PET;
@@ -18,7 +18,7 @@ use POSIX qw();
 use mySociety::Config;
 use mySociety::DBHandle qw(dbh);
 
-use constant PET_CONF_DIR => '/data/vhost/petitions.number10.gov.uk/mysociety/pet/conf';
+use constant PET_CONF_DIR => '/data/vhost/petitions.number10.gov.uk/petitions/conf';
 
 sub email() { return 'cron-petitions'; }
 
