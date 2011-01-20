@@ -8,7 +8,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Web.pm,v 1.27 2011-01-20 23:33:40 matthew Exp $
+# $Id: Web.pm,v 1.28 2011-01-20 23:41:45 matthew Exp $
 #
 
 package Web;
@@ -67,6 +67,7 @@ sub email() { return 'serious'; }
 sub test () {
     return if !mySociety::Config::get('RUN_EXTRA_SERVERS_TESTS');
     foreach my $page (@pages) {
+        next if $page =~ /^#/;
         Monitor::test_web($page);
     }
 }
