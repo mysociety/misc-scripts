@@ -5,8 +5,8 @@
 
 set -x
 
-CVS_SERVER=cake # Probably could be read from vhosts.pl
-BACKUP_CVS_SERVER=peas # Hardcoded in CVS post-commit
+CVS_SERVER=majestic # Probably could be read from vhosts.pl
+BACKUP_CVS_SERVER=phoenix # Hardcoded in CVS post-commit
 
 if [ ! -e ~/.ssh/id_dsa.pub ]
 then
