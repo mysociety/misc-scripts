@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: PostgreSQL.pm,v 1.24 2011-01-17 22:15:02 matthew Exp $
+# $Id: PostgreSQL.pm,v 1.25 2011-01-21 13:42:08 louise Exp $
 #
 
 package PostgreSQL;
@@ -50,7 +50,7 @@ sub test() {
         # Get machine OS version
         do $MACHINECONFIGDIR . $server . ".pl" or die "Cannot open $MACHINECONFIGDIR$server.pl : $!";
 
-        next unless $location eq 'bricklane';
+        next unless $location eq 'm247';
 
         my $port = ($debian_version eq "lenny") ? 5434 : 5433;
         my $postgresql_server = $server . ".int.ukcod.org.uk";
