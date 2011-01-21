@@ -5,7 +5,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: SSH.pm,v 1.17 2011-01-17 20:49:36 adam Exp $
+# $Id: SSH.pm,v 1.18 2011-01-21 17:03:08 louise Exp $
 #
 
 package SSH;
@@ -30,6 +30,16 @@ my @hostlist = qw(
         peas.ukcod.org.uk
 
         stilton.ukcod.org.uk
+
+        arrow.ukcod.org.uk
+        comet.ukcod.org.uk
+        fury.ukcod.org.uk
+        majestic.ukcod.org.uk
+        phoenix.ukcod.org.uk
+        rocket.ukcod.org.uk
+        samson.ukcod.org.uk
+        vulcan.ukcod.org.uk
+        wildfire.ukcod.org.uk
     );
 
 
