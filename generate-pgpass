@@ -8,7 +8,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 # 
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.148 2011-01-21 09:55:06 duncan Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.149 2011-01-24 15:19:11 louise Exp $';
 
 use strict;
 require 5.8.0;
@@ -32,11 +32,6 @@ our ($vhosts, $sites, $databases);
 # XXX these should be moved into flags in vhosts.pl
 my %extra_perms = (
     # XXX
-    'hotpot' => {
-        'fyr' => ['fyr'],
-        'guardian' => ['fyr-guardian'],
-    },
-
     'arrow' => {
         'louise' => ['news'],
         'matthew' => ['mapit'],
