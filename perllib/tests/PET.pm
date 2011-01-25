@@ -6,7 +6,7 @@
 # Copyright (c) 2011 UK Citizens Online Democracy. All rights reserved.
 # Email: matthew@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: PET.pm,v 1.8 2011-01-25 15:41:54 matthew Exp $
+# $Id: PET.pm,v 1.9 2011-01-25 15:44:37 matthew Exp $
 #
 
 package PET;
@@ -26,7 +26,7 @@ sub email() { return 'cron-petitions'; }
 
 sub test_procs($@) {
     my ($thing, @vhosts) = @_;
-    my @pets = map { chomp; $_ } `ps ax -o user:20,command |grep $thing|cut -d" " -f 1|sort|uniq`;
+    my @pets = map { chomp; $_ } `ps ax -o user:20,command |grep $thing|grep -v grep|cut -d" " -f 1|sort|uniq`;
     my $diff = mySociety::ArrayUtils::symmetric_diff(\@pets, \@vhosts);
     if (@$diff) {
         print "$thing running and daemons listed differ - difference is:\n";
