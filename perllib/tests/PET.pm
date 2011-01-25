@@ -1,12 +1,12 @@
 #!/usr/bin/perl
 #
 # PET.pm:
-# Check that petitions.pm.gov.uk is working (up to a point).
+# Check that petitions are working (up to a point).
 #
-# Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
-# Email: francis@mysociety.org; WWW: http://www.mysociety.org/
+# Copyright (c) 2011 UK Citizens Online Democracy. All rights reserved.
+# Email: matthew@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: PET.pm,v 1.7 2011-01-19 17:24:22 louise Exp $
+# $Id: PET.pm,v 1.8 2011-01-25 15:41:54 matthew Exp $
 #
 
 package PET;
@@ -14,16 +14,41 @@ package PET;
 use strict;
 
 use POSIX qw();
+use Data::Dumper;
 
 use mySociety::Config;
 use mySociety::DBHandle qw(dbh);
+use mySociety::ArrayUtils;
 
 use constant PET_CONF_DIR => '/data/vhost/petitions.number10.gov.uk/petitions/conf';
 
 sub email() { return 'cron-petitions'; }
 
+sub test_procs($@) {
+    my ($thing, @vhosts) = @_;
+    my @pets = map { chomp; $_ } `ps ax -o user:20,command |grep $thing|cut -d" " -f 1|sort|uniq`;
+    my $diff = mySociety::ArrayUtils::symmetric_diff(\@pets, \@vhosts);
+    if (@$diff) {
+        print "$thing running and daemons listed differ - difference is:\n";
+        print Dumper $diff;
+    }
+}
+
 sub test () {
     return if (!-d PET_CONF_DIR || !-e PET_CONF_DIR . "/general");
+
+    our ($vhosts, $sites);
+    require "/data/servers/vhosts.pl";
+
+    # Check all the daemons are running
+    my @vhosts;
+    foreach (values %$vhosts) {
+        next unless $_->{site} eq 'petitions' && $_->{daemons} && grep { /^petemaild/ } keys %{$_->{daemons}};
+        my $user = $_->{user} || $sites->{$_->{site}}->{user};
+        push @vhosts, $user;
+    }
+    test_procs('petemaild', @vhosts);
+    test_procs('petsignupd', @vhosts);
 
     # Mustn't call set_file as root since that would allow an pet->root
     # compromise. So drop privileges.
