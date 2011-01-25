@@ -8,7 +8,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Web.pm,v 1.28 2011-01-20 23:41:45 matthew Exp $
+# $Id: Web.pm,v 1.29 2011-01-25 10:28:25 matthew Exp $
 #
 
 package Web;
@@ -44,8 +44,6 @@ my @pages = qw(
 
         #http://mapumental.channel4.com/signup
         #http://mapumental.channel4.com/tilecache.fcgi/1.0.0/housing/11/1013/663.png
-
-        http://downingstreetsays.com/
 
         http://petitions.number10.gov.uk/
         http://petitions.number10.gov.uk/huntingactrepeal/
