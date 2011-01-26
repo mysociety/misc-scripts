@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Hosts.pm,v 1.18 2011-01-21 17:03:08 louise Exp $
+# $Id: Hosts.pm,v 1.19 2011-01-26 14:34:12 louise Exp $
 #
 
 package Hosts;
@@ -16,23 +16,6 @@ use strict;
 use Net::Ping;
 
 my @hostlist = qw(
-        sponge.ukcod.org.uk
-
-        balti.ukcod.org.uk
-        bitter.ukcod.org.uk
-        tea.ukcod.org.uk
-
-        steak.ukcod.org.uk
-
-        water.ukcod.org.uk
-
-        sandwich.ukcod.org.uk
-        cake.ukcod.org.uk
-        peas.ukcod.org.uk
-        whisky.ukcod.org.uk
-
-        stilton.ukcod.org.uk
-
         arrow.ukcod.org.uk
         comet.ukcod.org.uk
         fury.ukcod.org.uk
