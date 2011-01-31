@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.150 2011-01-17 18:10:08 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.151 2011-01-31 11:49:10 louise Exp $';
 
 package main;
 
@@ -631,7 +631,6 @@ sub update_conf_dir {
        $glob =~ m#^.*/(.*?)-example$#;
 
         my $name_part = $1;
-
         my $conf_file = "$vhost_dir/$vcspath/$conf_dir/$name_part"; # destination file
         my $old_umask = umask(0077);
         # find source template (.ugly) file
@@ -713,6 +712,11 @@ sub update_conf_dir {
             copy("$conf_file.tmp", "$conf_file");
             chown($user_uid, $user_gid, "$conf_file");
             unlink("$conf_file.tmp") or die "couldn't unlink $conf_file.tmp";
+            
+            # if it's a logrotate file, symlink it to /etc/logrotate.d/
+            if ($name_part eq 'logrotate') {
+		 shell("ln -snf $conf_file /etc/logrotate.d/$vhost");
+            }
         } else {
             if ($name_part eq 'general') {
                 # test contents of configuration file before copying it over
