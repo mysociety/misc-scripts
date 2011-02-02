@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.30 2011-02-02 10:11:49 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.31 2011-02-02 12:04:06 matthew Exp $';
 
 use strict;
 
@@ -141,7 +141,7 @@ sub test_zonefile ($$) {
     my $t = strftime '%Y%m%d', localtime(time);
     my $t_yest = strftime '%Y%m%d', localtime(time-86400);
     return "new serial number, '$newserial' (in $file), does not match YYYYMMDD.., but the files differ"
-        unless substr($newserial, 0, 8) eq $t || substr($newserial, 0, 8) eq $t_yest;
+        unless !$no_check_existing && (substr($newserial, 0, 8) eq $t || substr($newserial, 0, 8) eq $t_yest);
     $rrset = Net::DNS::ZoneFile::Fast::parse($oldtext);
     if ($rrset && @$rrset && $rrset->[0]->type() eq 'SOA') {
         verbose("OK\n");
