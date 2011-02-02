@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.31 2011-02-02 12:04:06 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.32 2011-02-02 12:07:56 matthew Exp $';
 
 use strict;
 
@@ -141,14 +141,14 @@ sub test_zonefile ($$) {
     my $t = strftime '%Y%m%d', localtime(time);
     my $t_yest = strftime '%Y%m%d', localtime(time-86400);
     return "new serial number, '$newserial' (in $file), does not match YYYYMMDD.., but the files differ"
-        unless !$no_check_existing && (substr($newserial, 0, 8) eq $t || substr($newserial, 0, 8) eq $t_yest);
+        unless $no_check_existing || substr($newserial, 0, 8) eq $t || substr($newserial, 0, 8) eq $t_yest;
     $rrset = Net::DNS::ZoneFile::Fast::parse($oldtext);
     if ($rrset && @$rrset && $rrset->[0]->type() eq 'SOA') {
         verbose("OK\n");
         my $oldserial = $rrset->[0]->serial();
         verbose("  old serial = $oldserial; new serial = $newserial\n");
         return "new serial number, '$newserial' (in $file), is not larger than old serial number, '$oldserial' (in $oldfile), but the files differ"
-            unless ($newserial gt $oldserial && !$no_check_existing);
+            unless $newserial gt $oldserial || $no_check_existing;
     } elsif (!defined($rrset)) {
         print STDERR "deploy-dns: WARNING: current $file is syntactically invalid\n";
     } elsif (!@$rrset) {
