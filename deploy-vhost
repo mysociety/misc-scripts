@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.151 2011-01-31 11:49:10 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.152 2011-02-16 13:28:46 evdb Exp $';
 
 package main;
 
@@ -919,14 +919,17 @@ sub start_site {
                 shell("$mysociety_bin/mugly", "-O", $cron_name, "-p", "$settings_file", "$mysociety_dir/$conf_dir/crontab.ugly");
             }
         } elsif ($git) {
-            foreach my $conf_dir (@{$conf->{conf_dir}}) {
+            my $setup_git_cron = sub {
+                my ( $conf_dir, $git_ref ) = @_;
                 my $tmp_crontab_ugly = mktemp("/tmp/deploy-vhost-crontab.ugly-XXXXXXXX");
                 chdir "$vhost_dir/$vcspath";
-                my $git_ref = $conf->{'git_ref'};
                 shell("git show $git_ref:$conf_dir/crontab.ugly >$tmp_crontab_ugly");
                 shell("$mysociety_bin/mugly", "-O", $cron_name, "-p", "$settings_file", "$tmp_crontab_ugly");
                 unlink $tmp_crontab_ugly;
-            }
+            };
+            
+            $setup_git_cron->( $_, $conf->{'git_ref'} )         for @{$conf->{conf_dir}};
+            $setup_git_cron->( $_, $conf->{'private_git_ref'} ) for @{$conf->{private_conf_dir}};
         } else {
             die "Unknown version control system";
         }
