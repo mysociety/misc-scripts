@@ -9,7 +9,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 # 
 
-my $rcsid = ''; $rcsid .= '$Id: generate-mypass,v 1.25 2011-01-18 11:31:34 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-mypass,v 1.26 2011-02-25 12:57:01 matthew Exp $';
 
 use strict;
 require 5.8.0;
@@ -33,13 +33,13 @@ my %perms = (
     comet => {
         richard => 'gny',
     },
-    samson => {
+    vulcan => {
         matthew => 'twfy',
         debbi => 'twfy',
     },
     majestic => {
         adam => 'cacti',
-	root => 'root', # XXX As cacti doesn't have a vhost.
+        root => 'root', # XXX As cacti doesn't have a vhost.
     },
 );
 
