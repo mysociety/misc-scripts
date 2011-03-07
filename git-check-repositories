@@ -198,6 +198,9 @@ function get_expected_private_owner {
    elif [ "$REPOSITORY_NAME" = 'wtf' ]
    then
        EXPECTED_OWNER="privategit-wtf"
+   elif [ "$REPOSITORY_NAME" = 'msjob06' ]
+   then
+       EXPECTED_OWNER="privategit-recruiting"
    else
        EXPECTED_OWNER=""
    fi
