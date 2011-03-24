@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: newzonefile,v 1.12 2010-08-13 00:48:49 adam Exp $';
+my $rcsid = ''; $rcsid .= '$Id: newzonefile,v 1.13 2011-03-24 16:04:01 adam Exp $';
 
 use strict;
 
@@ -99,17 +99,13 @@ $f->print(<<EOF);
                 MX      10          mx0.ukcod.org.uk.
                 MX      10          mx1.ukcod.org.uk.
 
-                MX      70          spamgizmo.flirble.org.
-
 ; Address of $domain itself.
-                IN      A           82.111.230.200      ; svcs.tea.ukcod.org.uk
-                IN      A           82.111.230.201      ; svcs.bitter.ukcod.org.uk
+                IN      A           89.238.145.xx       ; change me (see intranet)
 
 localhost       IN      A           127.0.0.1
 
 ; Physical web servers for this domain.
-web             IN      A           82.111.230.200      ; svcs.tea.ukcod.org.uk
-                IN      A           82.111.230.201      ; svcs.bitter.ukcod.org.uk
+web             IN      A           89.238.145.xx       ; changeme (see intranet)
 
 www             CNAME               web
 
