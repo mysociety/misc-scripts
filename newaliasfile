@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: newaliasfile,v 1.1 2006-06-16 00:45:32 chris Exp $';
+my $rcsid = ''; $rcsid .= '$Id: newaliasfile,v 1.2 2011-03-24 21:19:40 adam Exp $';
 
 use strict;
 
@@ -57,21 +57,18 @@ my $kw = '$'; $kw .= 'Id:'; $kw .= '$';
 $f->print(<<EOF);
 #
 # $domain:
-# Email alias file for addresses in \@$domain.
+#     Email alias file for addresses in \@$domain
 #
 # $kw
 #
 
-#
-# People
-#
-
-#
-# Role addresses
-# 
-
 # Required by RFC
 postmaster:     postmaster\@ukcod.org.uk
+hostmaster:	domains\@mysociety.org
+
+# People
+
+# Role addresses
 
 EOF
 
