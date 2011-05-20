@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.153 2011-02-28 10:03:17 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.154 2011-05-20 15:04:50 duncan Exp $';
 
 package main;
 
@@ -322,8 +322,18 @@ foreach my $daemon (keys %{$conf->{'daemons'}}) {
     } elsif ($git) {
         $daemon_mugly = mktemp("/tmp/daemon-mugly-file-XXXXXXXX");
         chdir "$vhost_dir/$vcspath";
-        my $git_ref = $conf->{'git_ref'};
-        shell("git show $git_ref:" . $conf->{conf_dir}->[0] . "/$daemon_mugly_file >$daemon_mugly");
+
+	my $git_ref;
+	my $conf_dir;
+	if ( $conf->{git_ref} ) {
+	    $git_ref = $conf->{git_ref};
+	    $conf_dir = $conf->{conf_dir}->[0]
+	} elsif ( $conf->{private_git_ref} ) {
+	    $git_ref = $conf->{private_git_ref};
+	    $conf_dir = $conf->{private_conf_dir}->[0]
+	}
+
+        shell("git show $git_ref:" . $conf_dir . "/$daemon_mugly_file >$daemon_mugly");
     } else {
         die "Unknown version control system";
     }
@@ -554,7 +564,7 @@ sub check_package_file {
             } else {
                 chdir "$vhost_dir/$conf->{'private_git_repository'}";
                 $git_ref = $conf->{'private_git_ref'};
-            }             
+            }
             shell("git show $git_ref:$conf_dir/packages >$tmp_packages");
             shell("/data/mysociety/bin/check-packages-installed", "$tmp_packages");
             unlink $tmp_packages;
