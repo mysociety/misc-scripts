@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.154 2011-05-20 15:04:50 duncan Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.155 2011-06-10 11:42:01 robin Exp $';
 
 package main;
 
@@ -196,14 +196,14 @@ if ($cvs) {
     my $git_url_base;
     if (exists($conf->{'git_repository'})){
         if (!exists($conf->{'git_url_base'})) {
-	    if ($conf->{'git_user'} eq 'anon') {
-		$git_url_base = "git://git.mysociety.org/"
-	    } else {
-		$git_url_base = "ssh://" . $conf->{'git_user'} . "\@git.mysociety.org/data/git/public/";
-	    }
-	} else {
-	    $git_url_base = $conf->{'git_url_base'};
-	}
+            if ($conf->{'git_user'} eq 'anon') {
+                $git_url_base = "git://git.mysociety.org/"
+            } else {
+                $git_url_base = "ssh://" . $conf->{'git_user'} . "\@git.mysociety.org/data/git/public/";
+            }
+        } else {
+            $git_url_base = $conf->{'git_url_base'};
+        }
         make_git_repository($git_url_base, $conf->{'git_user'}, $conf->{'git_repository'}, $conf->{'git_ref'});
     }
     if (exists($conf->{'private_git_repository'})){
@@ -323,15 +323,15 @@ foreach my $daemon (keys %{$conf->{'daemons'}}) {
         $daemon_mugly = mktemp("/tmp/daemon-mugly-file-XXXXXXXX");
         chdir "$vhost_dir/$vcspath";
 
-	my $git_ref;
-	my $conf_dir;
-	if ( $conf->{git_ref} ) {
-	    $git_ref = $conf->{git_ref};
-	    $conf_dir = $conf->{conf_dir}->[0]
-	} elsif ( $conf->{private_git_ref} ) {
-	    $git_ref = $conf->{private_git_ref};
-	    $conf_dir = $conf->{private_conf_dir}->[0]
-	}
+        my $git_ref;
+        my $conf_dir;
+        if ( $conf->{git_ref} ) {
+            $git_ref = $conf->{git_ref};
+            $conf_dir = $conf->{conf_dir}->[0]
+        } elsif ( $conf->{private_git_ref} ) {
+            $git_ref = $conf->{private_git_ref};
+            $conf_dir = $conf->{private_conf_dir}->[0]
+        }
 
         shell("git show $git_ref:" . $conf_dir . "/$daemon_mugly_file >$daemon_mugly");
     } else {
@@ -725,7 +725,7 @@ sub update_conf_dir {
             
             # if it's a logrotate file, symlink it to /etc/logrotate.d/
             if ($name_part eq 'logrotate') {
-		 shell("ln -snf $conf_file /etc/logrotate.d/$vhost");
+                shell("ln -snf $conf_file /etc/logrotate.d/$vhost");
             }
         } else {
             if ($name_part eq 'general') {
