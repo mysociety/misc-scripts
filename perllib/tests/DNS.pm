@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: DNS.pm,v 1.4 2010-10-08 15:46:54 matthew Exp $
+# $Id: DNS.pm,v 1.5 2011-06-12 14:42:52 adam Exp $
 #
 
 package DNS;
@@ -15,12 +15,12 @@ use strict;
 
 use Net::DNS;
 
-my @dnsservers = qw(ns0.ukcod.org.uk ns1.ukcod.org.uk ns0.mysociety.org ns1.mysociety.org);
+my @dnsservers = qw(ns0.ukcod.org.uk ns1.ukcod.org.uk);
 
 my @records = (
         [qw(www.pledgebank.com.             A)],
         [qw(ukcod.org.uk.                   MX)],
-        [qw(101.230.111.82.in-addr.arpa.    PTR)]
+        [qw(74.247.168.192.in-addr.arpa.    PTR)]
     );
 
 sub email() { return 'serious'; }
