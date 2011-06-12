@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: PostgreSQL.pm,v 1.28 2011-01-25 16:34:15 louise Exp $
+# $Id: PostgreSQL.pm,v 1.29 2011-06-12 07:57:41 louise Exp $
 #
 
 package PostgreSQL;
@@ -52,7 +52,7 @@ sub test() {
 
         next unless $location eq 'm247';
         next if $server eq 'vulcan';
-        my $port = ($debian_version eq "lenny") ? 5434 : 5433;
+        my $port = 5434;
         my $postgresql_server = $server . ".int.ukcod.org.uk";
         # Connect to database
         my $dbh = DBI->connect("dbi:Pg:dbname=template1;host=$postgresql_server;port=$port", $user, $pass);
