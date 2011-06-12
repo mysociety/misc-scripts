@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: PostgreSQL.pm,v 1.29 2011-06-12 07:57:41 louise Exp $
+# $Id: PostgreSQL.pm,v 1.30 2011-06-12 08:04:36 louise Exp $
 #
 
 package PostgreSQL;
@@ -47,11 +47,13 @@ sub test() {
     my $pass = mySociety::Config::get('MONITOR_PSQL_PASS');
     our ($debian_version, $location);
     foreach my $server (@postgresql_servers) {
+
         # Get machine OS version
         do $MACHINECONFIGDIR . $server . ".pl" or die "Cannot open $MACHINECONFIGDIR$server.pl : $!";
 
         next unless $location eq 'm247';
         next if $server eq 'vulcan';
+        next if $server eq 'dart';
         my $port = 5434;
         my $postgresql_server = $server . ".int.ukcod.org.uk";
         # Connect to database
