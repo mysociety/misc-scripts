@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: PostgreSQL.pm,v 1.30 2011-06-12 08:04:36 louise Exp $
+# $Id: PostgreSQL.pm,v 1.31 2011-06-20 16:35:29 louise Exp $
 #
 
 package PostgreSQL;
@@ -53,7 +53,6 @@ sub test() {
 
         next unless $location eq 'm247';
         next if $server eq 'vulcan';
-        next if $server eq 'dart';
         my $port = 5434;
         my $postgresql_server = $server . ".int.ukcod.org.uk";
         # Connect to database
