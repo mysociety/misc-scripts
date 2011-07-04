@@ -7,7 +7,7 @@
  *
  */
 
-static const char rcsid[] = "$Id: rotatelogs.c,v 1.9 2006-07-31 18:43:31 chris Exp $";
+static const char rcsid[] = "$Id: rotatelogs.c,v 1.10 2011-07-04 08:02:37 matthew Exp $";
 
 #include <sys/types.h>
 
@@ -51,12 +51,12 @@ void our_error(const char *fmt, ...) {
     write(fd, buf, n);
 }
 
-/* getline STREAM LEN
+/* getlogline STREAM LEN
  * Read a line from STREAM. Returns a whole line ending '\n'; or, in case of
  * error or EOF after reading at least one character, a partial line ending
  * without a '\n'; or NULL. If LEN is not NULL, *LEN is set to the length of
  * the whole line returned. */
-static unsigned char *getline(FILE *fp, size_t *len) {
+static unsigned char *getlogline(FILE *fp, size_t *len) {
     static unsigned char *buf;
     static size_t buflen;
     size_t i;
@@ -200,7 +200,7 @@ struct rule *rules_read(const char *filename) {
     fstat(fileno(fp), &r->r_st);    /* XXX we assume this succeeds */
     r->r_next = NULL;
     
-    while ((line = getline(fp, &l))) {
+    while ((line = getlogline(fp, &l))) {
         char *keyword, *regex;
         struct rule R = {0}, *pR;
         const char *err;
@@ -726,10 +726,10 @@ int main(int argc, char *argv[]) {
     time(&ft);
     logfile_fd = reopen_logfile(logfile_fd, interval, name, format, &ft, make_symlink);
     if (rules) r = reread_rules(r, rules);
-    while ((line = getline(stdin, &linelen))) {
+    while ((line = getlogline(stdin, &linelen))) {
         enum action a;
         if (rules) {
-            /* Ugh. getline returns a static buffer. */
+            /* Ugh. getlogline returns a static buffer. */
             static char *buf;
             static size_t buflen;
             if (!buf || buflen < linelen + 1) buf = realloc(buf, buflen = (linelen + 1) * 2);
