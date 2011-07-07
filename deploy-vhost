@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.155 2011-06-10 11:42:01 robin Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.156 2011-07-07 22:37:44 robin Exp $';
 
 package main;
 
@@ -643,6 +643,9 @@ sub update_conf_dir {
         my $name_part = $1;
         my $conf_file = "$vhost_dir/$vcspath/$conf_dir/$name_part"; # destination file
         my $old_umask = umask(0077);
+        my $name_base = $name_part;
+        $name_base =~ s/\.yml$//;
+
         # find source template (.ugly) file
         my $conf_ugly_part;
         if ($cvs) {
@@ -711,7 +714,7 @@ sub update_conf_dir {
         if ($make_conf) {
             # call mugly to generate from template
             shell("$mysociety_bin/mugly", "-O", "$conf_file.tmp", "-p", "$settings_file", "$conf_ugly_file");
-            if ($name_part eq 'general') {
+            if ($name_base eq 'general') {
                 # test contents of new configuration file before copying it over
                 chdir $mysociety_bin;
                 shell("$mysociety_bin/compareconfig.pl", "$conf_file.tmp", $example_file);
@@ -724,11 +727,11 @@ sub update_conf_dir {
             unlink("$conf_file.tmp") or die "couldn't unlink $conf_file.tmp";
             
             # if it's a logrotate file, symlink it to /etc/logrotate.d/
-            if ($name_part eq 'logrotate') {
+            if ($name_base eq 'logrotate') {
                 shell("ln -snf $conf_file /etc/logrotate.d/$vhost");
             }
         } else {
-            if ($name_part eq 'general') {
+            if ($name_base eq 'general') {
                 # test contents of configuration file before copying it over
                 chdir $mysociety_bin;
                 shell("$mysociety_bin/compareconfig.pl", "$conf_file", $example_file);
