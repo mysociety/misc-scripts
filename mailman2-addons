@@ -1,0 +1,42 @@
+#!/bin/bash
+#
+# mailman2-addons: 
+#    grab the useful scripts Mark Sapiro's written for 
+#    interacting with Mailman
+#
+# Copyright (c) 2011 Adam McGreggor/UKCOD. All rights reserved.
+# Email: adam@mysociety.org; WWW: http://blog.amyl.org.uk/
+#
+# $Id: mailman2-addons,v 1.1 2011-07-17 19:44:54 adam Exp $
+#
+
+set -e
+
+DESTDIR=/usr/lib/mailman/bin
+BASEURI=http://www.msapiro.net/scripts/
+
+if [ ! -d ${DESTDIR} ] ; then
+    echo "Mailman directory not in the expected place. Bailing"
+    exit 1
+elif [ ! -w ${DESTDIR} ]; then
+    echo "You don't appear to be able to write to ${DESTDIR}"
+    exit 1
+else
+
+    cd ${DESTDIR}
+
+    for S in hold_again list_pending non_members remove_recips \
+        set_attributes add_banned.py change_admins.py \
+        change_member_address.py discard_address.py \
+        fix_bad_bounce_info.py fix_uc_address.py \
+        get_bounce_info.py last_post.py list_mod.py \
+        remove_bad_address.py reset_bounce.py set_mod.py \
+        set_nodigest.py set_nodups.py set_nomail.py
+    do
+        if [ ! -e ${DESTDIR}/${S} ]; then
+        wget ${BASEURI}/${S}
+        chmod 755 ${S}
+        chgrp list ${S}
+        fi
+    done
+fi
