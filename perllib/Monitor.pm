@@ -6,7 +6,7 @@
 # Copyright (c) 2010 UK Citizens Online Democracy. All rights reserved.
 # Email: matthew@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Monitor.pm,v 1.1 2010-10-18 11:44:08 matthew Exp $
+# $Id: Monitor.pm,v 1.2 2011-07-18 18:05:59 robin Exp $
 #
 
 package Monitor;
@@ -21,14 +21,14 @@ use Time::HiRes qw(time alarm);
 use constant CONNECT_TIME_MAX => 0.5;
 use constant SEND_REQUEST_TIME_MAX => 1;
 use constant GET_RESPONSELINE_TIME_MAX => 10;
-use constant GET_RESPONSELINE_TIME_MAX_YCML_LEAGUE => 20;
 use constant GET_HEADERS_TIME_MAX => 5;
 use constant GET_BODY_TIME_MAX => 10;
 use constant TOTAL_TIME_MAX => 20;
 
-sub test_web ($) {
+sub test_web ($;$) {
     local $SIG{ALRM} = sub { die "timeout"; };
     my $page = shift;
+    my $get_responseline_time_max = @_ ? shift() : GET_RESPONSELINE_TIME_MAX;
     my ($hostname, $path) = ($page =~ m{^https?://([^/]+)(/.*)$});
     if (!$hostname || !$path) {
         print "$page: bad URL\n";
@@ -103,11 +103,7 @@ sub test_web ($) {
             $s->flush();
 
             $what = "waiting for response line";
-            if ($page eq "http://www.hearfromyourmp.com/league") {
-                alarm(GET_RESPONSELINE_TIME_MAX_YCML_LEAGUE);
-            } else {
-                alarm(GET_RESPONSELINE_TIME_MAX);
-            }
+            alarm($get_responseline_time_max);
             local $/ = "\r\n";
             
             my $responseline = $s->getline();

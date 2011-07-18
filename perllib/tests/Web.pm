@@ -8,7 +8,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Web.pm,v 1.30 2011-07-13 17:00:56 matthew Exp $
+# $Id: Web.pm,v 1.31 2011-07-18 18:05:59 robin Exp $
 #
 
 package Web;
@@ -57,13 +57,23 @@ my @pages = qw(
     );
         #http://www.hassleme.co.uk/
 
+# Pages that require non-default response line timeout values
+my $timeouts = {
+    "http://www.hearfromyourmp.com/league" => 20,
+};
+
 sub email() { return 'serious'; }
 
 sub test () {
     return if !mySociety::Config::get('RUN_EXTRA_SERVERS_TESTS');
     foreach my $page (@pages) {
         next if $page =~ /^#/;
-        Monitor::test_web($page);
+        
+        if (exists $timeouts{$page}) {
+            Monitor::test_web($page, $timeouts{$page});
+        } else {
+            Monitor::test_web($page);
+        }
     }
 }
 

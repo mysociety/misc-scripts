@@ -7,13 +7,13 @@
  * parse this properly, so you can use comments and conditionals and whatnot,
  * but unless essential it's better to keep it simple....
  *
- * Copy this file to one called "general" in the same directory.  Or
+ * Copy this file to one called "monitoring.conf" in the same directory.  Or
  * have multiple config files and use a symlink to change between them.
  * 
  * Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
  * Email: francis@mysociety.org; WWW: http://www.mysociety.org
  *
- * $Id: monitoring.conf-example,v 1.6 2009-11-30 12:06:19 francis Exp $
+ * $Id: monitoring.conf-example,v 1.7 2011-07-18 18:05:58 robin Exp $
  * 
  */
 
