@@ -8,7 +8,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Web.pm,v 1.31 2011-07-18 18:05:59 robin Exp $
+# $Id: Web.pm,v 1.32 2011-07-18 18:47:06 robin Exp $
 #
 
 package Web;
@@ -58,9 +58,9 @@ my @pages = qw(
         #http://www.hassleme.co.uk/
 
 # Pages that require non-default response line timeout values
-my $timeouts = {
+my %timeouts = (
     "http://www.hearfromyourmp.com/league" => 20,
-};
+);
 
 sub email() { return 'serious'; }
 
