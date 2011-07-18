@@ -9,7 +9,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: monitor,v 1.12 2010-10-08 17:27:00 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: monitor,v 1.13 2011-07-18 20:04:23 robin Exp $';
 
 use strict;
 
@@ -76,6 +76,8 @@ sub do_one_test ($) {
         }
         # contortion necessary to get a real die() if this fails
         eval "use $name;";
+        die if $@ ne "";
+        
         my $fn = eval "\\&${name}::test";
         STDOUT->autoflush(1);
         &$fn();
