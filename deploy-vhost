@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.156 2011-07-07 22:37:44 robin Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.157 2011-07-21 15:26:29 robin Exp $';
 
 package main;
 
@@ -223,6 +223,8 @@ foreach my $public_dir (@{$conf->{'public_dirs'}}) {
 # Make database config settings
 my $database_configs = "";
 my $external_database_configs = "";
+my $database_configs_yml = "";
+my $external_database_configs_yml = "";
 my $rails_database_config = "";
 if (defined $conf->{'databases'}) {
     foreach my $database (@{$conf->{'databases'}}) {
@@ -264,12 +266,18 @@ print FH <<END;
 \$database_configs = <<DONE_DATABASE_CONFIGS;
 $database_configs
 DONE_DATABASE_CONFIGS
+\$database_configs_yml = <<DONE_DATABASE_CONFIGS_YML;
+$database_configs_yml
+DONE_DATABASE_CONFIGS_YML
 \$rails_database_config = <<DONE_RAILS_DATABASE_CONFIG;
 $rails_database_config
 DONE_RAILS_DATABASE_CONFIG
 \$external_database_configs = <<DONE_EXTERNAL_DATABASE_CONFIGS;
 $external_database_configs
 DONE_EXTERNAL_DATABASE_CONFIGS
+\$external_database_configs_yml = <<DONE_EXTERNAL_DATABASE_CONFIGS_YML;
+$external_database_configs_yml
+DONE_EXTERNAL_DATABASE_CONFIGS_YML
 END
 
 print FH Dumper($conf->{conf_dir});
@@ -368,7 +376,7 @@ if ($action ne "remove"){
 # Helper functions
 
 
-sub one_db_conf {
+sub one_db_conf_php {
     my ($params, $database, $internal) = @_;
     my $port_line = '';
     if ($params->{type} eq 'psql') {
@@ -392,13 +400,42 @@ END
 
 }
 
+sub one_db_conf_yml {
+    my ($params, $database, $internal) = @_;
+    my $port_line = '';
+    if ($params->{type} eq 'psql') {
+        $port_line = "$params->{prefix}_DB_PORT: $params->{port}";
+    }
+    my $network_part = '';
+    if ($internal) {
+        $network_part = 'int.ukcod.org.uk';
+    } else {
+        $network_part = 'ukcod.org.uk';
+    }
+ 
+    my $conf = <<END;
+$params->{prefix}_DB_HOST: '$params->{host}.$network_part'
+$port_line
+$params->{prefix}_DB_NAME: '$database'
+$params->{prefix}_DB_USER: '$database'
+$params->{prefix}_DB_PASS: '\${\\(pgpw('$database'))}'
+END
+    return $conf;
+
+}
+
 sub db_conf {
-    my ($params, $database) = @_;
+    my ($params, $database, $one_db_conf) = @_;
     if ($params->{type} ne 'mysql' && $params->{type} ne 'psql'){
         die "unknown database type '$params->{type}'";
     }
-    $database_configs .= one_db_conf($params, $database, 1);
-    $external_database_configs .= one_db_conf($params, $database, 0);
+    
+    $database_configs .= one_db_conf_php($params, $database, 1);
+    $external_database_configs .= one_db_conf_php($params, $database, 0);
+    
+    $database_configs_yml .= one_db_conf_yml($params, $database, 1);
+    $external_database_configs_yml .= one_db_conf_yml($params, $database, 0);
+    
     if ($params->{type} eq 'psql') {
             # XXX doesn't cope with multiple Rails database configs (as you
             # have to list them in the yml file in right place, so one text
