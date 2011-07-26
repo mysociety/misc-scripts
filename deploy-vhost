@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.159 2011-07-26 14:06:31 robin Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.160 2011-07-26 14:21:28 duncan Exp $';
 
 package main;
 
@@ -602,9 +602,11 @@ sub check_package_file {
                 chdir "$vhost_dir/$conf->{'private_git_repository'}";
                 $git_ref = $conf->{'private_git_ref'};
             }
-            shell("git show $git_ref:$conf_dir/packages >$tmp_packages");
-            shell("/data/mysociety/bin/check-packages-installed", "$tmp_packages");
-            unlink $tmp_packages;
+            if (-e "$conf_dir/packages") {
+                shell("git show $git_ref:$conf_dir/packages >$tmp_packages");
+                shell("/data/mysociety/bin/check-packages-installed", "$tmp_packages");
+                unlink $tmp_packages;
+            }
        } else {
            die "Unknown version control system";
        }
