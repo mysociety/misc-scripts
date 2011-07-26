@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.158 2011-07-22 10:43:27 robin Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.159 2011-07-26 14:06:31 robin Exp $';
 
 package main;
 
@@ -749,19 +749,22 @@ sub update_conf_dir {
             }
         }
         if ($make_conf) {
+            my $conf_file_tmp = $conf_file;
+            $conf_file_tmp =~ s/(\.yml)?$/.tmp$1/;
+            
             # call mugly to generate from template
-            shell("$mysociety_bin/mugly", "-O", "$conf_file.tmp", "-p", "$settings_file", "$conf_ugly_file");
+            shell("$mysociety_bin/mugly", "-O", $conf_file_tmp, "-p", "$settings_file", "$conf_ugly_file");
             if ($name_base eq 'general') {
                 # test contents of new configuration file before copying it over
                 chdir $mysociety_bin;
-                shell("$mysociety_bin/compareconfig.pl", "$conf_file.tmp", $example_file);
+                shell("$mysociety_bin/compareconfig.pl", $conf_file_tmp, $example_file);
             }
             # copy into place
-            copy("$conf_file.tmp", "$conf_file.deployed");
+            copy($conf_file_tmp, "$conf_file.deployed");
             chown($user_uid, $user_gid, "$conf_file.deployed");
-            copy("$conf_file.tmp", "$conf_file");
+            copy($conf_file_tmp, "$conf_file");
             chown($user_uid, $user_gid, "$conf_file");
-            unlink("$conf_file.tmp") or die "couldn't unlink $conf_file.tmp";
+            unlink($conf_file_tmp) or die "couldn't unlink $conf_file_tmp";
             
             # if it's a logrotate file, symlink it to /etc/logrotate.d/
             if ($name_base eq 'logrotate') {
