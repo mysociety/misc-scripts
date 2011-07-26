@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.160 2011-07-26 14:21:28 duncan Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.161 2011-07-26 14:40:49 duncan Exp $';
 
 package main;
 
@@ -752,7 +752,7 @@ sub update_conf_dir {
         }
         if ($make_conf) {
             my $conf_file_tmp = $conf_file;
-            $conf_file_tmp =~ s/(\.yml)?$/.tmp$1/;
+            $conf_file_tmp =~ s/((\.yml)?)$/.tmp$1/;
             
             # call mugly to generate from template
             shell("$mysociety_bin/mugly", "-O", $conf_file_tmp, "-p", "$settings_file", "$conf_ugly_file");
