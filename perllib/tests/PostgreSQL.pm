@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: PostgreSQL.pm,v 1.31 2011-06-20 16:35:29 louise Exp $
+# $Id: PostgreSQL.pm,v 1.32 2011-08-02 01:23:43 matthew Exp $
 #
 
 package PostgreSQL;
@@ -46,31 +46,30 @@ sub test() {
     my $user = mySociety::Config::get('MONITOR_PSQL_USER');
     my $pass = mySociety::Config::get('MONITOR_PSQL_PASS');
     our ($debian_version, $location);
-    foreach my $server (@postgresql_servers) {
+    SERVER: foreach my $server (@postgresql_servers) {
 
         # Get machine OS version
         do $MACHINECONFIGDIR . $server . ".pl" or die "Cannot open $MACHINECONFIGDIR$server.pl : $!";
 
         next unless $location eq 'm247';
         next if $server eq 'vulcan';
-        my $port = 5434;
         my $postgresql_server = $server . ".int.ukcod.org.uk";
-        # Connect to database
-        my $dbh = DBI->connect("dbi:Pg:dbname=template1;host=$postgresql_server;port=$port", $user, $pass);
-        if ( !defined $dbh ) {
-            print "Cannot connect to database on $postgresql_server:$port as $user\n";
-            next;
-        } 
-
-        # Check for long running queries
-        # ... check most queries take less than 30 minutes, with some exceptions 
-        # * petitions delete from signer - for large petitions it just does take ages
-        # * WhatDoTheyKnow backing up the raw_emails table - which is large
-        check_old_queries($dbh, "30 minutes", "(^delete from signer|^COPY public.raw_emails )", $postgresql_server, $port, $user); 
-        # .. show anything more than 12 hours long ($^ will never match, so no exceptions)
-        check_old_queries($dbh, "12 hours", "\$^", $postgresql_server, $port, $user); 
-
-        $dbh->disconnect;
+        for my $port (5434, 5432) {
+            # Connect to database
+            my $dbh = DBI->connect("dbi:Pg:dbname=template1;host=$postgresql_server;port=$port", $user, $pass);
+            if ( defined $dbh ) {
+                # Check for long running queries
+                # ... check most queries take less than 30 minutes, with some exceptions 
+                # * petitions delete from signer - for large petitions it just does take ages
+                # * WhatDoTheyKnow backing up the raw_emails table - which is large
+                check_old_queries($dbh, "30 minutes", "(^delete from signer|^COPY public.raw_emails )", $postgresql_server, $port, $user); 
+                # .. show anything more than 12 hours long ($^ will never match, so no exceptions)
+                check_old_queries($dbh, "12 hours", "\$^", $postgresql_server, $port, $user); 
+                $dbh->disconnect;
+                next SERVER;
+            } 
+        }
+        print "Cannot connect to database on $postgresql_server as $user\n";
     }
 }
 
