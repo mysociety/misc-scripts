@@ -6,7 +6,7 @@
 # Copyright (c) 2011 UK Citizens Online Democracy. All rights reserved.
 # Email: matthew@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: PET.pm,v 1.9 2011-01-25 15:44:37 matthew Exp $
+# $Id: PET.pm,v 1.10 2011-08-08 13:16:21 matthew Exp $
 #
 
 package PET;
@@ -45,6 +45,7 @@ sub test () {
     foreach (values %$vhosts) {
         next unless $_->{site} eq 'petitions' && $_->{daemons} && grep { /^petemaild/ } keys %{$_->{daemons}};
         my $user = $_->{user} || $sites->{$_->{site}}->{user};
+        next if $user eq 'pet';
         push @vhosts, $user;
     }
     test_procs('petemaild', @vhosts);
