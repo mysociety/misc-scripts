@@ -1,9 +1,9 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
 #
 # simple.t:
 # Tests for Geo::HelmertTransform.
 #
-# $Id: simple.t,v 1.2 2006-11-03 13:39:47 chris Exp $
+# $Id: simple.t,v 1.3 2011-08-10 09:50:43 evdb Exp $
 #
 
 use strict;
@@ -26,6 +26,9 @@ my $wgs84    = Geo::HelmertTransform::datum('WGS84');
 ($lat, $lon, $h)
     = Geo::HelmertTransform::convert_datum($airy1830, $wgs84, $lat, $lon, $h);
 
-is($lat, 0.00480099695040301);
-is($lon, -0.000890444825202788);
-is($h,   -257.805436616763);
+# Use like to get a consistent result across different architectures.
+# 7 decimal points should be plenty
+like( $lat,    qr/^0\.0048009\d*$/);
+like( $lon,   qr/^-0\.0008904\d*$/);
+like( $h,   qr/^-257\.8054366\d*$/);
+
