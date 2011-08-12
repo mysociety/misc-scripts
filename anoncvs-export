@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: anoncvs-export,v 1.19 2010-05-12 16:43:44 francis Exp $
+# $Id: anoncvs-export,v 1.20 2011-08-12 09:01:20 matthew Exp $
 #
 
 # set -x # debugging
@@ -46,7 +46,7 @@ lock_repos () {
             locks="$repos/#cvs.lock $locks"
             return 0
         fi
-        i=$[ $i + 1 ]
+        i=$(($i + 1))
         sleep 1
     done
     return 1
