@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.162 2011-08-15 17:03:31 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.163 2011-08-15 22:49:08 robin Exp $';
 
 package main;
 
@@ -652,7 +652,8 @@ sub stop_site {
         symlink("$vhost_dir/docs/down.default.html", "$vhost_dir/docs/down.html");
     } else {
         # Down notice
-        open(FH, "> $vhost_dir/docs/.down.html.new") or die "failed to open .down.html.new";
+        open(FH, "> $vhost_dir/docs/.down.html.new")
+            or die "Failed to open $vhost_dir/docs/.down.html.new for writing: $!\n";
         print FH <<END;
         <html>
         <head>
@@ -668,7 +669,8 @@ sub stop_site {
 END
         close FH;
         unlink("$vhost_dir/docs/down.html");
-        rename("$vhost_dir/docs/.down.html.new", "$vhost_dir/docs/down.html") or die "failed to rename to down.html";
+        rename("$vhost_dir/docs/.down.html.new", "$vhost_dir/docs/down.html")
+            or die "failed to rename .down.html.new to down.html in $vhost_dir/docs: $!";
         chown($user_uid, $user_gid, "$vhost_dir/docs/down.html");
     }
 }
