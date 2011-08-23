@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-email,v 1.20 2010-09-06 16:02:45 adam Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-email,v 1.21 2011-08-23 11:30:21 struan Exp $';
 
 use strict;
 
@@ -72,6 +72,11 @@ sub test_aliasfile ($) {
                 last;
             }
             $in_key = 0;
+
+            if ( !check_line( $line ) ) {
+                $ret = "bad alias line at line $n";
+                last;
+            }
             next;
         } elsif ($line =~ /^(([^\s]|\\.)+)\s*:?/) {
             $in_key = 1;
@@ -79,6 +84,13 @@ sub test_aliasfile ($) {
             $k =~ s/([^\\]):$/$1/;
             $k =~ s/\\(.)/$1/g;
             $keys{$k}++;
+
+            my $v = $line;
+            $v =~ s/^$k\s*://;
+            if ( !check_line($v) ) {
+                $ret = "bad alias line at line $n";
+                last;
+            }
         }
     }
     throw Oops("$file: $!") if ($f->error());
@@ -91,6 +103,17 @@ sub test_aliasfile ($) {
     }
 
     return $ret;
+}
+
+# check that the list of aliases looks validish - check that they
+# look like a list of nonwhite space seperated by ,
+sub check_line($) {
+    my $line = shift;
+
+    if ( $line !~ /^\s*(?:\S+,\s*)*\S+\s*$/ ) {
+        return 0;
+    }
+    return 1;
 }
 
 #
