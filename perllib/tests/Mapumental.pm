@@ -6,7 +6,7 @@
 # Copyright (c) 2011 UK Citizens Online Democracy. All rights reserved.
 # Email: matthew@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Mapumental.pm,v 1.3 2011-08-26 15:34:39 robin Exp $
+# $Id: Mapumental.pm,v 1.4 2011-08-26 15:35:28 robin Exp $
 
 package Mapumental;
 
@@ -42,14 +42,14 @@ sub test_ptdaemon () {
     
     my $pidfile = PTD_CONF_DIR . "/ptdaemon.pid";
     if (! -e $pidfile) {
-        print "$pidfile does not exist";
+        print "$pidfile does not exist\n";
         return;
     }
     my $pid = _read_file $pidfile;
     chomp $pid;
     my $status = system("/bin/ps -p $pid > /dev/null");
     if ($status != 0) {
-        print "ptdaemon not running (expected pid $pid)";
+        print "ptdaemon not running (expected pid $pid)\n";
     }
 }
 
