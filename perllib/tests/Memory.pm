@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Memory.pm,v 1.8 2010-10-08 15:46:54 matthew Exp $
+# $Id: Memory.pm,v 1.9 2011-08-31 11:16:52 matthew Exp $
 #
 
 package Memory;
@@ -31,31 +31,25 @@ sub test () {
     $f->getline();
 
     # list of memory stats
-    my $mem;
-    $mem = $f->getline();
-    if (!$mem) {
+    my $total_used = 0;
+    my $total = 0;
+    while (my $mem = $f->getline()) {
+        chomp($mem);
+        my ($device, $type, $size, $used, $priority) = split(/\s+/, $mem);
+        $total_used += $used;
+        $total += $size;
+    }
+    my $free = $total - $total_used;
+    if (!$total) {
         print "/proc/swaps: read: $!\n";
         return;
     }
-    chomp($mem);
-    my ($device, $type, $total, $used, $priority) = split(/\s+/, $mem);
-    my $free = ($total - $used);
     if ($free / $total < MIN_SWAP_FRACTION) {
         printf "swap: only %d / %d MB (%.1f%% < %.1f%%) free\n",
                 $free / (1024), $total / (1024),
                 100 * $free / $total,
                 100 * MIN_SWAP_FRACTION;
     }
-
-    # Removed this so we can have more than 1
-    # swap area if required. Don't really need to add up
-    # since if we are using half of one swap then we have
-    # a problem and should go buy some more memory.
-    #
-    # check there are no more swap devices
-    #if ($f->getline()) {
-    #    printf "swap: there are multiple swap devices\n";
-    #}
 }
 
 1;
