@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.163 2011-08-15 22:49:08 robin Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.164 2011-09-05 09:07:00 matthew Exp $';
 
 package main;
 
@@ -946,7 +946,7 @@ sub update_site {
 
 sub start_site {
     # Up notice
-    unlink("$vhost_dir/docs/down.html") or die "couldn't unlink down.html";
+    unlink("$vhost_dir/docs/down.html"); # or die "couldn't unlink down.html";
 
     # Start daemons
     foreach my $daemon (keys %{$conf->{'daemons'}}) {
