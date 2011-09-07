@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.164 2011-09-05 09:07:00 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.165 2011-09-07 10:33:15 robin Exp $';
 
 package main;
 
@@ -24,6 +24,7 @@ use mySociety::SystemMisc qw(shell);
 use mySociety::Config;
 
 use Cwd;
+use Errno;
 use POSIX qw(getuid);
 use Data::Dumper;
 use File::Slurp;
@@ -638,6 +639,10 @@ sub stop_site {
     # WhatDoTheyknow, would then not be delivered while deploying new version
     # of it. Really should replace with something that gets exim to try
     # redelivery?
+    #
+    # XXXX Note that this commented-out code was written before support was
+    # added for .forward-foo files, and does not support them; so do not just
+    # blindly uncomment it.
     #if ($conf->{'email'}) {
     #    foreach my $email_user (keys %{$conf->{'email'}}) {
     #        unlink("/home/$email_user/.forward");
@@ -944,9 +949,19 @@ sub update_site {
     apache_graceful();
 }
 
+sub make_dot_forward {
+    my ($email_user, $script, $suffix) = @_;
+    my $forward_file_name = defined($suffix) ? ".forward-$suffix" : ".forward";
+    
+    shell("su", "-", $email_user, "-c echo \"|$vhost_dir/$vcspath/$script\" >~$email_user/$forward_file_name");
+}
+
 sub start_site {
     # Up notice
-    unlink("$vhost_dir/docs/down.html"); # or die "couldn't unlink down.html";
+    unlink("$vhost_dir/docs/down.html") or do {
+        # It doesn't matter if down.html has already been removed.
+        die "couldn't unlink $vhost_dir/docs/down.html: $!\n" unless $!{ENOENT};
+    };
 
     # Start daemons
     foreach my $daemon (keys %{$conf->{'daemons'}}) {
@@ -999,7 +1014,17 @@ sub start_site {
     if ($conf->{'email'}) {
         foreach my $email_user (keys %{$conf->{'email'}}) {
             my $email_pipeto = $conf->{'email'}->{$email_user};
-            shell("su", "-", $email_user, "-c echo \"|$vhost_dir/$vcspath/$email_pipeto\" >~$email_user/.forward");
+            if (ref($email_pipeto) eq "HASH") {
+                while (my ($suffix, $script) = each(%$email_pipeto)) {
+                    if ($suffix eq '') {
+                        make_dot_forward($email_user, $script);
+                    } else {
+                        make_dot_forward($email_user, $script, $suffix);
+                    }
+                }
+            } else {
+                make_dot_forward($email_user, $email_pipeto);
+            }
         }
     }
 }
