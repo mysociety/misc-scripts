@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Memory.pm,v 1.9 2011-08-31 11:16:52 matthew Exp $
+# $Id: Memory.pm,v 1.10 2011-10-10 09:37:32 duncan Exp $
 #
 
 package Memory;
@@ -40,10 +40,9 @@ sub test () {
         $total += $size;
     }
     my $free = $total - $total_used;
-    if (!$total) {
-        print "/proc/swaps: read: $!\n";
-        return;
-    }
+
+    return unless $total;
+
     if ($free / $total < MIN_SWAP_FRACTION) {
         printf "swap: only %d / %d MB (%.1f%% < %.1f%%) free\n",
                 $free / (1024), $total / (1024),
