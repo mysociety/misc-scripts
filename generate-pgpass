@@ -8,7 +8,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 # 
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.154 2011-08-30 11:38:34 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.155 2011-11-17 22:40:40 adam Exp $';
 
 use strict;
 require 5.8.0;
@@ -53,6 +53,7 @@ my %extra_perms = (
         'dademcron' => ['fyr'],
     },
     'phoenix' => {
+	'adam' => ['pb'],
         'debbi' => ['fyr', 'ycml'],
         'timsk' => ['pb'],
         'matthew' => ['fyr', 'pb', 'ycml', 'ycml-cllr'],
