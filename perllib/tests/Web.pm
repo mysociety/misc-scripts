@@ -8,7 +8,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Web.pm,v 1.35 2011-09-19 12:29:55 louise Exp $
+# $Id: Web.pm,v 1.36 2011-12-23 17:59:13 dave Exp $
 #
 
 package Web;
@@ -22,6 +22,7 @@ my @pages = qw(
         http://www.pledgebank.com/
         http://www.pledgebank.com/rights
         http://www.pledgebank.com/faq
+	http://pledgebank.barnet.gov.uk/
 
         http://www.theyworkforyou.com/
         http://www.theyworkforyou.com/mp/tony_blair/sedgefield
@@ -36,6 +37,9 @@ my @pages = qw(
 
         http://www.fixmystreet.com/
         http://www.fixmystreet.com/report/21025
+
+	http://barnet.fixmystreet.com/around?pc=N111NP
+        http://southampton.fixmystreet.com/around?pc=S0147LY
 
         http://scenic.mysociety.org/
 
