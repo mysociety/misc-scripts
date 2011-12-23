@@ -8,7 +8,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Web.pm,v 1.36 2011-12-23 17:59:13 dave Exp $
+# $Id: Web.pm,v 1.37 2011-12-23 18:16:21 dave Exp $
 #
 
 package Web;
@@ -55,6 +55,10 @@ my @pages = qw(
     
         http://gaze.mysociety.org/gaze?R1%3A0%2C37%3AGaze.get_radius_containing_population%2CL1%3A3%2CT14%3A51.41281945404%2CT17%3A-0.29430381185079%2CT6%3A200000%2C
         http://gaze.mysociety.org/gaze?R1%3A0%2C16%3AGaze.find_places%2CL1%3A5%2CT2%3AGB%2CNT7%3ANewport%2CI2%3A10%2CI1%3A0%2C
+
+	http://propertyscandal.channel4.com/local/
+	http://mapit.mysociety.org/postcode/partial/EH1.html
+
     );
         #http://www.hassleme.co.uk/
 
