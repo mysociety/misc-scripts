@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: test-site,v 1.7 2009-10-29 10:05:24 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: test-site,v 1.8 2012-01-04 17:14:34 matthew Exp $';
 
 package main;
 
@@ -40,7 +40,8 @@ die "Specify virtual host name as only parameter" if scalar(@ARGV) != 1;
 my $vhost = $ARGV[0];
 my $vhost_conf = $vhosts->{$vhost};
 die "vhost '$vhost' is not in vhosts.pl" if !$vhost_conf;
-die "test vhosts must begin testharness." if $vhost !~ m/^testharness\./;
+die "test vhosts must begin testharness. or end .test.mysociety.org"
+    if $vhost !~ m/^testharness\./ && $vhost !~ m/\.test\.mysociety\.org$/;
 my $site = $vhost_conf->{'site'};
 die "site not specified for '$vhost' in vhosts.pl" if !$site;
 my $site_conf = $sites->{$site};
