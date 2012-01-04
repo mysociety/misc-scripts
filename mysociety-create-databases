@@ -9,7 +9,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: mysociety-create-databases,v 1.10 2011-08-18 19:00:02 robin Exp $';
+my $rcsid = ''; $rcsid .= '$Id: mysociety-create-databases,v 1.11 2012-01-04 13:23:56 matthew Exp $';
 
 package main;
 
@@ -62,7 +62,8 @@ foreach my $database (keys %{$databases}) {
     if ($params->{type} eq 'psql') {
         # Is it for our server? and we are right user?
         if ($params->{host} eq $hostname && getpwuid($>) eq 'postgres') {
-            print "postgresql database '$database' on host $hostname port $params->{port}\n" if $::verbose;
+
+            my @out;
 
             # Testharness databases get dropped and recreated by the test script, so
             # give them more permissions.
@@ -75,19 +76,15 @@ foreach my $database (keys %{$databases}) {
             my $dbh = DBI->connect("dbi:Pg:dbname=template1;port=$params->{port}", 'postgres', undef, { PrintWarn => 1, PrintError => 1, RaiseError => 0, AutoCommit => 1 }) || die DBI->errstr();
 
             # Create user with same name as database
-            if ($dbh->selectrow_array("select count(*) from pg_catalog.pg_user where usename = '$database'")) {
-                print "\tuser '$database' already exists\n" if $::verbose;
-            } else {
+            if (!$dbh->selectrow_array("select count(*) from pg_catalog.pg_user where usename = '$database'")) {
                 my $password = pgpw($database);
-                print "\tcreating user '$database'\n" if $::verbose;
+                push @out, "creating user";
                 $dbh->do("create user \"$database\" with password '$password'");
             }
 
             # Create database
-            if ($dbh->selectrow_array("select count(*) from pg_catalog.pg_database where datname = '$database'")) {
-                print "\tdatabase '$database' already exists\n" if $::verbose;
-            } else {
-                print "\tcreating database '$database'\n" if $::verbose;
+            if (!$dbh->selectrow_array("select count(*) from pg_catalog.pg_database where datname = '$database'")) {
+                push @out, "creating db";
                 my $owner_clause = "";
                 if ($testharness) {
                     $owner_clause = "owner \"$database\"" 
@@ -98,12 +95,13 @@ foreach my $database (keys %{$databases}) {
             }
 
             # Give user permissions on database
-            print "\tgranting permissions for user to access database '$database'\n" if $::verbose;
             $dbh->do("grant all on database \"$database\" to \"$database\" ");
             if ($testharness) {
-                print "\tgiving user '$database' createdb (as testharness database)\n" if $::verbose;
                 $dbh->do("alter user \"$database\" with createdb");
             }
+
+            push @out, "no change" if $::verbose && !@out;
+            print "$database (psql", ($params->{port} == 5432 ? "" : " port $params->{port}"), "): ", join('; ', @out), "\n" if @out;
 
         }
     } elsif ($params->{type} eq 'mysql') {
