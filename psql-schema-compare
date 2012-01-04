@@ -45,9 +45,7 @@ CURRENT_SCHEMA_FILE=`mktemp /tmp/ms-deploy-currentschema.XXXXXX`
 POSTGRES=postgres
 SCHEMATEST=schematest_`hostname`
 
-# Pick most recent pg_dump available
-
-PGDUMP=/data/mysociety/bin/latest-psql-dump
+PGDUMP=/usr/bin/pg_dump
 
 # Find any magic included files
 INCLUDED_EXTRA_SCHEMAS=`grep "PSQL-SCHEMA-COMPARE-INCLUDE" $PARAM_SCHEMA | cut -d " " -f 3`
