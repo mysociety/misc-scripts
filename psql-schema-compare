@@ -53,11 +53,11 @@ INCLUDED_EXTRA_SCHEMAS=`grep "PSQL-SCHEMA-COMPARE-INCLUDE" $PARAM_SCHEMA | cut -
 # XXX SET default_with_oids - not sure why these are varying in dump, when they look off in all the databases, ignore for now.
 
 # load file schema into a temporary place to dump it in the same format as ...
-ssh $PARAM_DB_HOST su $POSTGRES -c \""dropdb --port $PARAM_DB_PORT $SCHEMATEST"\" 2>&1 | grep -v "does not exist" || echo -n
-ssh $PARAM_DB_HOST su $POSTGRES -c \""createdb --port $PARAM_DB_PORT $SCHEMATEST"\"
-cat $INCLUDED_EXTRA_SCHEMAS $PARAM_SCHEMA | ssh $PARAM_DB_HOST su $POSTGRES -c \""psql --port $PARAM_DB_PORT --file=- -q $SCHEMATEST"\" 2>&1 | egrep -v "will create implicit|NOTICE:|DETAIL:" && echo -n 
-ssh $PARAM_DB_HOST su $POSTGRES -c \""$PGDUMP --port $PARAM_DB_PORT --schema-only --schema=public --encoding=UTF-8 -s $SCHEMATEST"\" | egrep -v "^--|SET SESSION AUTHORIZATION|\\connect - |GRANT ALL|REVOKE ALL|START WITH 1|OWNER TO|SET default_with_oids" | grep -v "SET search_path = public, pg_catalog;" | sed "s/,$//;" | grep -v '^[ \t]*$' > $VCS_SCHEMA_FILE
-ssh $PARAM_DB_HOST su $POSTGRES -c \""dropdb --port $PARAM_DB_PORT $SCHEMATEST"\"
+ssh $PARAM_DB_HOST su - $POSTGRES -c \""dropdb --port $PARAM_DB_PORT $SCHEMATEST"\" 2>&1 | grep -v "does not exist" || echo -n
+ssh $PARAM_DB_HOST su - $POSTGRES -c \""createdb --port $PARAM_DB_PORT $SCHEMATEST"\"
+cat $INCLUDED_EXTRA_SCHEMAS $PARAM_SCHEMA | ssh $PARAM_DB_HOST su - $POSTGRES -c \""psql --port $PARAM_DB_PORT --file=- -q $SCHEMATEST"\" 2>&1 | egrep -v "will create implicit|NOTICE:|DETAIL:" && echo -n 
+ssh $PARAM_DB_HOST su - $POSTGRES -c \""$PGDUMP --port $PARAM_DB_PORT --schema-only --schema=public --encoding=UTF-8 -s $SCHEMATEST"\" | egrep -v "^--|SET SESSION AUTHORIZATION|\\connect - |GRANT ALL|REVOKE ALL|START WITH 1|OWNER TO|SET default_with_oids" | grep -v "SET search_path = public, pg_catalog;" | sed "s/,$//;" | grep -v '^[ \t]*$' > $VCS_SCHEMA_FILE
+ssh $PARAM_DB_HOST su - $POSTGRES -c \""dropdb --port $PARAM_DB_PORT $SCHEMATEST"\"
 
 # ... the live database dump
 su $PARAM_UNIX_USER -c "$PGDUMP --schema-only --schema=public --encoding=UTF-8 -U $PARAM_DB_USER --host $PARAM_DB_HOST --port $PARAM_DB_PORT $PARAM_DB_NAME" | egrep -v "^--|SET SESSION AUTHORIZATION|\\connect - |GRANT ALL|REVOKE ALL|START WITH 1|OWNER TO|SET default_with_oids" | grep -v "SET search_path = public, pg_catalog;" | sed "s/,$//;" | grep -v '^[ \t]*$' > $CURRENT_SCHEMA_FILE
