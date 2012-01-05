@@ -3,7 +3,7 @@
 # Hardware.pm:
 # Check various hardware statuses
 #
-# $Id: Hardware.pm,v 1.5 2012-01-05 10:50:49 alexjs Exp $
+# $Id: Hardware.pm,v 1.6 2012-01-05 23:09:29 alexjs Exp $
 #
 
 package Hardware;
@@ -30,7 +30,7 @@ sub test () {
 
     # For our m247 Dell Machines
     if ( -e "/usr/sbin/tw_cli.x86_64" ) {
-        $f = `/usr/sbin/tw_cli.x86_64 /c0/u0 show | grep DISK | egrep -ve '(OK|VERIFYING)'`
+        $f = `/usr/sbin/tw_cli.x86_64 /c0/u0 show | grep DISK | egrep -ve '(OK|VERIFYING)'`;
         if ($f) {
             print "$f";
         }
