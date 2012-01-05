@@ -3,7 +3,7 @@
 # Hardware.pm:
 # Check various hardware statuses
 #
-# $Id: Hardware.pm,v 1.4 2010-10-08 15:46:54 matthew Exp $
+# $Id: Hardware.pm,v 1.5 2012-01-05 10:50:49 alexjs Exp $
 #
 
 package Hardware;
@@ -18,7 +18,7 @@ sub test () {
 
     my $f;
 
-    # For marmite and stilton
+    # For vulcan 
     if ( -e "/root/areca/cli" ) {
         $f = `/root/areca/cli disk info | grep Failed`;
 
@@ -28,32 +28,11 @@ sub test () {
         return;
    } 
 
-    # For some Dell machines
-    if ( -e "/usr/sbin/omreport" ) {
-        $f = `omreport storage pdisk controller=0`;
-
-        # If no controller nothing we can look at AFAIK
-        if ($f =~ /^Invalid controller value/) {
-            #No controllers found so we can't do anything
-            $f="";
-        }
-
+    # For our m247 Dell Machines
+    if ( -e "/usr/sbin/tw_cli.x86_64" ) {
+        $f = `/usr/sbin/tw_cli.x86_64 /c0/u0 show | grep DISK | egrep -ve '(OK|VERIFYING)'`
         if ($f) {
-            my $current_disk_name;
-
-            foreach (split (/\n/,$f)) {
-                my $line = $_ ;
-
-                if ( $line =~ /Name \W+: (.+)/ ) {
-                    $current_disk_name = $1;
-                }
-                
-                if ( $line =~ /State \W+: (\w+)/ ) {
-                    if (($1 ne "Ready") && ($1 ne "Online")) {
-                        print "Failure of $current_disk_name - State: $1\n";
-                    }
-                }
-            }
+            print "$f";
         }
         return;
     }
