@@ -28,6 +28,8 @@ COMMAND is one of:
         Remove crontab, Apache config, email forwards etc. for VHOST
     test VHOST
         Deploy, then run test script on VHOST, e.g. testharness.pet.mysociety.org
+    devhost [stop/update/start/remove] SITE
+        When run with sudo, same as mysociety vhost <username>.SITE.dev.mysociety.org
 
     dns --all
         Update the DNS configuration on all hosts in the nameserver archetype
@@ -216,6 +218,19 @@ END
         if [ "$VHOST" = "services.mysociety.org" -a $( hostname ) = majestic ]; then
             /data/vhost/services.mysociety.org/mysociety/services/DaDem/bin/setup-dademcron
         fi
+        ;;
+
+    devhost)
+        COMMAND=
+        SITE=$1
+        shift || die "specify a command or a virtual host"
+        if [ "$SITE" == "stop" -o "$SITE" == "update" -o "$SITE" == "start" -o "$SITE" == "remove" ]
+        then
+            COMMAND=$SITE
+            SITE=$1
+            shift || die "specify a virtual host"
+        fi
+        exec /data/mysociety/bin/mysociety vhost $COMMAND $SUDO_USER.$SITE.dev.mysociety.org "$@"
         ;;
 
     test) 
