@@ -28,6 +28,7 @@ COMMAND is one of:
         Remove crontab, Apache config, email forwards etc. for VHOST
     test VHOST
         Deploy, then run test script on VHOST, e.g. testharness.pet.mysociety.org
+        It will try VHOST.test.mysociety.org if no "." is present.
     devhost [stop/update/start/remove] SITE
         When run with sudo, same as mysociety vhost <username>.SITE.dev.mysociety.org
 
@@ -236,6 +237,9 @@ END
     test) 
         VHOST=$1
         shift || die "specify a virtual host"
+        if [[ $VHOST != *.* ]]; then
+            VHOST=$VHOST.test.mysociety.org
+        fi
         # update code (which also does apachectl graceful, so killing
         # any FastCGI processes holding the database open, so the test script
         # can drop and reload the database)
