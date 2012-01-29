@@ -8,7 +8,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Web.pm,v 1.37 2011-12-23 18:16:21 dave Exp $
+# $Id: Web.pm,v 1.38 2012-01-29 15:07:21 matthew Exp $
 #
 
 package Web;
@@ -51,7 +51,7 @@ my @pages = qw(
         https://secure.mysociety.org/track/webbug.png
     
         http://www.fixmytransport.com/
-        http://www.fixmytransport.com/campaigns/provide-non-stepped-access-to-chepstow-station
+        http://www.fixmytransport.com/campaigns/provide-non-stepped-access-to-chepst
     
         http://gaze.mysociety.org/gaze?R1%3A0%2C37%3AGaze.get_radius_containing_population%2CL1%3A3%2CT14%3A51.41281945404%2CT17%3A-0.29430381185079%2CT6%3A200000%2C
         http://gaze.mysociety.org/gaze?R1%3A0%2C16%3AGaze.find_places%2CL1%3A5%2CT2%3AGB%2CNT7%3ANewport%2CI2%3A10%2CI1%3A0%2C
