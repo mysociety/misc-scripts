@@ -3,7 +3,7 @@
 # Hardware.pm:
 # Check various hardware statuses
 #
-# $Id: Hardware.pm,v 1.6 2012-01-05 23:09:29 alexjs Exp $
+# $Id: Hardware.pm,v 1.7 2012-02-06 09:02:37 alexjs Exp $
 #
 
 package Hardware;
@@ -11,6 +11,11 @@ package Hardware;
 use strict;
 
 use IO::File;
+
+use Sys::Hostname;
+
+my $host;
+$host = hostname;
 
 sub email() { return 'hardware'; }
 
@@ -30,7 +35,14 @@ sub test () {
 
     # For our m247 Dell Machines
     if ( -e "/usr/sbin/tw_cli.x86_64" ) {
-        $f = `/usr/sbin/tw_cli.x86_64 /c0/u0 show | grep DISK | egrep -ve '(OK|VERIFYING)'`;
+        my $controller;
+        if ( $host == "samson" ) {
+            $controller = "c4";
+        } else {
+            $controller = "c0";
+        }
+        
+        $f = `/usr/sbin/tw_cli.x86_64 "/$controller/u0 show" | grep DISK | egrep -ve '(OK|VERIFYING)'`;
         if ($f) {
             print "$f";
         }
