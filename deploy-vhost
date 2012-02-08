@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.166 2011-12-07 16:51:51 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.167 2012-02-08 18:26:30 matthew Exp $';
 
 package main;
 
@@ -135,6 +135,17 @@ if (exists($conf->{private_git_repository})) {
 my $hostname = `hostname`;
 chomp($hostname);
 die "'$hostname' is not a vhost for '$vhost'" if (!grep { m/^$hostname$/ } @{$conf->{'servers'}}) && $action ne 'remove';
+
+# Deal with redirecting the vhost itself
+my $server_name = $vhost;
+my $aliases = $conf->{'aliases'};
+my %redirects = map { $_ => 1 } @{ $conf->{'redirects'} };
+if ($redirects{$vhost}) {
+    # We want to redirect the name used for the vhost.
+    die "Redirect for '$vhost' requires alias to be present" unless @$aliases;
+    die "Alias '$aliases->[0]' must not match vhost '$vhost'" if $aliases->[0] eq $vhost;
+    $server_name = shift @$aliases;
+}
 
 # Look up some values
 my ($user_login, $user_pass, $user_uid, $user_gid, 
@@ -291,9 +302,10 @@ print FH "\$admin_uri = '$conf->{'admin_uri'}';\n" if $conf->{'admin_uri'};
 print FH "\$internal_access_only = '$conf->{'internal_access_only'}';\n" if $conf->{'internal_access_only'};
 print FH Dumper($conf->{'public_dirs'});
 print FH "\$public_dirs = \$VAR1;\n";
+print FH "\$server_name = '$server_name';\n";
 print FH Dumper($conf->{'redirects'});
 print FH "\$redirects = \$VAR1;\n";
-print FH Dumper($conf->{'aliases'});
+print FH Dumper($aliases);
 print FH "\$aliases = \$VAR1;\n";
 print FH <<END;
 
