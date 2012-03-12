@@ -27,7 +27,7 @@ do
   # skip deletions
   [ "$new_sha1" = "0000000000000000000000000000000000000000" ] && continue
   # skip Modernizr and the like
-  [[ $name =~ modernizr|OpenLayers ]] && continue
+  [[ $name =~ modernizr|OpenLayers|cordova ]] && continue
   # Only test .js files
   if [[ $name =~ [.]js$ ]]
   then
