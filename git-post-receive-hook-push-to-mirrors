@@ -17,9 +17,17 @@ result = 0
 STDIN.each do |line|
   rev_old, rev_new, ref = line.chomp.split(" ")
 
-  puts "Now pushing #{ref} to the mysociety repository on github (#{repository})"
+  # If object name of the new commit is all zeros, that indicates that
+  # the ref is being deleted.  In that case, the left hand side of the
+  # refspec that we push should be empty:
 
-  unless system("git","push",repository,ref)
+  rev_new = '' if rev_new =~ /^0{40}$/
+
+  refspec = "#{rev_new}:#{ref}"
+
+  puts "Now pushing #{refspec} to the mysociety repository on github (#{repository})"
+
+  unless system("git","push",repository,refspec)
     result = 1
   end
 end
