@@ -5,7 +5,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: SSH.pm,v 1.24 2012-01-19 12:43:03 louise Exp $
+# $Id: SSH.pm,v 1.25 2012-04-09 09:16:14 alexjs Exp $
 #
 
 package SSH;
@@ -19,7 +19,6 @@ my @hostlist = qw(
         comet.ukcod.org.uk
         dart.ukcod.org.uk
         eclipse.ukcod.org.uk
-        fury.ukcod.org.uk
         majestic.ukcod.org.uk
         phoenix.ukcod.org.uk
         rocket.ukcod.org.uk
