@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.167 2012-02-08 18:26:30 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.168 2012-05-15 22:31:09 matthew Exp $';
 
 package main;
 
@@ -614,7 +614,13 @@ sub check_package_file {
                 $git_ref = $conf->{'private_git_ref'};
             }
             if (-e "$conf_dir/packages") {
-                shell("git show $git_ref:$conf_dir/packages >$tmp_packages");
+                my $tree = `git ls-tree $git_ref $conf_dir/packages`;
+                if ($tree =~ /^120000/) {
+                    $tree = `git show $git_ref:$conf_dir/packages`;
+                    shell("git show $git_ref:$conf_dir/$tree >$tmp_packages");
+                } else {
+                    shell("git show $git_ref:$conf_dir/packages >$tmp_packages");
+                }
                 shell("/data/mysociety/bin/check-packages-installed", "$tmp_packages");
                 unlink $tmp_packages;
             }
