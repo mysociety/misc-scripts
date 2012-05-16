@@ -5,7 +5,7 @@
 #
 # Arguments are the message to log, as in echo(1).
 #
-# $Id: deploy-logger,v 1.7 2010-03-01 20:52:46 mark Exp $
+# $Id: deploy-logger,v 1.8 2012-05-16 23:31:47 matthew Exp $
 #
 
 HOST=`hostname`
@@ -42,6 +42,10 @@ fi
 
 # Add new entry to end of log file
 echo "$DATELOG $WHO-" "$@" >>$LOGFILE
+
+# Post notice to IRC about log entry.
+# Backgrounded due to ident delay
+(( echo nick mysociety; echo user mysociety 8 "*" :mySociety IRCBot; echo notice "#activity" :"$WHO-" "$@"; echo quit; ) | nc irc.mysociety.org 6667 >/dev/null &) 2>/dev/null
 
 # Commit it
 if [ x = x$UML ]
