@@ -5,7 +5,7 @@
 #
 # Arguments are the message to log, as in echo(1).
 #
-# $Id: deploy-logger,v 1.8 2012-05-16 23:31:47 matthew Exp $
+# $Id: deploy-logger,v 1.9 2012-05-23 15:42:06 matthew Exp $
 #
 
 HOST=`hostname`
@@ -45,7 +45,7 @@ echo "$DATELOG $WHO-" "$@" >>$LOGFILE
 
 # Post notice to IRC about log entry.
 # Backgrounded due to ident delay
-(( echo nick mysociety; echo user mysociety 8 "*" :mySociety IRCBot; echo notice "#activity" :"$WHO-" "$@"; echo quit; ) | nc irc.mysociety.org 6667 >/dev/null &) 2>/dev/null
+(( echo nick mysociety; echo user mysociety 8 "*" :mySociety IRCBot; echo notice "#activity" :"$WHO on $HOST-" "$@"; echo quit; ) | nc irc.mysociety.org 6667 >/dev/null &) 2>/dev/null
 
 # Commit it
 if [ x = x$UML ]
