@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: FYR.pm,v 1.13 2010-10-08 15:46:54 matthew Exp $
+# $Id: FYR.pm,v 1.14 2012-06-14 14:06:06 matthew Exp $
 #
 
 package FYR;
@@ -77,6 +77,13 @@ sub test () {
                             and numactions = 0
                             and recipient_fax is not null");
 
+    my $n_ready_faxes_all =
+            dbh()->selectrow_array("
+                        select count(id) from message
+                        where state = 'ready'
+                            and not frozen
+                            and recipient_fax is not null");
+
     my $last_email_age =
             time() - dbh()->selectrow_array('
                         select dispatched from message
@@ -100,8 +107,8 @@ sub test () {
     # 50 and 100 are about a day's worth - this could happen if, for example,
     # we need more fax servers. (Faxes are sent in creation order, so there is
     # no problem of messages timing out before this warning is reached.)
-    printf("there are %d ready but unsent faxes\n", $n_ready_faxes)
-            if ($n_ready_faxes > 50);
+    printf("there are %d ready but unsent faxes\n", $n_ready_faxes_all)
+            if ($n_ready_faxes_all > 25);
     printf("there are %d ready but unsent emails\n", $n_ready_emails)
             if ($n_ready_emails > 100);
  
@@ -126,6 +133,13 @@ sub test () {
         int($last_fax_age / 60), $n_ready_faxes)
             if ($time ge '08:20' && $time le '20:00'
                 && $n_ready_faxes > 5 && $last_fax_age > 3600);
+
+    # Add another test for just no successful deliveries in two days.
+    # As there are fax hard errors and we want to know that.
+    printf("last fax was sent %d minutes ago; %d pending\n",
+        int($last_fax_age / 60), $n_ready_faxes_all)
+            if ($time ge '08:20' && $time le '20:00'
+                && $n_ready_faxes_all > 0 && $last_fax_age > 86400 * 2);
 
     printf("last email was sent %d minutes ago; %d pending\n",
         int($last_email_age / 60), $n_ready_emails)
