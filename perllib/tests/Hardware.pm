@@ -3,7 +3,7 @@
 # Hardware.pm:
 # Check various hardware statuses
 #
-# $Id: Hardware.pm,v 1.9 2012-04-09 09:16:14 alexjs Exp $
+# $Id: Hardware.pm,v 1.10 2012-06-14 09:25:02 ian Exp $
 #
 
 package Hardware;
@@ -38,8 +38,6 @@ sub test () {
         my $controller = `/usr/sbin/tw_cli.x86_64 show | tail -n2`;
         $controller =~ s/(c[0-9]).*/$1/;
         $controller =~ s/\s*$//g; 
-        print $controller;
-        exit;
         chomp($controller);
         $f = `/usr/sbin/tw_cli.x86_64 "/$controller/u0 show" | grep DISK | egrep -ve '(OK|VERIFYING)'`;
         if ($f) {
