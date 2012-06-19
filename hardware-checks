@@ -1,0 +1,42 @@
+#!/usr/bin/perl
+#
+# Some hardware checks can only be done as root, so this script is designed
+# to be run as a cron job, dumping useful output somewhere that can be read by
+# Nagios checks.
+#
+# $Id: hardware-checks,v 1.1 2012-06-19 14:45:49 ian Exp $
+#
+
+use strict;
+use warnings;
+
+use Sys::Hostname;
+
+my $OUTPUT_DIR='/var/hwchecks';
+umask 0027;
+
+our $hardware_tests;
+do "/data/servers/machines/".hostname.".pl" or die "can't read ".hostname.".pl: $!";
+
+foreach my $i (split /, /, $hardware_tests) {
+	my $OUTPUT_FILE="$OUTPUT_DIR/$i";
+
+	if($i eq 'tw') {
+		die "can't execute 3ware CLI binary" if(! -e "/usr/sbin/tw_cli.x86_64");
+
+		my $controller = `/usr/sbin/tw_cli.x86_64 show | tail -n2`;
+		$controller =~ s/(c[0-9]).*/$1/;
+		$controller =~ s/\s*$//g;
+		chomp($controller);
+		system "/usr/sbin/tw_cli.x86_64 \"/$controller/u0 show\" > $OUTPUT_FILE";
+	} elsif($i eq 'areca') {
+		die "can't execute areca CLI binary" if(! -e "/usr/sbin/cli64");
+
+		system "/usr/sbin/cli64 disk info > $OUTPUT_FILE";
+		system "/usr/sbin/cli64 rsf info >> $OUTPUT_FILE";
+	} elsif($i eq 'megaraid') {
+		### XXX command is 'lsiutil', figure this out later
+	} else {
+		warn "unknown hardware test $i";
+	}
+}
