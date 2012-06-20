@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.168 2012-05-15 22:31:09 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.169 2012-06-20 12:05:43 ian Exp $';
 
 package main;
 
@@ -704,7 +704,7 @@ sub update_conf_dir {
 
         my $name_part = $1;
         my $conf_file = "$vhost_dir/$vcspath/$conf_dir/$name_part"; # destination file
-        my $old_umask = umask(0077);
+        my $old_umask = umask(0027);
         my $name_base = $name_part;
         $name_base =~ s/\.yml$//;
 
