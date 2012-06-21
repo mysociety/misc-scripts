@@ -4,7 +4,7 @@
 # to be run as a cron job, dumping useful output somewhere that can be read by
 # Nagios checks.
 #
-# $Id: hardware-checks,v 1.1 2012-06-19 14:45:49 ian Exp $
+# $Id: hardware-checks,v 1.2 2012-06-21 13:02:54 ian Exp $
 #
 
 use strict;
@@ -36,6 +36,8 @@ foreach my $i (split /, /, $hardware_tests) {
 		system "/usr/sbin/cli64 rsf info >> $OUTPUT_FILE";
 	} elsif($i eq 'megaraid') {
 		### XXX command is 'lsiutil', figure this out later
+	} elsif($i eq 'lsi') {
+		### XXX figure this out later
 	} else {
 		warn "unknown hardware test $i";
 	}
