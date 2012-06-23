@@ -191,7 +191,9 @@ END
         do
             /data/mysociety/bin/deploy-configuration --save-file=/var/lib/deploy-configuration-$ARCHETYPE.tar /data/servers/$ARCHETYPES_DIR/$ARCHETYPE $SETTINGS_FILE "$@"
         done
-        /data/mysociety/bin/deploy-logger $UML_OPTION "Deployed configuration for archetypes \"$ARCHETYPES\" with settings \"$HOST.pl\""
+        if [[ ! "$@" =~ "--dry-run" ]]; then
+            /data/mysociety/bin/deploy-logger $UML_OPTION "Deployed configuration for archetypes \"$ARCHETYPES\" with settings \"$HOST.pl\""
+        fi
         # check all packages installed
         for PACKAGE_FILE in `find /etc/mysociety/packages.d/ ! -name "*~" ! -name "*.swp" -type f`
         do
