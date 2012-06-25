@@ -1,13 +1,27 @@
-#!/usr/bin/ruby -w                                                              
+#!/usr/bin/ruby -w
 
-unless ARGV.length == 1
-  STDERR.puts <<EOUSAGE
-Usage: git-post-receive-hook-push-to-mirrors <RESPOSITORY-NAME>
+require 'json'
+require 'net/https'
+
+usage_message = <<EOUSAGE
+Usage: git-post-receive-hook-push-to-mirrors <RESPOSITORY-NAME> (public|private)
 
   <RESPOSITORY-NAME> is used to form the github repository URL,
   e.g. 'whatdotheyknow' means the repository URL will be
-  'git@GitHub:mysociety/whatdotheyknow.git'.
+  'git@GitHub:mysociety/whatdotheyknow.git'.  The second parameter
+  must be either 'public' or 'private' indicating whether the named
+  repository is in /data/git/public or /data/git/private
 EOUSAGE
+
+unless ARGV.length == 2
+  STDERR.puts usage_message
+  exit(1)
+end
+
+repository_name, repository_type = ARGV
+
+unless ['public', 'private'].include? repository_type
+  STDERR.puts usage_message
   exit(1)
 end
 
@@ -43,7 +57,65 @@ if File.exists? ssh_config_filename
   end
 end
 
-repository = "git@#{ssh_alias}:mysociety/#{ARGV[0]}.git"
+# Use the GitHub API to check that the respository we're trying to
+# push to exists, and that it the public / private status matches:
+
+token = nil
+open('/etc/mysociety/github-oauth/token.json') do |f|
+  token = JSON.parse(f.read)['token']
+end
+
+unless token
+  STDERR.puts "Failed to find the GitHub API token"
+  exit(1)
+end
+
+# Now fetch the list of repositories from the GitHub API:
+
+http = Net::HTTP.new('api.github.com', 443)
+http.use_ssl = true
+http.ca_path = '/etc/ssl/certs'
+http.verify_mode = OpenSSL::SSL::VERIFY_PEER
+response = http.get('/orgs/mysociety/repos',
+                    'Authorization' => "bearer #{token}")
+
+if response.code != 200
+  STDERR.puts "The GitHub API call failed with status #{response.code}: #{response.body}"
+end
+
+all_repositories = JSON.parse(response.body)
+
+matching = all_repositories.select { |r| r['name'] == repository_name }
+
+if matching.empty?
+  STDERR.puts "There was no GitHub repository called '#{repository_name}'"
+  STDERR.puts "Please create it on GitHub."
+  if repository_type == 'private'
+    STDERR.puts "(Make sure that it is private!)"
+  end
+  # As a note, we could use the API to create the repository here.
+  exit(1)
+elsif matching.length > 1
+  STDERR.puts "There were multiple mysociety repositories called '#{repository_name}' (!?!)"
+  exit(1)
+end
+
+repository_info = matching[0]
+
+github_type = 'public'
+# Make sure that we test for equality with true, since any string
+# would be truthy, even "false":
+if repository_info['private'] == true
+  github_type = 'private'
+end
+
+unless github_type == repository_type
+  STDERR.puts "Refushing to mirror the #{repository_type} repository '#{repository_name}'"
+  STDERR.puts "to the #{github_type} repository mysociety/#{repository_name} on GitHub."
+  exit(1)
+end
+
+repository = "git@#{ssh_alias}:mysociety/#{repository_name}.git"
 result = 0
 
 STDIN.each do |line|

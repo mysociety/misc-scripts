@@ -49,12 +49,5 @@ fi
 A=/data/mysociety/bin/git-post-receive-hook-push-to-mirrors
 B=/data/mysociety/bin/git-post-receive-hook-email
 
-if [ $REPOSITORY_TYPE = 'public' ] 
-then
-   # Only push the public repositories to the mirrors
-   $A $REPOSITORY_NAME < $STDIN_CACHE
-fi
-
-# Send email for all repositories
+$A $REPOSITORY_NAME $REPOSITORY_TYPE < $STDIN_CACHE
 $B $REPOSITORY_NAME < $STDIN_CACHE
-
