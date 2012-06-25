@@ -75,12 +75,14 @@ end
 http = Net::HTTP.new('api.github.com', 443)
 http.use_ssl = true
 http.ca_path = '/etc/ssl/certs'
-http.verify_mode = OpenSSL::SSL::VERIFY_PEER
+# http.verify_mode = OpenSSL::SSL::VERIFY_PEER
+http.verify_mode = OpenSSL::SSL::VERIFY_NONE
 response = http.get('/orgs/mysociety/repos',
                     'Authorization' => "bearer #{token}")
 
-if response.code != 200
+if response.code != '200'
   STDERR.puts "The GitHub API call failed with status #{response.code}: #{response.body}"
+  exit(1)
 end
 
 all_repositories = JSON.parse(response.body)
