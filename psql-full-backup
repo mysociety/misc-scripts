@@ -1,0 +1,114 @@
+#!/usr/bin/perl
+#
+# Perform a full backup of a running postgresql instance running in archive mode
+# as part of a warm-backup solution.
+#
+# $Id: psql-full-backup,v 1.1 2012-06-27 12:24:03 ian Exp $
+#
+
+use strict;
+use warnings;
+
+use Getopt::Long;
+use Sys::Hostname;
+use Fcntl qw(:seek);
+use Error qw(:try);
+
+
+umask 0077;
+
+my $GENERATION_SYMLINK='current_generation';
+my $PGDATA_PATH='/var/lib/postgresql';
+
+my ($generations, $hostname, $destination_path);
+my $port=5432;
+my $result;
+my $current_gen;
+
+
+sub remote_command($$) {
+	my ($host, $cmd)=@_;
+
+	open SSH, "/usr/bin/ssh -o PasswordAuthentication=no postgres\@$host $cmd|" or die "can't ssh $host $cmd: $!";
+	my $result=<SSH>;
+	close SSH;
+
+	return "undef" if(!defined $result);
+
+	chop $result;
+	return $result;
+}
+
+	
+GetOptions(
+	"generations=i"		=> \$generations,
+	"hostname=s"		=> \$hostname,
+	"destination_path=s"	=> \$destination_path,
+	"port=i"		=> \$port,
+);
+
+die "usage: $0 --generations <num> --hostname <host> --destination_path <path> [--port <port>]"
+	unless($generations && $hostname && $destination_path);
+
+die "$destination_path doesn't exist" if(! -d $destination_path);
+
+my $backup_dir="$destination_path/$hostname";
+
+try {
+	### Start backup -- database takes a checkpoint
+
+	$result=remote_command($hostname, '/data/mysociety/bin/psql-set-backup-mode start');
+	die "psql-set-backup-mode start failed: $result" unless($result eq 'OK');
+
+	### It's now safe to back up everything in the cluster.
+	### First check which generation to use.
+
+	if(! -d $backup_dir) {
+		warn "creating new backup directory for $hostname";
+		mkdir $backup_dir or die "can't mkdir $backup_dir: $!";
+
+		$current_gen=1;
+		symlink("$current_gen", "$backup_dir/$GENERATION_SYMLINK") or die "can't make symlink $backup_dir/$GENERATION_SYMLINK: $!";
+	} else {
+		$current_gen=readlink("$backup_dir/$GENERATION_SYMLINK") or die "can't read symlink $backup_dir/$GENERATION_SYMLINK";
+		die "$backup_dir/$GENERATION_SYMLINK symlinked to invalid generation $current_gen" if(int($current_gen) < 1);
+		$current_gen=1 if(++$current_gen > $generations);
+	}
+
+	chdir $backup_dir or die "can't cd $backup_dir: $!";
+
+	### Wipe everything from the generation we're about to use, or create it
+	### if it doesn't already exist.
+
+	if(! -d $current_gen) {
+		warn "creating new generation $current_gen for $hostname";
+		mkdir $current_gen or die "can't mkdir $current_gen: $!";
+	} else {
+		system "rm -r $current_gen/*";
+		die "can't delete files in $current_gen: $!" unless($?==0);
+	}
+
+	chdir $current_gen or die "can't cd $backup_dir/$current_gen: $!";
+	
+	### We exclude stuff in pg_xlog: it contains WAL segments, which are archived automatically by Postgres.
+
+	system "/usr/bin/rsync -e '/usr/bin/ssh -o PasswordAuthentication=no' -a --exclude=pg_xlog postgres\@$hostname:$PGDATA_PATH .";
+	die "rsync failed: $!" unless($?==0 || $?==24);		# 24 = vanished source files, which is OK
+								#      on a live database
+
+	### Only if we get this far do we increment the generation number, as we now have
+	### a successful backup.
+
+	unlink "$backup_dir/$GENERATION_SYMLINK" or warn "can't unlink $backup_dir/$GENERATION_SYMLINK: $!";
+	symlink("$current_gen", "$backup_dir/$GENERATION_SYMLINK") or die "can't make symlink $backup_dir/$GENERATION_SYMLINK: $!";
+} otherwise {
+	print "ERROR: $@\n";
+} finally {
+	### Finish the backup so the database can get back to normal
+
+	print "Finishing backup\n";
+
+	$result=remote_command($hostname, '/data/mysociety/bin/psql-set-backup-mode stop');
+	die "psql-set-backup-mode stop failed: $result" unless($result eq 'OK');
+};
+

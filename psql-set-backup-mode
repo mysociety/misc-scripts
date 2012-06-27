@@ -1,0 +1,36 @@
+#!/usr/bin/perl
+#
+# Start or stop postgres backup (with database in archive mode).
+# This script is called from psql-full-backup to ensure that open
+# WAL segments are closed beforehand.
+#
+# $Id: psql-set-backup-mode,v 1.1 2012-06-27 12:24:04 ian Exp $
+#
+
+use strict;
+use warnings;
+
+use Sys::Hostname;
+use DBI;
+
+
+my $action=shift;
+my $command;
+
+if(!defined $action) {
+	die "usage: $0 start | stop";
+} elsif($action eq 'start') {
+	$command="SELECT pg_start_backup('".hostname."')";
+} elsif($action eq 'stop') {
+	$command="SELECT pg_stop_backup()";
+} else {
+	die "usage: $0 start | stop";
+}
+
+my $dbh=DBI->connect("dbi:Pg:dbname=template1", 'postgres', undef, { RaiseError => 1 }) || die DBI->errstr();
+$dbh->do($command);
+$dbh->disconnect;
+
+### If we get here, the command executed correctly.
+
+print "OK\n";
