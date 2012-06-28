@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: PostgreSQL.pm,v 1.33 2011-12-24 23:11:17 root Exp $
+# $Id: PostgreSQL.pm,v 1.34 2012-06-28 13:25:18 louise Exp $
 #
 
 package PostgreSQL;
@@ -52,7 +52,7 @@ sub test() {
         do $MACHINECONFIGDIR . $server . ".pl" or die "Cannot open $MACHINECONFIGDIR$server.pl : $!";
 
         next unless $location eq 'm247';
-        next if $server eq 'vulcan' || $server eq 'eclipse';
+        next if $server eq 'comet' || $server eq 'eclipse';
         my $postgresql_server = $server . ".int.ukcod.org.uk";
         for my $port (5434, 5432) {
             # Connect to database
