@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Hosts.pm,v 1.21 2012-01-13 21:03:29 alexjs Exp $
+# $Id: Hosts.pm,v 1.22 2012-06-28 12:52:56 louise Exp $
 #
 
 package Hosts;
@@ -17,7 +17,6 @@ use Net::Ping;
 
 my @hostlist = qw(
         arrow.ukcod.org.uk
-        comet.ukcod.org.uk
         dart.ukcod.org.uk
         eclipse.ukcod.org.uk
         majestic.ukcod.org.uk
