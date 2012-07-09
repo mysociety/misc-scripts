@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.169 2012-06-20 12:05:43 ian Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.170 2012-07-09 07:36:55 ian Exp $';
 
 package main;
 
@@ -18,6 +18,7 @@ use FindBin;
 use lib "$FindBin::Bin/../perllib";
 my $mysociety_bin = $FindBin::Bin;
 my $servers_dir = "$FindBin::Bin/../../servers";
+my $machines_dir = "$servers_dir/machines";
 my $mysociety_dir = "$FindBin::Bin/../../mysociety";
 
 use mySociety::SystemMisc qw(shell);
@@ -167,6 +168,10 @@ foreach my $dir (qw( conf_dir private_conf_dir )){
     $c = [$c] if (!ref($c));
     $conf->{$dir} = $c;
 }
+
+# Read in relevant stuff from machine configuration file
+our ($internal_network);
+require "$machines_dir/$hostname.pl";
 
 #####################################################################
 # Make directories and conf files, check database and conf files
@@ -394,7 +399,7 @@ sub one_db_conf_php {
         $port_line = "define('OPTION_$params->{prefix}_DB_PORT', $params->{port});";
     }
     my $network_part = '';
-    if ($internal) {
+    if ($internal && $internal_network) {
         $network_part = 'int.ukcod.org.uk';
     } else {
         $network_part = 'ukcod.org.uk';
@@ -418,7 +423,7 @@ sub one_db_conf_yml {
         $port_line = "$params->{prefix}_DB_PORT: $params->{port}";
     }
     my $network_part = '';
-    if ($internal) {
+    if ($internal && $internal_network) {
         $network_part = 'int.ukcod.org.uk';
     } else {
         $network_part = 'ukcod.org.uk';
@@ -452,12 +457,13 @@ sub db_conf {
             # have to list them in the yml file in right place, so one text
             # option can't), oh well
             if (scalar(@{$conf->{'databases'}}) == 1) {
+                my $domain = ($internal_network) ? "int.ukcod.org.uk" : "ukcod.org.uk";
                 $rails_database_config = <<END;
     adapter: postgresql
     database: $database
     username: $database
     password: \${\\(pgpw('$database'))}
-    host: $params->{host}.int.ukcod.org.uk
+    host: $params->{host}.$domain
     port: $params->{port}
 END
             }
