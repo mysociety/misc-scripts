@@ -9,7 +9,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: mysociety-create-databases,v 1.13 2012-07-17 07:28:10 ian Exp $';
+my $rcsid = ''; $rcsid .= '$Id: mysociety-create-databases,v 1.14 2012-07-17 13:37:53 ian Exp $';
 
 package main;
 
@@ -153,7 +153,14 @@ if(getpwuid($>) eq 'root') {
 	our ($hostnumber, $hostname);
         do $machine;
 
-        if($database_failover_pair eq $myhostname) {
+	next if($database_failover_pair ne $myhostname);
+
+	my %dbtypes=( 'psql' => 0, 'mysql' => 0 );
+        foreach my $db (values %$databases) {
+	    $dbtypes{$db->{type}}++ if($db->{host} eq $hostname);
+	}
+
+        if($dbtypes{'psql'}) {
 	    # ensure a unique port for each standby instance...
 	    my $port=5432 + $hostnumber;
 	    my $clusterdir="/var/lib/postgresql/8.4/".$hostname."_standby";
