@@ -9,7 +9,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: mysociety-create-databases,v 1.14 2012-07-17 13:37:53 ian Exp $';
+my $rcsid = ''; $rcsid .= '$Id: mysociety-create-databases,v 1.15 2012-07-17 14:39:10 ian Exp $';
 
 package main;
 
@@ -150,7 +150,7 @@ if(getpwuid($>) eq 'root') {
 
     foreach my $machine (glob "$servers_dir/machines/*.pl") {
         our $database_failover_pair='';
-	our ($hostnumber, $hostname);
+	our ($hostnumber, $hostname, $domainname);
         do $machine;
 
 	next if($database_failover_pair ne $myhostname);
@@ -160,38 +160,59 @@ if(getpwuid($>) eq 'root') {
 	    $dbtypes{$db->{type}}++ if($db->{host} eq $hostname);
 	}
 
-        if($dbtypes{'psql'}) {
-	    # ensure a unique port for each standby instance...
-	    my $port=5432 + $hostnumber;
-	    my $clusterdir="/var/lib/postgresql/8.4/".$hostname."_standby";
+        foreach my $dbtype (keys %dbtypes) {
+            #next if(!$dbtypes{$dbtype});
 
-            # ...but don't go any further if something's already running on that port,
-            # or if the cluster dir already exists.
-	    next if(-d $clusterdir);
-            my $sock=IO::Socket::INET->new(PeerAddr=>'localhost', PeerPort=>"$port", PeerProto=>'tcp');
-	    next if($sock);
-	    die "connect test failed: $!" if($! ne 'Connection refused');
+            if($dbtype eq 'psql') {
+	        # ensure a unique port for each standby instance...
+	        my $port=5432 + $hostnumber;
+	        my $clusterdir="/var/lib/postgresql/8.4/".$hostname."_standby";
 
-	    # create a new cluster, make a directory for incoming logs, and drop in 
-	    # a recovery.conf file to make sure it comes up in recovery mode.
-	    die "pg_createcluster failed for $hostname"
-	        unless(system("pg_createcluster -p $port 8.4 ".$hostname."_standby") >> 8 == 0);
+                # ...but don't go any further if something's already running on that port,
+                # or if the cluster dir already exists.
+	        next if(-d $clusterdir);
+                my $sock=IO::Socket::INET->new(PeerAddr=>'localhost', PeerPort=>"$port", PeerProto=>'tcp');
+	        next if($sock);
+	        die "connect test failed: $!" if($! ne 'Connection refused');
+
+	        # create a new cluster, make a directory for incoming logs, and drop in 
+	        # a recovery.conf file to make sure it comes up in recovery mode.
+	        die "pg_createcluster failed for $hostname"
+	            unless(system("pg_createcluster -p $port 8.4 ".$hostname."_standby") >> 8 == 0);
             
-	    # make the directory that will receive logs from the live database...
-	    mkdir "$clusterdir/incoming_logs";
+	        # make the directory that will receive logs from the live database...
+	        mkdir "$clusterdir/incoming_logs";
 
-	    # ...and drop in a recovery.conf so that the database will start in recovey mode
-            open RECOVERY, ">$clusterdir/recovery.conf" or die "can't write to $clusterdir/recovery.conf: $!";
-	    print RECOVERY "restore_command = '/usr/lib/postgresql/8.4/bin/pg_standby -t $clusterdir/fail_over_now $clusterdir/incoming_logs %f %p %r'\n";
-	    close RECOVERY;
+	        # ...and drop in a recovery.conf so that the database will start in recovey mode
+                open RECOVERY, ">$clusterdir/recovery.conf" or die "can't write to $clusterdir/recovery.conf: $!";
+	        print RECOVERY "restore_command = '/usr/lib/postgresql/8.4/bin/pg_standby -t $clusterdir/fail_over_now $clusterdir/incoming_logs %f %p %r'\n";
+	        close RECOVERY;
 
-            # fix up permissions
-	    chown $pguid, $pggid, "$clusterdir/incoming_logs", "$clusterdir/recovery.conf";
-	    chmod 0700, "$clusterdir/incoming_logs";
+                # fix up permissions
+	        chown $pguid, $pggid, "$clusterdir/incoming_logs", "$clusterdir/recovery.conf";
+	        chmod 0700, "$clusterdir/incoming_logs";
 
-	    print "warm standby cluster created for $hostname on port $port\n" if $::verbose;
-            print "*** You must transfer the initial state of the live database on $hostname\n";
-            print "*** before you can start the warm standby cluster ".$hostname."_cluster\n";
+	        print "warm standby cluster created for $hostname on port $port\n" if $::verbose;
+                print "*** You must transfer the initial state of the live database on $hostname\n";
+                print "*** before you can start the warm standby cluster ".$hostname."_cluster\n";
+
+	    } elsif($dbtype eq 'mysql') {
+	        # connect to the database and create a replication user if it doesn't already exist,
+	        # and warn if it does exist but without the right permissions
+	        my $repl_username=$hostname."_repl";
+	        my $dbh = DBI->connect("dbi:mysql:database=mysql", 'root', pgpw('root'), { PrintWarn => 1, PrintError => 1, RaiseError => 0, AutoCommit => 1 }) || die DBI->errstr();
+	        my $users = $dbh->selectall_arrayref("SELECT repl_slave_priv FROM user WHERE User='$repl_username'");
+	        if(scalar(@$users)==1) {
+	            warn "mysql user $repl_username exists but repl_slave_priv=$$users[0][0]" unless($$users[0][0] eq 'Y');
+		    next;
+	        } elsif(scalar(@$users)!=0) {
+	            die "more than one row returned when 0 or 1 expected";
+	        }
+	        $dbh->do("CREATE USER '$repl_username'\@'$hostname.$domainname' IDENTIFIED BY '".pgpw($repl_username)."'");
+                $dbh->do("GRANT REPLICATION SLAVE ON *.* TO '$repl_username'\@'$hostname.$domainname'");
+	        $dbh->disconnect();
+	        print "mysql replication user $repl_username created" if $::verbose;
+            }
 	}
     }
 }
