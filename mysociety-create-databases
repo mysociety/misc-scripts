@@ -9,7 +9,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: mysociety-create-databases,v 1.12 2012-06-26 09:31:24 ian Exp $';
+my $rcsid = ''; $rcsid .= '$Id: mysociety-create-databases,v 1.13 2012-07-17 07:28:10 ian Exp $';
 
 package main;
 
@@ -26,6 +26,8 @@ use mySociety::SystemMisc qw(shell);
 use mySociety::Config;
 
 use Data::Dumper;
+use Sys::Hostname;
+use IO::Socket::INET;
 use DBI
 
 our $verbose = $ENV{VERBOSE} ? 1 : 0;
@@ -52,8 +54,7 @@ our ($vhosts, $sites, $databases);
 require "$servers_dir/vhosts.pl";
 
 # Various other parameters
-my $hostname = `hostname`;
-chomp($hostname);
+my $myhostname = hostname;
 
 # Go through each database
 my $database_configs;
@@ -61,7 +62,7 @@ foreach my $database (keys %{$databases}) {
     my $params = $databases->{$database};
     if ($params->{type} eq 'psql') {
         # Is it for our server? and we are right user?
-        if ($params->{host} eq $hostname && getpwuid($>) eq 'postgres') {
+        if ($params->{host} eq $myhostname && getpwuid($>) eq 'postgres') {
 
             my @out;
 
@@ -117,10 +118,11 @@ foreach my $database (keys %{$databases}) {
             push @out, "no change" if $::verbose && !@out;
             print "$database (psql", ($params->{port} == 5432 ? "" : " port $params->{port}"), "): ", join('; ', @out), "\n" if @out;
 
+            $dbh->disconnect();
         }
     } elsif ($params->{type} eq 'mysql') {
-        if ($params->{host} eq $hostname && getpwuid($>) eq 'root') {
-            print "mysql database '$database' on host $hostname\n" if $::verbose;
+        if ($params->{host} eq $myhostname && getpwuid($>) eq 'root') {
+            print "mysql database '$database' on host $myhostname\n" if $::verbose;
 
             # get the root db password
             my $root_password = pgpw('root');
@@ -136,6 +138,54 @@ foreach my $database (keys %{$databases}) {
         }
     } else {
         die "unknown database type '$params->{type}'";
+    }
+}
+
+# Create warm standby clusters, including configuration files
+# XXX eventually the configs will be created dynamically with a post-config script,
+#     but those don't exist yet.
+if(getpwuid($>) eq 'root') {
+    my $pguid=getpwnam('postgres');
+    my $pggid=getgrnam('postgres');
+
+    foreach my $machine (glob "$servers_dir/machines/*.pl") {
+        our $database_failover_pair='';
+	our ($hostnumber, $hostname);
+        do $machine;
+
+        if($database_failover_pair eq $myhostname) {
+	    # ensure a unique port for each standby instance...
+	    my $port=5432 + $hostnumber;
+	    my $clusterdir="/var/lib/postgresql/8.4/".$hostname."_standby";
+
+            # ...but don't go any further if something's already running on that port,
+            # or if the cluster dir already exists.
+	    next if(-d $clusterdir);
+            my $sock=IO::Socket::INET->new(PeerAddr=>'localhost', PeerPort=>"$port", PeerProto=>'tcp');
+	    next if($sock);
+	    die "connect test failed: $!" if($! ne 'Connection refused');
+
+	    # create a new cluster, make a directory for incoming logs, and drop in 
+	    # a recovery.conf file to make sure it comes up in recovery mode.
+	    die "pg_createcluster failed for $hostname"
+	        unless(system("pg_createcluster -p $port 8.4 ".$hostname."_standby") >> 8 == 0);
+            
+	    # make the directory that will receive logs from the live database...
+	    mkdir "$clusterdir/incoming_logs";
+
+	    # ...and drop in a recovery.conf so that the database will start in recovey mode
+            open RECOVERY, ">$clusterdir/recovery.conf" or die "can't write to $clusterdir/recovery.conf: $!";
+	    print RECOVERY "restore_command = '/usr/lib/postgresql/8.4/bin/pg_standby -t $clusterdir/fail_over_now $clusterdir/incoming_logs %f %p %r'\n";
+	    close RECOVERY;
+
+            # fix up permissions
+	    chown $pguid, $pggid, "$clusterdir/incoming_logs", "$clusterdir/recovery.conf";
+	    chmod 0700, "$clusterdir/incoming_logs";
+
+	    print "warm standby cluster created for $hostname on port $port\n" if $::verbose;
+            print "*** You must transfer the initial state of the live database on $hostname\n";
+            print "*** before you can start the warm standby cluster ".$hostname."_cluster\n";
+	}
     }
 }
 
