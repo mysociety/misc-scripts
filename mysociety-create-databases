@@ -9,7 +9,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: mysociety-create-databases,v 1.16 2012-07-19 09:29:21 ian Exp $';
+my $rcsid = ''; $rcsid .= '$Id: mysociety-create-databases,v 1.17 2012-07-20 13:59:16 ian Exp $';
 
 package main;
 
@@ -24,6 +24,7 @@ my $mysociety_dir = "$FindBin::RealBin/../../mysociety";
 
 use mySociety::SystemMisc qw(shell);
 use mySociety::Config;
+use mySociety::ServerClass;
 
 use Data::Dumper;
 use Sys::Hostname;
@@ -155,7 +156,10 @@ if(getpwuid($>) eq 'root') {
 
 	next if($database_failover_pair ne $myhostname);
 
-	my %dbtypes=( 'psql' => 0, 'mysql' => 0 );
+	my %dbtypes;
+	$dbtypes{'psql'}=0 if(mySociety::ServerClass::server_in_class($myhostname, "database-psql-standby"));
+	$dbtypes{'mysql'}=0 if(mySociety::ServerClass::server_in_class($myhostname, "database-mysql-standby"));
+
         foreach my $db (values %$databases) {
 	    $dbtypes{$db->{type}}++ if($db->{host} eq $hostname);
 	}
