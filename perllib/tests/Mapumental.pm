@@ -6,14 +6,14 @@
 # Copyright (c) 2011 UK Citizens Online Democracy. All rights reserved.
 # Email: matthew@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: Mapumental.pm,v 1.5 2011-11-11 00:09:35 matthew Exp $
+# $Id: Mapumental.pm,v 1.6 2012-07-24 18:53:47 duncan Exp $
 
 package Mapumental;
 
 use strict;
 
 use constant COL_CONF_DIR => '/data/vhost/mapumental.channel4.com/mysociety/iso/conf';
-use constant PTD_CONF_DIR => '/data/vhost/ptdaemon1.mapumental.com/';
+use constant PTD_CONF_DIR => '/data/vhost/ptdaemon.mapumental.com/';
 
 sub email() { return 'mapumental'; }
 
