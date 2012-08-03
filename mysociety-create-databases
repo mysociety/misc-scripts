@@ -9,7 +9,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: mysociety-create-databases,v 1.17 2012-07-20 13:59:16 ian Exp $';
+my $rcsid = ''; $rcsid .= '$Id: mysociety-create-databases,v 1.18 2012-08-03 10:55:33 matthew Exp $';
 
 package main;
 
@@ -137,6 +137,8 @@ foreach my $database (keys %{$databases}) {
             my $password = pgpw($database);
             $dbh->do("grant all on `$database`.* to `$database` identified by '$password'");
         }
+    } elsif ($params->{type} eq 'mongo') {
+        # Do nothing, it's installed just as a package currently
     } else {
         die "unknown database type '$params->{type}'";
     }
