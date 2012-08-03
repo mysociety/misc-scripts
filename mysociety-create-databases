@@ -9,7 +9,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: mysociety-create-databases,v 1.19 2012-08-03 10:59:13 ian Exp $';
+my $rcsid = ''; $rcsid .= '$Id: mysociety-create-databases,v 1.20 2012-08-03 13:35:50 ian Exp $';
 
 package main;
 
@@ -235,7 +235,8 @@ if(getpwuid($>) eq 'root') {
                 $dbh->do("UPDATE user SET Password = PASSWORD('".pgpw('root')."') WHERE User = 'root'");
 
 		# create replication account...
-                $dbh->do("GRANT REPLICATION SLAVE ON *.* TO '".$hostname."_repl'\@'$hostname.$domainname' IDENTIFIED BY '".pgpw($hostname."_repl")."'");
+		my $repl_user=substr($hostname."_repl", 0, 15);
+                $dbh->do("GRANT REPLICATION SLAVE ON *.* TO '$repl_user'\@'$hostname.$domainname' IDENTIFIED BY '".pgpw($hostname."_repl")."'");
 
 		# ...and a user able to shutdown the database (used by mysqld_multi)
 		$dbh->do("GRANT SHUTDOWN ON *.* TO 'multi_admin'\@'localhost' IDENTIFIED BY '".pgpw('multi_admin')."'");
