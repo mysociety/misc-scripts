@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.170 2012-07-09 07:36:55 ian Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.171 2012-08-15 19:59:23 matthew Exp $';
 
 package main;
 
@@ -558,6 +558,9 @@ sub update_git {
     } else {
         shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir/$git_repository\" && $update_command");
     }
+    my $hash = `cd "$vhost_dir/$git_repository" && git rev-parse --short HEAD`;
+    chomp $hash;
+    return "branch $git_ref, commit $hash";
 }
 
 #####################################################################
@@ -572,17 +575,17 @@ if ($action eq "stop") {
     deploy_logger("Stopped vhost $vhost",$uml);
 } elsif ($action eq "update") {
     update_config_and_schemas();
-    update_site();
-    deploy_logger("Updated vhost $vhost",$uml);
+    my $git_log = update_site();
+    deploy_logger("Updated vhost $vhost ($git_log)",$uml);
 } elsif ($action eq "start") {
     start_site();
     deploy_logger("Started vhost $vhost",$uml);
 } elsif ($action eq "deploy") {
     update_config_and_schemas();
     stop_site();
-    update_site();
+    my $git_log = update_site();
     start_site();
-    deploy_logger("Deployed vhost $vhost",$uml)
+    deploy_logger("Deployed vhost $vhost ($git_log)",$uml)
         unless $vhost =~ /testharness/;
     if ($flush) {
         use mySociety::Memcached;
@@ -926,6 +929,8 @@ sub update_config_and_schemas {
 }
 
 sub update_site {
+    my $git_log = '';
+
     if ($cvs) {
         # Update from CVS
         update_cvs($conf->{'cvs_user'}, $conf->{'cvs_dirs'});
@@ -937,17 +942,17 @@ sub update_site {
         my $git_repository;
         if (exists($conf->{'git_repository'})) {
             $git_repository =  $conf->{'git_repository'};
-            update_git($conf->{'git_user'}, $git_repository, $conf->{'git_ref'});
+            $git_log = update_git($conf->{'git_user'}, $git_repository, $conf->{'git_ref'});
         }
         # softlink any private dirs into the public directory structure
         if (exists($conf->{'private_git_repository'})){
-           my $private_git_repository = $conf->{'private_git_repository'};
-           update_git($conf->{'user'}, $private_git_repository, $conf->{'private_git_ref'});
-           if (exists($conf->{'private_git_dirs'})){
-               foreach my $private_dir (@{$conf->{'private_git_dirs'}}) {
-                   shell("ln -snf $vhost_dir/$private_git_repository/$private_dir $vhost_dir/$git_repository/$private_dir");
-               }
-           }
+            my $private_git_repository = $conf->{'private_git_repository'};
+            $git_log = update_git($conf->{'user'}, $private_git_repository, $conf->{'private_git_ref'});
+            if (exists($conf->{'private_git_dirs'})){
+                foreach my $private_dir (@{$conf->{'private_git_dirs'}}) {
+                    shell("ln -snf $vhost_dir/$private_git_repository/$private_dir $vhost_dir/$git_repository/$private_dir");
+                }
+            }
         }
     } else {
         die "Unknown version control system";
@@ -969,6 +974,8 @@ sub update_site {
 
     # Prompt apache to reread files, on machines which have apache
     apache_graceful();
+
+    return $git_log;
 }
 
 sub make_dot_forward {
