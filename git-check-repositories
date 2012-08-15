@@ -10,6 +10,7 @@ EMAIL_PREFIX="" # we don't really need this prefix, it's kind of obvious
 GIT_HANG_ERROR="fatal: The remote end hung up unexpectedly"
 
 OUTPUT=$(mktemp)
+ERROR=0
 trap "rm -f $OUTPUT" EXIT
 
 function check_config_present {
@@ -159,7 +160,7 @@ function check_no_github {
     git ls-remote $REPOSITORY_GITHUB > /dev/null 2> $TMP_ERR
  
     # Produce output for anything but a hang up from the github repository
-    NO_REPO_ERROR="ERROR: mysociety/$REPOSITORY_NAME doesn't exist yet. Did you enter it correctly?"
+    NO_REPO_ERROR="ERROR: Repository not found."
     DIFF=`echo -e "$NO_REPO_ERROR\n$GIT_HANG_ERROR" | diff $TMP_ERR -`
     if [ -n "$DIFF" ]
     then
@@ -209,7 +210,7 @@ function get_expected_private_owner {
 function check_license_present {
     if ! git show HEAD:LICENSE.txt >/dev/null 2>/dev/null
     then
-        echo "There is no LICENSE.txt file (in HEAD at any rate)"
+    : #    echo "There is no LICENSE.txt file (in HEAD at any rate)"
     fi
 }
 
@@ -257,7 +258,6 @@ function check_master_branch_exists {
 }
 
 (
-    echo "==== Checking the version of git"
     if dpkg --compare-versions $GIT_VERSION lt $MINIMUM_GIT_VERSION
     then
         echo "The version of git in PATH is too old ($GIT_VERSION) -"
@@ -274,7 +274,12 @@ function check_master_branch_exists {
             REPOSITORY_GIT_DAEMON="git://git.mysociety.org/${REPOSITORY_NAME}"
             
             check_repository public
-        )
+        ) >$OUTPUT 2>&1
+        if egrep -v '^( *$| *=)' $OUTPUT
+        then
+            cat $OUTPUT
+            ERROR=1
+        fi
     done
      
     for d in /data/git/private/*.git
@@ -286,18 +291,13 @@ function check_master_branch_exists {
             REPOSITORY_GIT_DAEMON="git://git.mysociety.org/${REPOSITORY_NAME}"
 
             check_repository private
-        )
-    done  ) > $OUTPUT 2>&1
+        ) >$OUTPUT 2>&1
+        if egrep -v '^( *$| *=)' $OUTPUT
+        then
+            cat $OUTPUT
+            ERROR=1
+        fi
+    done  )
 
-
-
-# If there are any lines of output that aren't empty or being with =, there
-# was an error, so report everything:
-if egrep -v '^( *$| *=)' $OUTPUT
-then
-    cat $OUTPUT
-    exit 1
-fi
-
-exit 0
+exit $ERROR
 
