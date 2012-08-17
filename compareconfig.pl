@@ -10,7 +10,7 @@
 # Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: compareconfig.pl,v 1.6 2005-09-14 18:05:46 francis Exp $
+# $Id: compareconfig.pl,v 1.7 2012-08-17 09:59:47 matthew Exp $
 #
 
 use strict;
@@ -26,7 +26,7 @@ sub compare_one_way {
     my $n = 0;
 
     foreach my $key (keys %$a) {
-        if (!defined $b->{$key}) {
+        if (!exists $b->{$key}) {
             print STDERR $b->{'CONFIG_FILE_NAME'} . " does not contain $key, " . $a->{'CONFIG_FILE_NAME'} . " does\n";
             ++$n;
         }
