@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.171 2012-08-15 19:59:23 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.172 2012-08-30 12:38:47 robin Exp $';
 
 package main;
 
@@ -467,6 +467,18 @@ sub db_conf {
     port: $params->{port}
 END
             }
+    }
+    elsif ($params->{type} eq 'mysql') {
+            if (scalar(@{$conf->{'databases'}}) == 1) {
+                my $port = $params->{port} || 3306;
+                $rails_database_config = <<END;
+    adapter: mysql2
+    database: $database
+    username: $database
+    password: \${\\(pgpw('$database'))}
+    host: $params->{host}.int.ukcod.org.uk
+    port: $port
+END
     }
 } 
 
