@@ -5,7 +5,7 @@
 #
 # Arguments are the message to log, as in echo(1).
 #
-# $Id: deploy-logger,v 1.13 2012-09-05 09:03:23 ian Exp $
+# $Id: deploy-logger,v 1.14 2012-09-05 09:11:51 ian Exp $
 #
 
 HOST=`hostname`
@@ -45,7 +45,7 @@ fi
 # Commit it
 if [ x = x$UML ]
 then
-    git add -q $LOGFILE
+    git add $LOGFILE
     git commit -q -m "deploy-logger: $@" $LOGFILE
     git push -q origin master
 fi
