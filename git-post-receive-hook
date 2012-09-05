@@ -49,5 +49,8 @@ fi
 A=/data/mysociety/bin/git-post-receive-hook-push-to-mirrors
 B=/data/mysociety/bin/git-post-receive-hook-email
 
-$A $REPOSITORY_NAME $REPOSITORY_TYPE < $STDIN_CACHE
+if [ "`git config --get mysociety.local-only`" != 'true' ]; then
+   $A $REPOSITORY_NAME $REPOSITORY_TYPE < $STDIN_CACHE
+fi
+
 $B $REPOSITORY_NAME < $STDIN_CACHE
