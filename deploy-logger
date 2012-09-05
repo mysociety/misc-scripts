@@ -5,7 +5,7 @@
 #
 # Arguments are the message to log, as in echo(1).
 #
-# $Id: deploy-logger,v 1.12 2012-09-05 08:28:40 ian Exp $
+# $Id: deploy-logger,v 1.13 2012-09-05 09:03:23 ian Exp $
 #
 
 HOST=`hostname`
@@ -30,10 +30,6 @@ cd $STATE_PATH/$HOST
 if [ ! -e "$LOGFILE" ]
 then
     touch $LOGFILE
-    if [ x = x$UML ]
-    then
-        git add $LOGFILE
-    fi
 fi
 
 # Add new entry to end of log file
@@ -49,6 +45,7 @@ fi
 # Commit it
 if [ x = x$UML ]
 then
+    git add -q $LOGFILE
     git commit -q -m "deploy-logger: $@" $LOGFILE
     git push -q origin master
 fi
