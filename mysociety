@@ -38,11 +38,11 @@ COMMAND is one of:
         Update the exim virtual mail configuration on the current host
 
     update
-        "cvs update" all of /data/servers and /data/mysociety
+        "git pull origin" all of /data/servers and /data/mysociety
     commit
-        "cvs commit" all of /data/servers and /data/mysociety
+        "git commit; git push" all of /data/servers and /data/mysociety
     diff
-        "cvs diff -u" all of /data/servers and /data/mysociety
+        "git diff -u" all of /data/servers and /data/mysociety
 
     base COMMAND
         Run a command on all machines (which are in the same base class as this one)
@@ -59,7 +59,7 @@ commands that the mySociety Perl scripts call).
 The "-u" parameter indicates that this instance is running on a
 user-mode linux virtual machine.  The effect of this is to prevent
 the config and vhost from attempting to update anything from the
-private CVS repository.
+private git repository.
 
 END
 	exit
@@ -99,7 +99,7 @@ ARCHETYPES_DIR="archetypes"
 cd /data/servers
 if [ x = x$UML ]
 then
-    cvs -Q update serverclass
+    git pull -q origin
 fi
 if [ ! -e /data/servers/serverclass ] ; then
     die "/data/servers/serverclass: No such file or directory"
@@ -125,10 +125,6 @@ case $COMMAND in
         # update and make the settings file
         SETTINGS_FILE=/etc/mysociety/config-settings.pl
         cd /data/servers/machines
-        if [ x = x$UML ]
-        then
-            cvs -Q update -dP $HOST.pl
-        fi
         cp /data/servers/machines/$HOST.pl $SETTINGS_FILE
         cat >>$SETTINGS_FILE <<END
 
@@ -175,7 +171,7 @@ END
             do
                 if [ x = x$UML ]
                 then
-                    cvs -Q update -dP $ARCHETYPE
+                    git pull -q origin
                 fi
                 /data/mysociety/bin/deploy-configuration --check-existing --save-file=/var/lib/deploy-configuration-$ARCHETYPE.tar /data/servers/$ARCHETYPES_DIR/$ARCHETYPE $SETTINGS_FILE "$@" || FAILED=yes
             done
@@ -266,7 +262,7 @@ END
 
     update)
         cd /data/servers
-        cvs -Q update -dP
+        git pull -q origin
         cd /data/mysociety
         cvs -Q update -dP
         cd /data/mysociety/utils
@@ -275,14 +271,15 @@ END
 
     commit)
         cd /data/servers
-        cvs -Q commit
+        git commit -q --allow-empty-message
+	git push -q origin master
         cd /data/mysociety
         cvs -Q commit
         ;;
 
     diff)
         cd /data/servers
-        cvs -Q diff -u
+        git diff -u
         cd /data/mysociety
         cvs -Q diff -u
         ;;

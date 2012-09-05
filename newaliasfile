@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: newaliasfile,v 1.2 2011-03-24 21:19:40 adam Exp $';
+my $rcsid = ''; $rcsid .= '$Id: newaliasfile,v 1.3 2012-09-05 08:28:41 ian Exp $';
 
 use strict;
 
@@ -73,18 +73,19 @@ hostmaster:	domains\@mysociety.org
 EOF
 
 $f->close();
-my @cvsfiles = ($domain);
+my @gitfiles = ($domain);
 
 foreach (@aliases) {
     my $f = new IO::File("$_.symlink", O_WRONLY | O_CREAT | O_EXCL, 0644);
     if ($f) {
         $f->print("To: $domain\n");
         $f->close();
-        push(@cvsfiles, $_);
+        push(@gitfiles, $_);
     } else {
         print STDERR "newaliasfile: $_: $!\n";
     }
 }
 
-system("cvs", "add", "-m", "Created new alias file for $descr", @cvsfiles);
-system("cvs", "commit", "-m", "Created new alias file for $descr", @cvsfiles);
+system("git", "add", "-m", "Created new alias file for $descr", @cvsfiles);
+system("git", "commit", "-m", "Created new alias file for $descr", @cvsfiles);
+system("git", "push", "origin", "master");

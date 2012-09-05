@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: newzonefile,v 1.13 2011-03-24 16:04:01 adam Exp $';
+my $rcsid = ''; $rcsid .= '$Id: newzonefile,v 1.14 2012-09-05 08:28:41 ian Exp $';
 
 use strict;
 
@@ -114,18 +114,19 @@ www             CNAME               web
 EOF
 
 $f->close();
-my @cvsfiles = ($domain);
+my @gitfiles = ($domain);
 
 foreach (@aliases) {
     my $f = new IO::File("$_.symlink", O_WRONLY | O_CREAT | O_EXCL, 0644);
     if ($f) {
         $f->print("To: $domain\n");
         $f->close();
-        push(@cvsfiles, $_);
+        push(@gitfiles, $_);
     } else {
         print STDERR "newzonefile: $_: $!\n";
     }
 }
 
-system("cvs", "add", "-m", "Created new zone file for $descr", @cvsfiles);
-system("cvs", "commit", "-m", "Created new zone file for $descr", @cvsfiles);
+system("git", "add", "-m", "Created new zone file for $descr", @cvsfiles);
+system("git", "commit", "-m", "Created new zone file for $descr", @cvsfiles);
+system("git", "push", "origin", "master");

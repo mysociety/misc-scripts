@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.173 2012-08-30 12:39:49 robin Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.174 2012-09-05 08:28:40 ian Exp $';
 
 package main;
 
@@ -741,12 +741,12 @@ sub update_conf_dir {
         }
         $conf_ugly_part =~ s#/#_#g;
         my $conf_ugly_file = "$servers_dir/vhosts/$conf_ugly_part.ugly";
-        # update the conf/general (or whatever) template in private CVS
+        # update the conf/general (or whatever) template in private git repo
         chdir "$servers_dir/vhosts";
         if( $uml ) {
             print STDERR "Not updating $conf_ugly_part.ugly due to -u\n";
         } else {
-            shell("cvs", "-Q", "update", "$conf_ugly_part.ugly");
+	    shell("git", "pull", "-q", "origin");
         }
         # update example we'll be comparing against, to make sure no missing entries.
         # For public conf files, use the example in the main public checkout. For 

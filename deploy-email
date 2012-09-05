@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-email,v 1.22 2011-08-23 12:11:18 struan Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-email,v 1.23 2012-09-05 08:28:40 ian Exp $';
 
 use strict;
 
@@ -117,7 +117,7 @@ sub check_line($) {
 }
 
 #
-# Alias files for domains are stored in CVS in servers/email. As for zone files
+# Alias files for domains are stored in git in servers/email. As for zone files
 # and other files handled by deploy-configuration, there may also be .symlink
 # files for configuring several domains identically. This script checks that
 # each of the alias files is valid and copies them into /etc/exim4/virtual.
@@ -147,20 +147,21 @@ try {
     }
 
     chdir("/data/servers/email") || throw Oops("/data/servers/email: $!");
-    shell("cvs", "-Q", "update", "-dP");
+    shell("git", "pull", "origin");
 
     # Get the list of alias files.
     verbose("getting list of domains...");
-    my $f = new IO::File("CVS/Entries", O_RDONLY) || throw Oops("CVS/Entries: $!");
+    open GIT, "git ls-files|" || throw Oops("git ls-files: $!");
 
     my %files = ();
-    while (defined(my $line = $f->getline())) {
-        if ($line =~ m#^/([^/]+)/# && $1 !~ /(?:_perm|\.cvsignore|README)$/) {
-            throw Oops("$1: is not a regular file") if (!-f $1);
-            $files{$1} = 0;
+    while (<GIT>) {
+        chop;
+        if (m#^/([^/]+)/# && $1 !~ /(?:_perm|\.cvsignore|README)$/) {
+            throw Oops("$1: is not a regular file") if (!-f $_);
+            $files{$_} = 0;
         }
     }
-    throw Oops("CVS/Entries: $!") if ($f->error());
+    close GIT;
     verbose(" done\n");
 
     my $errors = 0;
