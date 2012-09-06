@@ -9,7 +9,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: mysociety-create-databases,v 1.22 2012-08-07 09:06:40 ian Exp $';
+my $rcsid = ''; $rcsid .= '$Id: mysociety-create-databases,v 1.23 2012-09-06 12:03:39 struan Exp $';
 
 package main;
 
@@ -29,6 +29,7 @@ use mySociety::ServerClass;
 use Data::Dumper;
 use Sys::Hostname;
 use IO::Socket::INET;
+use File::Copy;
 use DBI
 
 our $verbose = $ENV{VERBOSE} ? 1 : 0;
@@ -52,7 +53,12 @@ if (getpwuid($>) ne 'postgres' && getpwuid($>) ne 'root') {
 
 # Read in configuration file
 our ($vhosts, $sites, $databases);
-require "$servers_dir/vhosts.pl";
+# postgres user can't access /data/servers but we create a copy at the bottom
+if (getpwuid($>) eq 'postgres' ) {
+    require "/data/vhosts.pl";
+} else {
+    require "$servers_dir/vhosts.pl";
+}
 
 # Various other parameters
 my $myhostname = hostname;
@@ -248,7 +254,8 @@ if(getpwuid($>) eq 'root') {
 # Become user postgresql, and run script again to do postgresql ones
 if (getpwuid($>) eq 'root') {
     # XXX yeuch, but seems easiest way to give postgres access to vhosts.pl, and postgres_secret
-    chown((getpwnam("root"))[2], (getgrnam("postgres"))[2], "$servers_dir/vhosts.pl");
+    copy( "$servers_dir/vhosts.pl", "/data/vhosts.pl" );
+    chown((getpwnam("postgres"))[2], (getgrnam("postgres"))[2], "/data/vhosts.pl");
     chown((getpwnam("root"))[2], (getgrnam("postgres"))[2], "/etc/mysociety/postgres_secret");
     chmod(0755, '/data/mysociety/bin/pgpw');
     exit system("su postgres -c \"$0\"") >> 8;
