@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-email,v 1.23 2012-09-05 08:28:40 ian Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-email,v 1.24 2012-09-06 13:36:47 matthew Exp $';
 
 use strict;
 
@@ -147,7 +147,7 @@ try {
     }
 
     chdir("/data/servers/email") || throw Oops("/data/servers/email: $!");
-    shell("git", "pull", "origin");
+    shell("git", "pull", "-q", "origin");
 
     # Get the list of alias files.
     verbose("getting list of domains...");
@@ -156,7 +156,7 @@ try {
     my %files = ();
     while (<GIT>) {
         chop;
-        if (m#^/([^/]+)/# && $1 !~ /(?:_perm|\.cvsignore|README)$/) {
+        unless (/^(?:_perm|\.cvsignore|README)$/) {
             throw Oops("$1: is not a regular file") if (!-f $_);
             $files{$_} = 0;
         }
