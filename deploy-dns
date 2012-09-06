@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.34 2012-09-05 08:28:39 ian Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.35 2012-09-06 14:21:02 ian Exp $';
 
 use strict;
 
@@ -192,7 +192,7 @@ try {
     }
 
     chdir("/data/servers/dns") || throw Oops("/data/servers/dns: $!");
-    shell("git", "pull", "origin");
+    shell("git", "pull", "-q", "origin");
 
     # Get the list of files under git control.
     verbose("getting list of domains...");
@@ -201,7 +201,9 @@ try {
     my %files = ();
     while (<GIT>) {
         chop;
-        $files{$_} = 0 if (m#^/([^/]+)/# && /^(?:_perm|\.gitignore)$/);
+	unless (/^(?:_perm|\.cvsignore|README)$/) {
+            $files{$_} = 0;
+	}
     }
     close GIT;
 
