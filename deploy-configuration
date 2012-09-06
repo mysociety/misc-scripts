@@ -20,7 +20,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.57 2012-09-06 10:06:22 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.58 2012-09-06 10:27:03 matthew Exp $';
 
 package Oops;
 
@@ -308,7 +308,7 @@ sub process_directory ($$$) {
         throw Oops("$indir/$name: already created $name, from $havefile{$name}")
             if (exists($havefile{$name}));
         my $s = lstat("$indir/$name");
-        my $mode = $s->mode() & 07755;
+        my $mode = $s->mode() & 00755;
         my $is_symlink = 0;
         if (S_ISDIR($s->mode())) {
             # This is a directory. Create it in the output, and add it to the
@@ -516,10 +516,10 @@ sub install_files ($$;$) {
                 if ($st2 && !S_ISDIR($st2->mode()));
             verbose("DIRECTORY $outname\n");
             if (!$st2) {
-                mkdir($outname, $st->mode() & 07755)
+                mkdir($outname, $st->mode() & 00755)
                     || throw Oops("$outname: mkdir: $!");
             }
-            chmod($st->mode() & 07755, $outname)
+            chmod($st->mode() & 00755, $outname)
                 || throw Oops("$outname: chmod: $!");
             chown($st->uid(), $st->gid(), $outname)
                 || throw Oops("$outname: chown: $!");
