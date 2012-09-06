@@ -38,7 +38,7 @@ COMMAND is one of:
         Update the exim virtual mail configuration on the current host
 
     update
-        "git pull origin" all of /data/servers and /data/mysociety
+        "cvs update" /data/mysociety
     commit
         "git commit; git push" all of /data/servers and /data/mysociety
     diff
@@ -60,6 +60,9 @@ The "-u" parameter indicates that this instance is running on a
 user-mode linux virtual machine.  The effect of this is to prevent
 the config and vhost from attempting to update anything from the
 private git repository.
+
+Note that running this command will perform a git pull on /data/servers,
+regardless of what command you actually run.
 
 END
 	exit
@@ -169,10 +172,6 @@ END
             # test for local changes
             for ARCHETYPE in $ARCHETYPES
             do
-                if [ x = x$UML ]
-                then
-                    git pull -q origin
-                fi
                 /data/mysociety/bin/deploy-configuration --check-existing --save-file=/var/lib/deploy-configuration-$ARCHETYPE.tar /data/servers/$ARCHETYPES_DIR/$ARCHETYPE $SETTINGS_FILE "$@" || FAILED=yes
             done
             # if failed, exit
@@ -261,8 +260,6 @@ END
         ;;
 
     update)
-        cd /data/servers
-        git pull -q origin
         cd /data/mysociety
         cvs -Q update -dP
         cd /data/mysociety/utils
