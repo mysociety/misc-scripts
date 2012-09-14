@@ -40,13 +40,13 @@ CURRENT_SCHEMA_FILE=`mktemp /tmp/ms-deploy-currentschema.XXXXXX`
 MYSQLDUMP="/usr/bin/mysqldump --no-data --skip-opt --create-options"
 
 # load schema into temporay db to deal with SET stuff
-ssh $PARAM_DB_HOST su root -c \"mysql --port=$PARAM_DB_PORT --execute=\\\"drop database $SCHEMATEST\\\"\" 2>&1 | grep -v "database doesn't exist" || echo -n
-ssh $PARAM_DB_HOST su root -c \"mysql --port=$PARAM_DB_PORT --execute=\\\"create database $SCHEMATEST\\\"\" 
-cat $PARAM_SCHEMA | ssh $PARAM_DB_HOST su root -c \"mysql --database=$SCHEMATEST --port=$PARAM_DB_PORT\"
+mysql --host=$PARAM_DB_HOST --port=$PARAM_DB_PORT --execute="drop database if exists $SCHEMATEST"
+mysql --host=$PARAM_DB_HOST --port=$PARAM_DB_PORT --execute="create database $SCHEMATEST"
+cat $PARAM_SCHEMA | mysql --database=$SCHEMATEST --host=$PARAM_DB_HOST --port=$PARAM_DB_PORT
 
-ssh $PARAM_DB_HOST su root -c \"$MYSQLDUMP --port $PARAM_DB_PORT $SCHEMATEST \" | grep -v "\-\-databases\|^--\|/\*.*SET\|^\s*$" | sed "s/ ENGINE.*;/;/" | sed "s/,$//;" > $CVS_SCHEMA_FILE
+$MYSQLDUMP --host=$PARAM_DB_HOST --port $PARAM_DB_PORT $SCHEMATEST | grep -v "\-\-databases\|^--\|/\*.*SET\|^\s*$" | sed "s/ ENGINE.*;/;/" | sed "s/,$//;" > $CVS_SCHEMA_FILE
 
-ssh $PARAM_DB_HOST su root -c \"mysql --port=$PARAM_DB_PORT --execute=\\\"drop database $SCHEMATEST\\\"\" 2>&1 | grep -v "database doesn't exist" || echo -n
+mysql --host=$PARAM_DB_HOST --port=$PARAM_DB_PORT --execute="drop database $SCHEMATEST"
 
 cat $CVS_SCHEMA_FILE | sort > $CVS_SCHEMA_FILE.sorted
 
