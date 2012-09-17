@@ -25,4 +25,4 @@ touch $SYNC_PATH/.$HOSTNAME-timestamp
 
 # Run the sync as the last command so the exit status is preserved.
 # Errors will still go to stderr despite '-silent'.
-/usr/bin/unison -batch -silent -times -owner -group -retry 5 -preferpartial "$SYNC_PATH/.$HOSTNAME-timestamp" -logfile /var/log/unison.log "$SYNC_PATH" "ssh://$SYNC_PAIR//$SYNC_PATH"
+/usr/bin/unison -batch -times -owner -group -retry 5 -preferpartial "$SYNC_PATH/.$HOSTNAME-timestamp" "$SYNC_PATH" "ssh://$SYNC_PAIR//$SYNC_PATH" >> /var/log/unison.log 2>&1
