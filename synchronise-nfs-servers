@@ -20,4 +20,4 @@ case "$HOSTNAME" in
         ;;
 esac
 
-/usr/bin/unison -batch "$SYNC_PATH" "ssh://$SYNC_PAIR//$SYNC_PATH" -logfile /var/log/unison.log
+/usr/bin/unison -batch -silent -logfile /var/log/unison.log "$SYNC_PATH" "ssh://$SYNC_PAIR//$SYNC_PATH"
