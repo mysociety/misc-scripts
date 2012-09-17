@@ -1,0 +1,23 @@
+#!/bin/sh
+#
+# Synchronise NFS servers' files.
+#
+# Ian Chard <ian@mysociety.org>
+#
+
+SYNC_PATH='/export/'
+
+case "$HOSTNAME" in
+    'elephant')
+        SYNC_PAIR='buffalo'
+	;;
+    'buffalo')
+        SYNC_PAIR='elephant'
+	;;
+    *)
+        echo "$HOSTNAME is not a valid host for this script"
+	exit 1
+        ;;
+esac
+
+/usr/bin/unison -batch "$SYNC_PATH" "ssh://$SYNC_PAIR//$SYNC_PATH"
