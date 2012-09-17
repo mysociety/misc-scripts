@@ -20,4 +20,9 @@ case "$HOSTNAME" in
         ;;
 esac
 
+# Update the timestamp on a 'flag' file, so we can check that synchronisation is working.
+touch $SYNC_PATH/.$HOSTNAME-timestamp
+
+# Run the sync as the last command so the exit status is preserved.
+# Errors will still go to stderr despite '-silent'.
 /usr/bin/unison -batch -silent -logfile /var/log/unison.log "$SYNC_PATH" "ssh://$SYNC_PAIR//$SYNC_PATH"
