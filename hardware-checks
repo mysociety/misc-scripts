@@ -4,7 +4,7 @@
 # to be run as a cron job, dumping useful output somewhere that can be read by
 # Nagios checks.
 #
-# $Id: hardware-checks,v 1.5 2012-09-17 10:01:26 ian Exp $
+# $Id: hardware-checks,v 1.6 2012-09-17 11:03:34 ian Exp $
 #
 
 use strict;
@@ -41,7 +41,7 @@ foreach my $i (split /, /, $hardware_tests) {
 		### XXX figure this out later
 		system "touch $OUTPUT_FILE";
 	} elsif($i eq 'cciss') {
-		die "can't execute cciss_vol_status" if(! -e "/usr/bin/cciss_vol_status");
+		die "can't execute cciss_vol_status" if(! -e "/usr/sbin/cciss_vol_status");
 
 		system "/usr/sbin/cciss_vol_status /dev/cciss/c*d0 > $OUTPUT_FILE";
 	} else {
