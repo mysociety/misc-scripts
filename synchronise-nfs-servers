@@ -11,12 +11,8 @@ case "$HOSTNAME" in
     'elephant')
         SYNC_PAIR='buffalo'
 	;;
-    'buffalo')
-        SYNC_PAIR='elephant'
-	;;
     *)
-        echo "$HOSTNAME is not a valid host for this script"
-	exit 1
+	exit 0
         ;;
 esac
 
