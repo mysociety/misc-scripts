@@ -11,6 +11,9 @@ case "$HOSTNAME" in
     'elephant')
         SYNC_PAIR='buffalo'
 	;;
+    'buffalo')
+        SYNC_PAIR=''    # we want the timestamp file but nothing else
+	;;
     *)
 	exit 0
         ;;
@@ -18,6 +21,9 @@ esac
 
 # Update the timestamp on a 'flag' file, so we can check that synchronisation is working.
 touch $SYNC_PATH/.$HOSTNAME-timestamp
+
+# Don't continue unless we have a synchronisation target
+[ "$SYNC_PAIR" ] || exit
 
 # Run the sync as the last command so the exit status is preserved.
 # Errors will still go to stderr despite '-silent'.
