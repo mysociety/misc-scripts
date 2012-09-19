@@ -6,7 +6,7 @@
 # Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
-# $Id: File.pm,v 1.9 2010-10-08 15:46:54 matthew Exp $
+# $Id: File.pm,v 1.10 2012-09-19 10:41:42 ian Exp $
 #
 
 package File;
@@ -38,7 +38,7 @@ sub test () {
             next;
         }
         # Exclude filesystems to which we wouldn't expect to be able to write.
-        push(@dirs, $mnt) unless ($type =~ /^(proc|devpts|usbfs|sysfs|nfsd|rpc_pipefs)$/);
+        push(@dirs, $mnt) unless ($type =~ /^(proc|devpts|usbfs|sysfs|nfsd|nfs|rpc_pipefs)$/);
     }
         
     if ($f->error()) {
