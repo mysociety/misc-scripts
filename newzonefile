@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: newzonefile,v 1.15 2012-09-24 10:42:22 ian Exp $';
+my $rcsid = ''; $rcsid .= '$Id: newzonefile,v 1.16 2012-09-24 10:44:28 ian Exp $';
 
 use strict;
 
@@ -127,6 +127,6 @@ foreach (@aliases) {
     }
 }
 
-system("git", "add", "-m", "Created new zone file for $descr", @gitfiles);
+system("git", "add", "Created new zone file for $descr", @gitfiles);
 system("git", "commit", "-m", "Created new zone file for $descr", @gitfiles);
 system("git", "push", "origin", "master");
