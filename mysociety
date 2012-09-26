@@ -38,11 +38,11 @@ COMMAND is one of:
         Update the exim virtual mail configuration on the current host
 
     update
-        "cvs update" /data/mysociety
+        cvs update /data/mysociety
     commit
-        "git commit; git push" all of /data/servers and /data/mysociety
+        git commit and git push /data/servers
     diff
-        "git diff -u" all of /data/servers and /data/mysociety
+        diff /data/servers and /data/mysociety
 
     base COMMAND
         Run a command on all machines (which are in the same base class as this one)
@@ -270,8 +270,6 @@ END
         cd /data/servers
         git commit -q --allow-empty-message
 	git push -q origin master
-        cd /data/mysociety
-        cvs -Q commit
         ;;
 
     diff)
