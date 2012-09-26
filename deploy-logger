@@ -5,12 +5,13 @@
 #
 # Arguments are the message to log, as in echo(1).
 #
-# $Id: deploy-logger,v 1.14 2012-09-05 09:11:51 ian Exp $
+# $Id: deploy-logger,v 1.15 2012-09-26 10:04:19 ian Exp $
 #
 
 HOST=`hostname`
 STATE_PATH=/data/servers/state
 LOGFILE=deploy-log
+PUSH_ATTEMPTS=5
 DATELOG=`date +"%Y-%m-%d %X"`
 WHO=$SUDO_USER
 [ "$WHO" = "" ] && WHO=$USER
@@ -47,7 +48,25 @@ if [ x = x$UML ]
 then
     git add $LOGFILE
     git commit -q -m "deploy-logger: $@" $LOGFILE
-    git push -q origin master
+
+    # Try a few times, as other hosts might be pushing at the same time.
+    pushes=0
+    while [ $pushes -le $PUSH_ATTEMPTS ]
+    do
+	(( pushes++ ))
+        git push -q origin master 2> /dev/null
+	if [ $? == 0 ]
+	then
+	    break
+	fi
+
+	# Pull the changes that have happened since we've been running.
+	git pull -q
+    done
+    if [ $pushes == $PUSH_ATTEMPTS ]
+    then
+        echo "warning: couldn't git push deploy-logger changes after $pushes attempts"
+    fi
 fi
 
 exit 0 # otherwise it exits with code of grep
