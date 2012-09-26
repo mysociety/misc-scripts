@@ -8,7 +8,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: check-vhosts,v 1.3 2010-08-03 10:37:23 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: check-vhosts,v 1.4 2012-09-26 15:38:55 matthew Exp $';
 
 package main;
 
@@ -54,7 +54,7 @@ foreach my $server ( keys (%$servers_to_vhosts) ) {
 
     # Get list in /data/vhost on server
     my $deployed_vhosts;
-    my $vhost_list = "$servers_dir/state/$server/vhost-list";
+    my $vhost_list = "$servers_dir/../state/$server/vhost-list";
     open FH, $vhost_list or die "$vhost_list not found";
     while (<FH>) {
         $_ =~ s/\s+$//;

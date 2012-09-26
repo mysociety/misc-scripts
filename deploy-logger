@@ -5,11 +5,11 @@
 #
 # Arguments are the message to log, as in echo(1).
 #
-# $Id: deploy-logger,v 1.15 2012-09-26 10:04:19 ian Exp $
+# $Id: deploy-logger,v 1.16 2012-09-26 15:38:55 matthew Exp $
 #
 
 HOST=`hostname`
-STATE_PATH=/data/servers/state
+STATE_PATH=/data/state
 LOGFILE=deploy-log
 PUSH_ATTEMPTS=5
 DATELOG=`date +"%Y-%m-%d %X"`
