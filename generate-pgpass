@@ -8,7 +8,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 # 
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.160 2012-08-22 13:58:47 ian Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.161 2012-09-27 08:41:03 ian Exp $';
 
 use strict;
 require 5.8.0;
@@ -92,13 +92,15 @@ foreach my $host (keys %extra_perms) {
     }
 }
 
-# ... add in logging as the data base user on the same server
-foreach (values %$vhosts) {
-    next unless $_->{databases};
-    my $user = $_->{user} || $sites->{$_->{site}}->{user};
-    foreach (@{$_->{databases}}) {
-        $perms{$databases->{$_}{host}}{$user}{$_} = 1;
-        $perms{$databases->{$_}{host}}{'root'}{$_} = 1;
+# ... add in logging as the database user on the appropriate server
+foreach my $vhost (values %$vhosts) {
+    next unless $vhost->{databases};
+    my $user = $vhost->{user} || $sites->{$vhost->{site}}->{user};
+    foreach my $db (@{$vhost->{databases}}) {
+	foreach my $server (@{$vhost->{servers}}) {
+	    $perms{$server}{$user}{$db} = 1;
+	}
+        $perms{$databases->{$db}{host}}{'root'}{$db} = 1;
     }
 }
 
@@ -120,6 +122,7 @@ my $server = (uname())[1];
 my $database_permissions = $perms{$server};
 die "generate-pgpass not configured for server $server" unless $database_permissions;
 
+use Data::Dumper; print Dumper(\%perms); exit;
 foreach my $user (sort keys %$database_permissions) {
     my @x = getpwnam($user) or die "$user: getpwnam: $!";
     my ($user_login, $user_pass, $user_uid, $user_gid) = @x;
