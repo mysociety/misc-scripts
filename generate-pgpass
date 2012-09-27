@@ -8,7 +8,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 # 
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.161 2012-09-27 08:41:03 ian Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.162 2012-09-27 08:42:05 ian Exp $';
 
 use strict;
 require 5.8.0;
@@ -16,8 +16,6 @@ require 5.8.0;
 use FindBin;
 use lib "$FindBin::Bin/../perllib";
 use POSIX;
-
-use Data::Dumper;
 
 use mySociety::TempFiles;
 use mySociety::ServerClass;
@@ -122,7 +120,6 @@ my $server = (uname())[1];
 my $database_permissions = $perms{$server};
 die "generate-pgpass not configured for server $server" unless $database_permissions;
 
-use Data::Dumper; print Dumper(\%perms); exit;
 foreach my $user (sort keys %$database_permissions) {
     my @x = getpwnam($user) or die "$user: getpwnam: $!";
     my ($user_login, $user_pass, $user_uid, $user_gid) = @x;
