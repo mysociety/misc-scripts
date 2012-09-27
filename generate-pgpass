@@ -8,7 +8,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 # 
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.162 2012-09-27 08:42:05 ian Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.163 2012-09-27 09:24:38 matthew Exp $';
 
 use strict;
 require 5.8.0;
@@ -33,35 +33,30 @@ my %extra_perms = (
     'arrow' => {
         'louise' => ['news'],
         'matthew' => ['mapit'],
-	'mark' => ['mapit'],
+        'mark' => ['mapit'],
         'duncan' => ['openstreetmap-gb'],
         'mssecure' => ['donate'],
     },
-    'comet' => {
-    },
     'dart' => {
         'tilma' => [ 'openstreetmap', 'openstreetmap-gb' ],
-    },
-    'fury' => {
-        'matthew' => ['pb-staging', 'openstreetmap'],
-        'louise' => ['hm-testharness', 'gut-louise', 'foi-testharness'],
-        'dancatt' => ['wtf-dan'],
     },
     'majestic' => {
         'louise' => ['sitestats'],
         'matthew' => ['dadem','evel'],
         'dademcron' => ['fyr'],
     },
+    'buffalo' => {
+        'debbi' => [ 'bci', 'ycml' ],
+        'matthew' => [ 'bci', 'pb', 'ycml', 'ycml-cllr' ],
+        'timsk' => [ 'pb' ],
+    },
     'phoenix' => {
-	'adam' => ['pb'],
-        'debbi' => ['fyr', 'ycml'],
-        'timsk' => ['pb'],
-        'matthew' => ['fyr', 'pb', 'ycml', 'ycml-cllr'],
+        'debbi' => ['fyr'],
+        'matthew' => ['fyr'],
         'louise' => ['hm'],
     },
     'rocket' => {
-        'debbi' => ['bci'],
-        'matthew' => ['bci', 'bci-emptyhomes'],
+        'matthew' => ['bci-emptyhomes'],
         'guardian' => ['gut', 'fyr-guardian'],
     },
     'samson' => {
@@ -76,6 +71,8 @@ my %extra_perms = (
     },
     'eclipse' => {
         'foi-testharness' => ['foi-pairs-test'],
+        'matthew' => ['pb-staging', 'openstreetmap'],
+        'louise' => ['hm-testharness', 'gut-louise', 'foi-testharness'],
     },
 );
 
