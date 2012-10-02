@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.175 2012-09-24 14:54:46 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.176 2012-10-02 11:52:18 matthew Exp $';
 
 package main;
 
@@ -832,92 +832,92 @@ sub update_conf_dir {
         # now we use this configuration
         mySociety::Config::set_file($conf_file);
         umask($old_umask);
+    }
 
-        # Check pgsql databases are up to date
-        foreach my $psql_conf_prefix (keys %{$conf->{'psql_schemas'}}) {
-            my $psql_schema = $conf->{'psql_schemas'}->{$psql_conf_prefix};
-            my $psql_name = mySociety::Config::get($psql_conf_prefix.'_DB_NAME', 0);
+    # Check pgsql databases are up to date
+    foreach my $psql_conf_prefix (keys %{$conf->{'psql_schemas'}}) {
+        my $psql_schema = $conf->{'psql_schemas'}->{$psql_conf_prefix};
+        my $psql_name = mySociety::Config::get($psql_conf_prefix.'_DB_NAME', 0);
 
-            # It's OK for the configuration info for a DB to be absent from
-            # any given conf file, as long as it's in one of them
-            if ($psql_name){
+        # It's OK for the configuration info for a DB to be absent from
+        # any given conf file, as long as it's in one of them
+        if ($psql_name) {
 
-                if (exists($unchecked_schemas->{$psql_conf_prefix})){
-                    delete $unchecked_schemas->{$psql_conf_prefix};
-                }
-
-                my $psql_host = mySociety::Config::get($psql_conf_prefix.'_DB_HOST', 'localhost');
-                my $psql_port = mySociety::Config::get($psql_conf_prefix.'_DB_PORT', 5432);
-                my $psql_user = mySociety::Config::get($psql_conf_prefix.'_DB_USER');
-
-                if ($cvs) {
-                    chdir $mysociety_dir;
-                    if( $uml ) {
-                        print STDERR "Not cvs updating $psql_schema due to -u\n";
-                    } else {
-                        shell("cvs", "-Q", "update", "$psql_schema");
-                    }
-                    chdir $mysociety_bin;
-                    # It isn't safe to pass the password over the command line as that can be
-                    # seen by other processes, instead put it in in ~/.pgpass (see
-                    # mysociety/bin/generate-pgpass). And no, PGPASSWORD isn't safer, as on
-                    # some systems the environment can be seen in other processes.
-                    shell("./psql-schema-compare", $mysociety_dir.'/'.$psql_schema, $conf->{'user'}, $psql_name, $psql_user, $psql_host, $psql_port);
-                } elsif ($git) {
-                    my $tmp_psql_schema = mktemp("/tmp/deploy-vhost-psql-schema-XXXXXXXX");
-                    chdir "$vhost_dir/$vcspath";
-                    my $git_ref = $conf->{'git_ref'};
-                    shell("git show $git_ref:$psql_schema >$tmp_psql_schema");
-                    chdir $mysociety_bin;
-                    shell("./psql-schema-compare", $tmp_psql_schema, $conf->{'user'}, $psql_name, $psql_user, $psql_host, $psql_port);
-                    unlink $tmp_psql_schema;
-                } else {
-                    die "Unknown version control system";
-                }
-
+            if (exists($unchecked_schemas->{$psql_conf_prefix})) {
+                delete $unchecked_schemas->{$psql_conf_prefix};
             }
-        }
 
-        # Check MySQL databases are up to date
-        foreach my $mysql_conf_prefix (keys %{$conf->{'mysql_schemas'}}) {
-            my $mysql_schema = $conf->{'mysql_schemas'}->{$mysql_conf_prefix};
-            my $mysql_name = mySociety::Config::get($mysql_conf_prefix.'_DB_NAME', 0);
+            my $psql_host = mySociety::Config::get($psql_conf_prefix.'_DB_HOST', 'localhost');
+            my $psql_port = mySociety::Config::get($psql_conf_prefix.'_DB_PORT', 5432);
+            my $psql_user = mySociety::Config::get($psql_conf_prefix.'_DB_USER');
 
-           # It's OK for the configuration info for a DB to be absent from
-           # any given conf file, as long as it's in one of them
-           if ($mysql_name) {
-                if (exists($unchecked_schemas->{$mysql_conf_prefix})){
-                    delete $unchecked_schemas->{$mysql_conf_prefix};
-                }
-
-                my $mysql_host = mySociety::Config::get($mysql_conf_prefix.'_DB_HOST', 'localhost');
-                my $mysql_port = mySociety::Config::get($mysql_conf_prefix.'_DB_PORT', 3306);
-                my $mysql_user = mySociety::Config::get($mysql_conf_prefix.'_DB_USER');
-
-                my $schema_full_path;
-                if ($cvs) {
-                    chdir $mysociety_dir;
-                    if( $uml ) {
-                        print STDERR "Not cvs updating $mysql_schema due to -u\n";
-                    } else {
-                        shell("cvs", "-Q", "update", "$mysql_schema");
-                    }
-                    $schema_full_path = $mysociety_dir.'/'.$mysql_schema
-                } elsif ($git) {
-                    $schema_full_path = mktemp("/tmp/deploy-vhost-mysociety-schema.sql-XXXXXXXX");
-                    chdir "$vhost_dir/$vcspath";
-                    my $git_ref = $conf->{'git_ref'};
-                    shell("git show $git_ref:$mysql_schema >$schema_full_path");
+            if ($cvs) {
+                chdir $mysociety_dir;
+                if( $uml ) {
+                    print STDERR "Not cvs updating $psql_schema due to -u\n";
                 } else {
-                    die "Unknown version control system";
+                    shell("cvs", "-Q", "update", "$psql_schema");
                 }
-                # It isn't safe to pass the password over the command line or in the
-                # environment as that can be seen by other processes.
                 chdir $mysociety_bin;
-                shell("./mysql-schema-compare", $schema_full_path, $conf->{'user'}, $mysql_name, $mysql_user, $mysql_host, $mysql_port);
-                if ($git) {
-                    unlink($schema_full_path);
+                # It isn't safe to pass the password over the command line as that can be
+                # seen by other processes, instead put it in in ~/.pgpass (see
+                # mysociety/bin/generate-pgpass). And no, PGPASSWORD isn't safer, as on
+                # some systems the environment can be seen in other processes.
+                shell("./psql-schema-compare", $mysociety_dir.'/'.$psql_schema, $conf->{'user'}, $psql_name, $psql_user, $psql_host, $psql_port);
+            } elsif ($git) {
+                my $tmp_psql_schema = mktemp("/tmp/deploy-vhost-psql-schema-XXXXXXXX");
+                chdir "$vhost_dir/$vcspath";
+                my $git_ref = $conf->{'git_ref'};
+                shell("git show $git_ref:$psql_schema >$tmp_psql_schema");
+                chdir $mysociety_bin;
+                shell("./psql-schema-compare", $tmp_psql_schema, $conf->{'user'}, $psql_name, $psql_user, $psql_host, $psql_port);
+                unlink $tmp_psql_schema;
+            } else {
+                die "Unknown version control system";
+            }
+
+        }
+    }
+
+    # Check MySQL databases are up to date
+    foreach my $mysql_conf_prefix (keys %{$conf->{'mysql_schemas'}}) {
+        my $mysql_schema = $conf->{'mysql_schemas'}->{$mysql_conf_prefix};
+        my $mysql_name = mySociety::Config::get($mysql_conf_prefix.'_DB_NAME', 0);
+
+       # It's OK for the configuration info for a DB to be absent from
+       # any given conf file, as long as it's in one of them
+       if ($mysql_name) {
+            if (exists($unchecked_schemas->{$mysql_conf_prefix})) {
+                delete $unchecked_schemas->{$mysql_conf_prefix};
+            }
+
+            my $mysql_host = mySociety::Config::get($mysql_conf_prefix.'_DB_HOST', 'localhost');
+            my $mysql_port = mySociety::Config::get($mysql_conf_prefix.'_DB_PORT', 3306);
+            my $mysql_user = mySociety::Config::get($mysql_conf_prefix.'_DB_USER');
+
+            my $schema_full_path;
+            if ($cvs) {
+                chdir $mysociety_dir;
+                if( $uml ) {
+                    print STDERR "Not cvs updating $mysql_schema due to -u\n";
+                } else {
+                    shell("cvs", "-Q", "update", "$mysql_schema");
                 }
+                $schema_full_path = $mysociety_dir.'/'.$mysql_schema
+            } elsif ($git) {
+                $schema_full_path = mktemp("/tmp/deploy-vhost-mysociety-schema.sql-XXXXXXXX");
+                chdir "$vhost_dir/$vcspath";
+                my $git_ref = $conf->{'git_ref'};
+                shell("git show $git_ref:$mysql_schema >$schema_full_path");
+            } else {
+                die "Unknown version control system";
+            }
+            # It isn't safe to pass the password over the command line or in the
+            # environment as that can be seen by other processes.
+            chdir $mysociety_bin;
+            shell("./mysql-schema-compare", $schema_full_path, $conf->{'user'}, $mysql_name, $mysql_user, $mysql_host, $mysql_port);
+            if ($git) {
+                unlink($schema_full_path);
             }
         }
     }
