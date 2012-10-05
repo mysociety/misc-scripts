@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.178 2012-10-04 07:37:56 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.179 2012-10-05 08:36:00 matthew Exp $';
 
 package main;
 
@@ -1096,7 +1096,14 @@ sub remove_site {
     # Remove possibly symlinked logrotate file
     unlink("/etc/logrotate.d/$vhost");
 
-    print "Config files removed, please tidy data/vhost/$vhost yourself.\n";
+    print "Config files removed, please tidy $vhost_dir yourself.\n";
+
+    if ($git) {
+        my $unpushed_command = "cd \"$vhost_dir/$conf->{git_repository}\" && git log --branches --not --remotes --simplify-by-decoration --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative";
+        my $unpushed = `$unpushed_command`;
+        print "\nThe following branches are unpushed:\n$unpushed\n" if $unpushed;
+    }
+
 }
 
 
