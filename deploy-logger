@@ -5,7 +5,7 @@
 #
 # Arguments are the message to log, as in echo(1).
 #
-# $Id: deploy-logger,v 1.17 2012-10-08 09:23:14 matthew Exp $
+# $Id: deploy-logger,v 1.18 2012-10-08 14:21:15 matthew Exp $
 #
 
 HOST=`hostname`
@@ -51,17 +51,18 @@ then
 
     # Try a few times, as other hosts might be pushing at the same time.
     pushes=0
-    while [ $pushes -le $PUSH_ATTEMPTS ]
+    while [ $pushes -lt $PUSH_ATTEMPTS ]
     do
-	(( pushes++ ))
+        (( pushes++ ))
         git push -q origin master 2> /dev/null
-	if [ $? == 0 ]
-	then
-	    break
-	fi
+        if [ $? == 0 ]
+        then
+            break
+        fi
 
-	# Pull the changes that have happened since we've been running.
-	git pull --rebase -q
+        # Pull the changes that have happened since we've been running.
+        git fetch --quiet origin
+        git rebase --quiet origin/master
     done
     if [ $pushes == $PUSH_ATTEMPTS ]
     then
