@@ -61,9 +61,6 @@ user-mode linux virtual machine.  The effect of this is to prevent
 the config and vhost from attempting to update anything from the
 private git repository.
 
-Note that running this command will perform a git pull on /data/servers,
-regardless of what command you actually run.
-
 END
 	exit
 }
@@ -100,10 +97,6 @@ ARCHETYPES_DIR="archetypes"
 
 # Obtain archetype
 cd /data/servers
-if [ x = x$UML ]
-then
-    git pull --rebase -q origin
-fi
 if [ ! -e /data/servers/serverclass ] ; then
     die "/data/servers/serverclass: No such file or directory"
 fi
