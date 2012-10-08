@@ -5,7 +5,7 @@
 #
 # Arguments are the message to log, as in echo(1).
 #
-# $Id: deploy-logger,v 1.16 2012-09-26 15:38:55 matthew Exp $
+# $Id: deploy-logger,v 1.17 2012-10-08 09:23:14 matthew Exp $
 #
 
 HOST=`hostname`
@@ -61,7 +61,7 @@ then
 	fi
 
 	# Pull the changes that have happened since we've been running.
-	git pull -q
+	git pull --rebase -q
     done
     if [ $pushes == $PUSH_ATTEMPTS ]
     then
