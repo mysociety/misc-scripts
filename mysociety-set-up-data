@@ -1,0 +1,26 @@
+#!/bin/bash
+# Set up /data on a new server
+
+mkdir /data
+cd /data
+export CVSROOT=cvs.mysociety.org:/usr/local/cvs
+cvs co mysociety
+git clone ssh://git.mysociety.org/data/git/private/mysociety-state.git state
+git clone ssh://git.mysociety.org/data/git/private/mysociety-servers.git servers
+chmod o-rwx servers
+
+cat > /data/servers/.git/hooks/post-checkout <<EOF
+#!/bin/bash
+
+ROOT=`git rev-parse --show-cdup`
+find $ROOT -type d -print0 | xargs -0 chmod g+ws 2>/dev/null
+find $ROOT -type f -print0 | xargs -0 chmod g+w 2>/dev/null
+EOF
+ln -s /data/servers/.git/hooks/post-checkout /data/servers/.git/hooks/post-commit
+ln -s /data/servers/.git/hooks/post-checkout /data/servers/.git/hooks/post-merge
+
+chgrp -R privatecvs servers state
+find /data/servers -type d -print0 | xargs -0 chmod g+ws 2>/dev/null
+find /data/servers -type f -print0 | xargs -0 chmod g+w 2>/dev/null
+
+cp -r /data/servers/fonts /data/fonts
