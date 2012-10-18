@@ -242,7 +242,8 @@ END
 
     dns)
         if [ "$1" = "--all" ] ; then
-            exec /data/mysociety/bin/mysociety archetype nameserver mysociety dns
+            /data/mysociety/bin/deploy-logger "Deploying DNS on all servers"
+            exec /data/mysociety/bin/mysociety archetype nameserver mysociety dns --quiet
         else
             exec /data/mysociety/bin/deploy-dns "$@"
         fi
