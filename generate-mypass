@@ -9,7 +9,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 # 
 
-my $rcsid = ''; $rcsid .= '$Id: generate-mypass,v 1.28 2012-01-23 15:12:20 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-mypass,v 1.29 2012-10-18 09:06:14 matthew Exp $';
 
 use strict;
 require 5.8.0;
@@ -51,7 +51,7 @@ foreach (values %$vhosts) {
         next unless $databases->{$_}{type} eq 'mysql';
         push @$hosts, $databases->{$_}{host}; # And the server the database is on
         foreach my $host (@$hosts) {
-            die "$user already has DB $perms{$host}{$user} on $host, so we can't set \$perms{$host}{$user} = $_" if $perms{$host}{$user} && $perms{$host}{$user} ne $_;
+            warn "$user already has DB $perms{$host}{$user} on $host, so we can't set \$perms{$host}{$user} = $_" if $perms{$host}{$user} && $perms{$host}{$user} ne $_;
             if ($host eq $databases->{$_}{host}) {
                 $perms{$host}{$user} = $_;
             } else {
