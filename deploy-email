@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-email,v 1.25 2012-09-06 14:23:57 ian Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-email,v 1.26 2012-10-18 08:49:57 matthew Exp $';
 
 use strict;
 
@@ -36,6 +36,7 @@ use mySociety::SystemMisc qw(describe_waitval shell);
 use mySociety::TempFiles qw(create_file_to_replace);
 
 my $be_verbose = 0;
+my $be_quiet = 0;
 sub verbose (@) {
     return unless ($be_verbose);
     print STDERR @_;
@@ -136,6 +137,7 @@ try {
     if (!GetOptions(
             'help' =>           \$help,
             'verbose' =>        \$be_verbose,
+            'quiet' =>          \$be_quiet,
             'check-only' =>     \$check_only
         )) {
         throw Oops("bad options; try --help for help");
@@ -281,7 +283,8 @@ try {
     verbose("all done");
 
     # in which case, inform or log
-    shell('/data/mysociety/bin/deploy-logger', 'Deployed Email Config');
+    shell('/data/mysociety/bin/deploy-logger', 'Deployed Email Config')
+        unless $be_quiet;
 
 done:
     $ret = 0;

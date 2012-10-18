@@ -250,7 +250,12 @@ END
         ;;
 
     email)
-        exec /data/mysociety/bin/deploy-email "$@"
+        if [ "$1" = "--all" ] ; then
+            /data/mysociety/bin/deploy-logger "Deploying email on all servers"
+            exec /data/mysociety/bin/mysociety archetype email mysociety email --quiet
+        else
+            exec /data/mysociety/bin/deploy-email "$@"
+        fi
         ;;
 
     update)
