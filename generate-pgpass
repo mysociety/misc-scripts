@@ -8,7 +8,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 # 
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.164 2012-10-16 10:58:49 ian Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.165 2012-10-19 17:26:00 matthew Exp $';
 
 use strict;
 require 5.8.0;
@@ -29,56 +29,33 @@ our ($vhosts, $sites, $databases);
 # databases, or for services that aren't set up as standard.
 # XXX these should be moved into flags in vhosts.pl
 my %extra_perms = (
-    # XXX
-    'arrow' => {
-        'louise' => ['news'],
-        'matthew' => ['mapit'],
-        'mark' => ['mapit'],
-        'duncan' => ['openstreetmap-gb'],
-        'mssecure' => ['donate'],
-    },
-    'dart' => {
-        'tilma' => [ 'openstreetmap', 'openstreetmap-gb' ],
-    },
     'milo' => {
         'tilma' => [ 'openstreetmap', 'openstreetmap-gb' ],
     },
     'stork' => {
         'tilma' => [ 'openstreetmap', 'openstreetmap-gb' ],
     },
-    'majestic' => {
-        'louise' => ['sitestats'],
-        'matthew' => ['dadem','evel'],
-        'dademcron' => ['fyr'],
-    },
     'buffalo' => {
-        'debbi' => [ 'bci', 'ycml' ],
-        'matthew' => [ 'bci', 'pb', 'ycml', 'ycml-cllr' ],
+        'debbi' => [ 'bci', 'ycml', 'fyr' ],
+        'matthew' => [ 'bci', 'bci-emptyhomes', 'pb', 'ycml', 'ycml-cllr', 'fyr' ],
         'timsk' => [ 'pb' ],
     },
-    'phoenix' => {
-        'debbi' => ['fyr'],
-        'matthew' => ['fyr'],
-        'louise' => ['hm'],
+    'elephant' => {
+        'matthew' => [ 'openstreetmap-gb' ],
+        'louise' => [ 'hm', 'foi' ],
+        'skenaja' => [ 'foi' ], # so he can do stats and stuff
     },
-    'rocket' => {
-        'matthew' => ['bci-emptyhomes'],
-        'guardian' => ['gut', 'fyr-guardian'],
-    },
-    'samson' => {
+    'vulcan' => {
         'matthew' => ['bbcparlvid'],
         'louise' => ['bbcparlvid'],
     },
-    'novelty' => {
-        'francis' => ['foi'],
-        'louise' => ['foi'],
-        'adam' => ['foi'],
-        'skenaja' => ['foi'], # so he can do stats and stuff
+    'majestic' => {
+        # Is this needed on new services too?
+        'dademcron' => ['fyr'],
     },
-    'eclipse' => {
-        'foi-testharness' => ['foi-pairs-test'],
-        'matthew' => ['pb-staging', 'openstreetmap'],
-        'louise' => ['hm-testharness', 'gut-louise', 'foi-testharness'],
+    'arrow' => {
+        # What was this needed for?
+        'mssecure' => ['donate'],
     },
 );
 
