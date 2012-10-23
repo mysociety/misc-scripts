@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.41 2012-10-23 12:16:31 ian Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.42 2012-10-23 14:29:41 ian Exp $';
 
 use strict;
 
@@ -28,6 +28,7 @@ use Error qw(:try);
 use File::Slurp qw(read_file);
 use Getopt::Long;
 use IO::File;
+use Sys::Hostname;
 use mySociety::SystemMisc qw(describe_waitval shell);
 use mySociety::TempFiles qw(create_file_to_replace);
 # we use ::Fast not for speed, but because it works and the regular one
@@ -293,15 +294,45 @@ acl allow_xfer_list { $allow_xfer_list };
 EOF
 
     foreach my $domain (@domains) {
-        $h->printf(<<EOF,
+	if(defined $allow_ddns{$domain}) {
+	    if(hostname() eq 'leopard') { # DDNS domains have a single master
+                $h->printf(<<EOF,
 zone "%s" {
     type master;
     file "master/%s";
     allow-query { any; };
     allow-transfer { allow_xfer_list; };
+    allow-update { keys %s; };
+    also-notify { 46.43.39.75; };
+};
 EOF
-            $domain, $domain)
-                || throw Oops("$name: $!");
+		    $domain, $domain, $allow_ddns{$domain})
+                        || throw Oops("$name: $!");
+	    } else {
+                $h->printf(<<EOF,
+zone "%s" {
+    type slave;
+    file "slave/%s";
+    allow-query { any; };
+    allow-transfer { allow_xfer_list; };
+    masters { 46.43.39.78; };
+};
+EOF
+		    $domain, $domain)
+                        || throw Oops("$name: $!");
+	    }
+        } else {
+            $h->printf(<<EOF,
+zone "%s" {
+    type master;
+    file "master/%s";
+    allow-query { any; };
+    allow-transfer { allow_xfer_list; };
+};
+EOF
+                $domain, $domain)
+                    || throw Oops("$name: $!");
+        }
         if(defined $allow_ddns{$domain}) {
 	    $h->printf("    allow-update { key %s; };\n", $allow_ddns{$domain})
                 || throw Oops("$name: $!");
