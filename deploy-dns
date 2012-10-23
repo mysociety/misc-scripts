@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.44 2012-10-23 14:50:06 ian Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.45 2012-10-23 14:53:43 ian Exp $';
 
 use strict;
 
@@ -308,7 +308,7 @@ zone "%s" {
     file "master/%s";
     allow-query { any; };
     allow-transfer { allow_xfer_list; };
-    allow-update { keys %s; };
+    allow-update { key %s; };
     also-notify { 46.43.39.75; };
 };
 EOF
