@@ -9,7 +9,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 # 
 
-my $rcsid = ''; $rcsid .= '$Id: generate-mypass,v 1.29 2012-10-18 09:06:14 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-mypass,v 1.30 2012-10-23 12:08:54 matthew Exp $';
 
 use strict;
 require 5.8.0;
@@ -28,17 +28,12 @@ our ($vhosts, $sites, $databases);
 # Who can access what databases, on top of ones automatically generated from vhosts.pl
 # Only one database per user for MySQL
 
-# XXX seems to be going reverse a-z
 my %perms = (
-    comet => {
-        richard => 'gny',
-    },
-    fury => {
+    buffalo => {
         matthew => 'twfy',
         debbi => 'twfy',
     },
     majestic => {
-        adam => 'cacti',
         root => 'root', # XXX As cacti doesn't have a vhost.
     },
 );
@@ -51,9 +46,9 @@ foreach (values %$vhosts) {
         next unless $databases->{$_}{type} eq 'mysql';
         push @$hosts, $databases->{$_}{host}; # And the server the database is on
         foreach my $host (@$hosts) {
-            warn "$user already has DB $perms{$host}{$user} on $host, so we can't set \$perms{$host}{$user} = $_" if $perms{$host}{$user} && $perms{$host}{$user} ne $_;
+            warn "$user already has DB $perms{$host}{$user}[0] on $host, so we can't set \$perms{$host}{$user} = $_" if $perms{$host}{$user} && $perms{$host}{$user}[0] ne $_;
             if ($host eq $databases->{$_}{host}) {
-                $perms{$host}{$user} = $_;
+                $perms{$host}{$user} = [ $_, undef ];
             } else {
                 $perms{$host}{$user} = [ $_, $databases->{$_}{host} ];
             }
@@ -77,7 +72,7 @@ foreach my $user (keys %$database_permissions) {
     my $database = $database_permissions->{$user};
     my $host;
     if (ref $database) {
-        $host = $database->[1] . '.int.ukcod.org.uk';
+        $host = $database->[1] . '.int.ukcod.org.uk' if $database->[1];
         $database = $database->[0];
     }
     my $user = $database;
