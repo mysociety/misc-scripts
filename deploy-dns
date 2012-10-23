@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.42 2012-10-23 14:29:41 ian Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.43 2012-10-23 14:47:17 ian Exp $';
 
 use strict;
 
@@ -295,7 +295,7 @@ EOF
 
     foreach my $domain (@domains) {
 	if(defined $allow_ddns{$domain}) {
-	    if(hostname() eq 'leopard') { # DDNS domains have a single master
+	    if(hostname() eq 'ocelot') { # DDNS domains have a single master
                 $h->printf(<<EOF,
 zone "%s" {
     type master;
@@ -333,11 +333,6 @@ EOF
                 $domain, $domain)
                     || throw Oops("$name: $!");
         }
-        if(defined $allow_ddns{$domain}) {
-	    $h->printf("    allow-update { key %s; };\n", $allow_ddns{$domain})
-                || throw Oops("$name: $!");
-	}
-	$h->printf("};\n") || throw Oops("$name: $!");
     }
 
     $h->close() || throw Oops("$name: $!");
