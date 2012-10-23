@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.43 2012-10-23 14:47:17 ian Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.44 2012-10-23 14:50:06 ian Exp $';
 
 use strict;
 
@@ -292,6 +292,12 @@ acl notify_list { $notify_list };
 acl allow_xfer_list { $allow_xfer_list };
 
 EOF
+
+    foreach my $ddns_domain (keys %allow_ddns) {
+        if(!grep(/^$ddns_domain$/, @domains)) {
+	    push @domains, $ddns_domain;
+	}
+    }
 
     foreach my $domain (@domains) {
 	if(defined $allow_ddns{$domain}) {
