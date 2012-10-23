@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.37 2012-10-18 08:40:32 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.38 2012-10-23 11:33:39 ian Exp $';
 
 use strict;
 
@@ -74,6 +74,11 @@ my @allow_xfer = qw(
         193.0.0.0/23
         208.184.62.12       208.184.62.15
     );
+
+# these domains can be dynamically updated with the key given here
+my %allow_ddns = (
+        'ec2.mysociety.org' => 'domains.mysociety.org.',
+);
 
 my $notify_list = join('; ', @notify) . ';';
 my $allow_xfer_list = join('; ', @allow_xfer) . ';';
@@ -294,10 +299,14 @@ zone "%s" {
     file "master/%s";
     allow-query { any; };
     allow-transfer { allow_xfer_list; };
-};
 EOF
             $domain, $domain)
                 || throw Oops("$name: $!");
+        if(defined $allow_ddns{$domain}) {
+	    $h->printf("   allow-update { key %s; };\n", $allow_ddns{$domain})
+                || throw Oops("$name: $!");
+	}
+	$h->printf("};\n") || throw Oops("$name: $!");
     }
 
     $h->close() || throw Oops("$name: $!");
