@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.38 2012-10-23 11:33:39 ian Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.39 2012-10-23 11:47:29 ian Exp $';
 
 use strict;
 
@@ -303,7 +303,7 @@ EOF
             $domain, $domain)
                 || throw Oops("$name: $!");
         if(defined $allow_ddns{$domain}) {
-	    $h->printf("   allow-update { key %s; };\n", $allow_ddns{$domain})
+	    $h->printf("    algorithm \"hmac-md5\"; allow-update { key %s; };\n", $allow_ddns{$domain})
                 || throw Oops("$name: $!");
 	}
 	$h->printf("};\n") || throw Oops("$name: $!");
