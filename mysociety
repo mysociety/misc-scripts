@@ -86,8 +86,12 @@ function in_archetype {
         }'`
 }
 
-# Obtain hostname
-HOST=`hostname`
+# Obtain hostname, or a generic name if on an EC2 instance
+if [ -f /etc/mysociety/ec2 ] ; then
+    HOST='EC2'
+else
+    HOST=`hostname`
+fi
 if [ x$HOST = x ] ; then
     die "can't establish hostname"
 fi

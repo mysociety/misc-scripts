@@ -5,7 +5,7 @@
 #
 # Arguments are the message to log, as in echo(1).
 #
-# $Id: deploy-logger,v 1.18 2012-10-08 14:21:15 matthew Exp $
+# $Id: deploy-logger,v 1.19 2012-10-24 09:35:03 ian Exp $
 #
 
 HOST=`hostname`
@@ -20,6 +20,9 @@ if [ "$1" = "-u" ] ; then
     UML=1
     shift
 fi
+
+# Stop here if we're an EC2 instance
+[ -f /etc/mysociety/ec2 ] && exit
 
 # Create and add to git if we're a new server
 if [ ! -e "$STATE_PATH/$HOST" ]
