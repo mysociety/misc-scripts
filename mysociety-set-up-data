@@ -9,7 +9,7 @@ git clone ssh://git.mysociety.org/data/git/private/mysociety-state.git state
 git clone ssh://git.mysociety.org/data/git/private/mysociety-servers.git servers
 chmod o-rwx servers
 
-cat > /data/servers/.git/hooks/post-checkout <<EOF
+cat > /data/servers/.git/hooks/post-checkout <<'EOF'
 #!/bin/bash
 
 ROOT=`git rev-parse --show-cdup`
