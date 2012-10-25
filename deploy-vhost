@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.179 2012-10-05 08:36:00 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.180 2012-10-25 12:54:29 ian Exp $';
 
 package main;
 
@@ -171,7 +171,11 @@ foreach my $dir (qw( conf_dir private_conf_dir )){
 
 # Read in relevant stuff from machine configuration file
 our ($internal_network);
-require "$machines_dir/$hostname.pl";
+if(-f '/etc/mysociety/ec2') {
+    require "$machines_dir/EC2.pl";
+} else {
+    require "$machines_dir/$hostname.pl";
+}
 
 #####################################################################
 # Make directories and conf files, check database and conf files
