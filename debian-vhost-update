@@ -3,12 +3,12 @@
 # update-index:
 # Create Debian repository index files.
 #
-# $Id: debian-vhost-update,v 1.8 2011-01-20 20:54:11 louise Exp $
+# $Id: debian-vhost-update,v 1.9 2012-10-29 18:14:35 matthew Exp $
 #
 
-if [ "`hostname`" != 'majestic' ]
+if [ "`hostname`" != 'leopard' ]
 then
-    echo "Run on majestic only"
+    echo "Run on leopard only"
     exit
 fi
 
