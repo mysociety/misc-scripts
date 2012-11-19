@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.46 2012-11-19 12:36:11 ian Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.47 2012-11-19 13:49:56 ian Exp $';
 
 use strict;
 
@@ -44,7 +44,7 @@ my @nameservers = qw(
         ns0.ukcod.org.uk
         ns1.ukcod.org.uk
         ns0.flirble.org.uk
-        ns1.flirble.org.uk
+#       ns1.flirble.org.uk
         ns2.flirble.org.uk
         ns3.flirble.org.uk
     );
@@ -52,6 +52,7 @@ my @nameservers = qw(
 # JPC email of 20060125
 # updated: AML 20081015
 my @notify = qw(
+    109.231.83.210
 	195.99.220.128
 	79.125.16.94
         195.99.220.128
@@ -63,9 +64,9 @@ my @notify = qw(
 
 # these are ordered: ours / nsX.flirble / other flirble / easynet / the RIPE (!) NCC / above.net
 my @allow_xfer = qw(
-	46.43.39.64/26
+        46.43.39.64/26      109.231.83.210
         195.99.220.128      79.125.16.94        195.99.220.128
-	207.162.195.200     93.93.129.13
+        207.162.195.200     93.93.129.13
         194.70.3.45         194.70.3.50         212.134.5.1
         212.135.203.107     212.135.203.110 
         193.131.248.2       193.131.248.22      193.131.248.24
