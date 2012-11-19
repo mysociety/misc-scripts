@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.45 2012-10-23 14:53:43 ian Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.46 2012-11-19 12:36:11 ian Exp $';
 
 use strict;
 
@@ -314,7 +314,7 @@ zone "%s" {
 EOF
 		    $domain, $domain, $allow_ddns{$domain})
                         || throw Oops("$name: $!");
-	    } else {
+	    } elsif(hostname() eq 'leopard') {
                 $h->printf(<<EOF,
 zone "%s" {
     type slave;
@@ -327,7 +327,19 @@ EOF
 		    $domain, $domain)
                         || throw Oops("$name: $!");
 	    }
-        } else {
+    } elsif(hostname() eq 'kingfisher') {
+            $h->printf(<<EOF,
+zone "%s" {
+    type slave;
+    file "slave/%s";
+    allow-query { any; };
+    allow-transfer { allow_xfer_list; };
+    masters { 46.43.39.75; 46.43.39.78; };
+};
+EOF
+                $domain, $domain)
+                    || throw Oops("$name: $!");
+    } else {
             $h->printf(<<EOF,
 zone "%s" {
     type master;
@@ -338,7 +350,7 @@ zone "%s" {
 EOF
                 $domain, $domain)
                     || throw Oops("$name: $!");
-        }
+    }
     }
 
     $h->close() || throw Oops("$name: $!");
