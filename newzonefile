@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: newzonefile,v 1.16 2012-09-24 10:44:28 ian Exp $';
+my $rcsid = ''; $rcsid .= '$Id: newzonefile,v 1.17 2012-11-23 14:07:29 ian Exp $';
 
 use strict;
 
@@ -18,8 +18,8 @@ use Regexp::Common qw(dns);
 my @nameservers = qw(
         ns0.ukcod.org.uk.
         ns1.ukcod.org.uk.
+        ns2.ukcod.org.uk.
         ns0.flirble.org.
-        ns1.flirble.org.
         ns2.flirble.org.
         ns3.flirble.org.
         ns4.flirble.org.
@@ -127,6 +127,6 @@ foreach (@aliases) {
     }
 }
 
-system("git", "add", "Created new zone file for $descr", @gitfiles);
+system("git", "add", @gitfiles);
 system("git", "commit", "-m", "Created new zone file for $descr", @gitfiles);
 system("git", "push", "origin", "master");
