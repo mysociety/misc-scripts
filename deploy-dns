@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.49 2012-11-26 12:41:19 ian Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.50 2012-11-26 12:53:09 ian Exp $';
 
 use strict;
 
@@ -150,7 +150,7 @@ sub test_zonefile ($$) {
     my $t_yest = strftime '%Y%m%d', localtime(time-86400);
     return "new serial number '$newserial' (in $file) begins neither with today's date nor yesterday's. Use --no-check-existing to skip this check."
         unless $no_check_existing || substr($newserial, 0, 8) eq $t || substr($newserial, 0, 8) eq $t_yest;
-    $rrset = Net::DNS::ZoneFile::Fast::parse(file => $f);
+    $rrset = Net::DNS::ZoneFile::Fast::parse(file => $oldfile);
     if ($rrset && @$rrset && $rrset->[0]->type() eq 'SOA') {
         verbose("OK\n");
         my $oldserial = $rrset->[0]->serial();
