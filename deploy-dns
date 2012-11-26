@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.48 2012-11-19 13:50:34 ian Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.49 2012-11-26 12:41:19 ian Exp $';
 
 use strict;
 
@@ -43,6 +43,7 @@ use Socket;
 my @nameservers = qw(
         ns0.ukcod.org.uk
         ns1.ukcod.org.uk
+        ns2.ukcod.org.uk
         ns0.flirble.org.uk
         ns2.flirble.org.uk
         ns3.flirble.org.uk
@@ -92,13 +93,13 @@ sub verbose (@) {
 }
 
 sub parse ($) {
-    my $text = shift;
+    my $filename = shift;
     my $R;
     $@ = undef;
     # Behaviour of Net::DNS::ZoneFile::Fast::parse on errors is not documented,
     # but it appears to throw an error which contains a line number.
     eval {
-        $R = Net::DNS::ZoneFile::Fast::parse($text);
+        $R = Net::DNS::ZoneFile::Fast::parse(file => $filename);
     };
     if ($@) {
         my $err = $@;
@@ -128,7 +129,7 @@ sub test_zonefile ($$) {
     }
 
     verbose("  parsing file... ");
-    my $rrset = parse($newtext);
+    my $rrset = parse($file);
     if (!ref($rrset)) {
         return $rrset;
     } elsif (!@$rrset) {
@@ -149,7 +150,7 @@ sub test_zonefile ($$) {
     my $t_yest = strftime '%Y%m%d', localtime(time-86400);
     return "new serial number '$newserial' (in $file) begins neither with today's date nor yesterday's. Use --no-check-existing to skip this check."
         unless $no_check_existing || substr($newserial, 0, 8) eq $t || substr($newserial, 0, 8) eq $t_yest;
-    $rrset = Net::DNS::ZoneFile::Fast::parse($oldtext);
+    $rrset = Net::DNS::ZoneFile::Fast::parse(file => $f);
     if ($rrset && @$rrset && $rrset->[0]->type() eq 'SOA') {
         verbose("OK\n");
         my $oldserial = $rrset->[0]->serial();
