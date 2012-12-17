@@ -8,7 +8,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 # 
 
-my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.166 2012-10-29 18:14:00 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.167 2012-12-17 12:56:59 louise Exp $';
 
 use strict;
 require 5.8.0;
@@ -29,6 +29,10 @@ our ($vhosts, $sites, $databases);
 # databases, or for services that aren't set up as standard.
 # XXX these should be moved into flags in vhosts.pl
 my %extra_perms = (
+    'atlas' => {
+	'louise' => [ 'foi' ],
+        'skenaja' => [ 'foi' ], # so he can do stats and stuff
+    },
     'milo' => {
         'tilma' => [ 'openstreetmap', 'openstreetmap-gb' ],
     },
@@ -42,8 +46,7 @@ my %extra_perms = (
     },
     'elephant' => {
         'matthew' => [ 'openstreetmap-gb', 'openstreetmap' ],
-        'louise' => [ 'hm', 'foi' ],
-        'skenaja' => [ 'foi' ], # so he can do stats and stuff
+        'louise' => [ 'hm' ],
     },
     'vulcan' => {
         'matthew' => ['bbcparlvid'],
