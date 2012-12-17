@@ -88,7 +88,7 @@ http.verify_mode = OpenSSL::SSL::VERIFY_PEER
 # http.ca_path = '/etc/ssl/certs'
 http.ca_file = '/etc/ssl/certs/DigiCert_High_Assurance_EV_Root_CA.pem'
 
-response = http.get('/orgs/mysociety/repos',
+response = http.get('/orgs/mysociety/repos?per_page=100',
                     'Authorization' => "bearer #{token}")
 
 if response.code != '200'
