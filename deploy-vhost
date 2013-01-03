@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.180 2012-10-25 12:54:29 ian Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.181 2013-01-03 09:49:30 ian Exp $';
 
 package main;
 
@@ -381,8 +381,13 @@ foreach my $daemon (keys %{$conf->{'daemons'}}) {
     }
 }
 
-# Create httpd configuration stanza
+# Create apache configuration stanza
 shell("$mysociety_bin/mugly", "-O", "/etc/apache2/virtualhosts.d/$vhost.conf", "-p", "$settings_file", "$servers_dir/vhosts/single-vhost.conf.ugly");
+
+# Create nginx configuration stanza, if needed
+if ($conf->{'https'} eq 'nginx') {
+    shell("$mysociety_bin/mugly", "-O", "/etc/nginx/conf.d/$vhost.conf", "-p", "$settings_file", "$servers_dir/vhosts/single-vhost-nginx-https-proxy.conf.ugly");
+}
 
 # Work out name of crontab
 my $cron_name = "vhost-$vhost";
@@ -494,6 +499,12 @@ sub apache_graceful {
     }
     if (-e "/usr/sbin/apache2") {
         shell("apache2ctl", "graceful");
+    }
+}
+
+sub nginx_graceful {
+    if (-e "/etc/init.d/nginx") {
+        shell("/etc/init.d/nginx", "reload");
     }
 }
 
@@ -990,8 +1001,11 @@ sub update_site {
         }
     }
 
-    # Prompt apache to reread files, on machines which have apache
+    # Prompt webserver to reread files, on machines which have apache...
     apache_graceful();
+
+    # ...and nginx
+    nginx_graceful();
 
     return $git_log;
 }
