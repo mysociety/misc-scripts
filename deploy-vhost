@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.181 2013-01-03 09:49:30 ian Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.182 2013-01-04 09:40:51 ian Exp $';
 
 package main;
 
@@ -1005,7 +1005,9 @@ sub update_site {
     apache_graceful();
 
     # ...and nginx
-    nginx_graceful();
+    if ($conf->{'https'} eq 'nginx') {
+        nginx_graceful();
+    }
 
     return $git_log;
 }
@@ -1110,6 +1112,12 @@ sub remove_site {
     # Remove Apache virtual host config
     unlink("/etc/apache2/virtualhosts.d/$vhost.conf");
     apache_graceful();
+
+    # Remove nginx virtual host config
+    if ($conf->{'https'} eq 'nginx') {
+        unlink("/etc/nginx/conf.d/$vhost.conf");
+    }
+    nginx_graceful();
 
     # Remove possibly symlinked logrotate file
     unlink("/etc/logrotate.d/$vhost");
