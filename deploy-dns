@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.51 2013-01-14 11:55:17 ian Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.52 2013-01-14 11:59:51 ian Exp $';
 
 use strict;
 
@@ -61,7 +61,6 @@ my @notify = qw(
     194.70.3.45
     207.162.200.1
     93.93.129.13
-    # Prolateral
     74.117.159.29
     77.81.241.151
     87.106.189.53
@@ -82,7 +81,6 @@ my @allow_xfer = qw(
         195.40.1.38
         193.0.0.0/23
         208.184.62.12       208.184.62.15
-        # Prolateral
         74.117.159.29
         77.81.241.151
         87.106.189.53
