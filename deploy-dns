@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.50 2012-11-26 12:53:09 ian Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.51 2013-01-14 11:55:17 ian Exp $';
 
 use strict;
 
@@ -51,15 +51,22 @@ my @nameservers = qw(
 
 # JPC email of 20060125
 # updated: AML 20081015
+# updated: IJC 20130114
 my @notify = qw(
     109.231.83.210
-	195.99.220.128
-	79.125.16.94
-        195.99.220.128
-        207.162.195.200
-	194.70.3.45
-        207.162.200.1
-        93.93.129.13
+    195.99.220.128
+    79.125.16.94
+    195.99.220.128
+    207.162.195.200
+    194.70.3.45
+    207.162.200.1
+    93.93.129.13
+    # Prolateral
+    74.117.159.29
+    77.81.241.151
+    87.106.189.53
+    209.143.135.38
+    81.174.141.41
     );
 
 # these are ordered: ours / nsX.flirble / other flirble / easynet / the RIPE (!) NCC / above.net
@@ -75,6 +82,12 @@ my @allow_xfer = qw(
         195.40.1.38
         193.0.0.0/23
         208.184.62.12       208.184.62.15
+        # Prolateral
+        74.117.159.29
+        77.81.241.151
+        87.106.189.53
+        209.143.135.38
+        81.174.141.41
     );
 
 # these domains can be dynamically updated with the key given here
