@@ -15,7 +15,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: pgpw,v 1.4 2010-01-27 17:20:58 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: pgpw,v 1.5 2013-02-04 14:51:53 matthew Exp $';
 
 use strict;
 
@@ -58,7 +58,7 @@ if (@ARGV == 1) {
     print pgpw($ARGV[0]), "\n";
 } else {
     foreach (@ARGV) {
-        print "$_: ", pgpw($ARGV[0]), "\n";
+        print "$_: ", pgpw($_), "\n";
     }
 }
 
