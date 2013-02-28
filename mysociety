@@ -48,6 +48,9 @@ COMMAND is one of:
         Run a command on all machines (which are in the same base class as this one)
     archetype/arch <archetype>
         Run a command on all machine in the given archetype
+    base -l
+    archetype/arch <archetype> -l
+        List machines in the given archetype
     debug
     	Show debugging information for mysociety command
 
@@ -286,11 +289,15 @@ END
         ARCHETYPE=$1
         shift || die "specify an archetype (try --help for help)"
         in_archetype $ARCHETYPE
-        for X in $SERVERS
-        do
-            echo " -- on $X..."
-            ssh $X "$@" || echo " -- ...failed"
-        done
+        if [ "$1" = '-l' ] ; then
+            echo $SERVERS
+        else
+            for X in $SERVERS
+            do
+                echo " -- on $X..."
+                ssh $X "$@" || echo " -- ...failed"
+            done
+        fi
         ;;
 
     debug)
