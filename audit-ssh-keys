@@ -1,0 +1,61 @@
+#!/usr/bin/perl
+#
+# Find trusted keys on this host, and check that--
+#
+# * privileged keys are locked down
+# * disabled accounts don't have any trusted keys
+# * ...other things?
+#
+
+use strict;
+use warnings;
+
+use Data::Dumper;
+
+
+my (%users, %trusted_keys);
+
+
+### Find all users...
+
+my $username;
+while(($username=getpwent())) {
+    @{$users{$username}}=getpwnam($username);
+}
+
+### ...and their trusted keys.
+
+foreach $username (keys %users) {
+    my $authfile="$users{$username}[7]/.ssh/authorized_keys";
+    if(-r $authfile) {
+        open AUTHFILE, $authfile;
+        while(<AUTHFILE>) {
+            chop;
+            next if(/^#/ || /^$/);
+            push @{$trusted_keys{$username}}, $_;
+        }
+        close AUTHFILE;
+    }
+}
+
+
+foreach $username (keys %trusted_keys) {
+
+    ### Check that disabled accounts don't have any trusted keys.
+
+    if($users{$username}[2] >= 1000 && $users{$username}[2] <= 2999 && $users{$username}[1]=~/^[!\*]/) {
+        print STDERR "$username: disabled account has trusted keys\n";
+        next;
+    }
+
+    foreach my $key (@{$trusted_keys{$username}}) {
+
+        ### Check that privileged keys are locked down.
+        ### For our purposes, a privileged account is anything that isn't an ordinary user.
+
+        if($users{$username}[2] < 1000 || $users{$username}[2] > 2999) {
+            my @line=split(/\s+/, $key);
+            print STDERR "$username: key has no options\n" if($line[0]=~/^ssh/);
+        }
+    }
+}
