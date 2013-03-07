@@ -9,7 +9,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: monitor,v 1.13 2011-07-18 20:04:23 robin Exp $';
+my $rcsid = ''; $rcsid .= '$Id: monitor,v 1.14 2013-03-07 09:56:56 ian Exp $';
 
 use strict;
 
@@ -33,7 +33,7 @@ BEGIN {
     mySociety::Config::set_file($config_file);
 }
 use mySociety::EmailUtil qw(send_email);
-use mySociety::SystemMisc qw(describe_waitval open_log print_log);
+use mySociety::SystemMisc qw(describe_waitval open_log print_log log_to_stderr);
 
 my $testsdir = "$FindBin::Bin/../perllib/tests";
 use lib "$FindBin::Bin/../perllib/tests";
@@ -241,6 +241,7 @@ EOF
     exit(0);
 }
 
+log_to_stderr(0);
 open_log("monitor");
 
 # hash of test name to number of consecutive failures
