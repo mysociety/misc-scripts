@@ -7,7 +7,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: newzonefile,v 1.17 2012-11-23 14:07:29 ian Exp $';
+my $rcsid = ''; $rcsid .= '$Id: newzonefile,v 1.18 2013-03-07 10:23:33 ian Exp $';
 
 use strict;
 
@@ -19,10 +19,11 @@ my @nameservers = qw(
         ns0.ukcod.org.uk.
         ns1.ukcod.org.uk.
         ns2.ukcod.org.uk.
-        ns0.flirble.org.
-        ns2.flirble.org.
-        ns3.flirble.org.
-        ns4.flirble.org.
+        ns1.dns-engine.com.
+        ns2.dns-engine.com.
+        ns3.dns-engine.com.
+        ns4.dns-engine.com.
+        ns5.dns-engine.com.
     );
 
 if (@ARGV == 0) {
