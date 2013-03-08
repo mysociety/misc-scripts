@@ -18,10 +18,12 @@
 # Email: chris@ex-parrot.com; WWW: http://www.ex-parrot.com/~chris/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: usersync,v 1.7 2010-03-11 16:16:18 francis Exp $';
+my $rcsid = ''; $rcsid .= '$Id: usersync,v 1.8 2013-03-08 13:44:53 ian Exp $';
 my $VERSION = "0.1";
 
 use strict;
+
+use Sys::Hostname;
 
 # UserSync::Error
 # Trivial package to provide an error class specific to this program.
@@ -663,6 +665,7 @@ try {
     } else {
         throw UserSync::Error("single argument is name of remote host; try --help for help") if (@ARGV != 1);
         $host = shift(@ARGV);
+        throw UserSync::Error("not running on same host as target") if($host eq hostname());
         do_master($minuid, $rsh_path, $usersync_path, $host);
     }
 
