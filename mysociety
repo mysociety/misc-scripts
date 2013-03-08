@@ -82,7 +82,7 @@ function in_archetype {
     ARCHETYPE=$1
     # Obtain list of servers in archetype
     SERVERS=`echo $ARCHETYPE | cat - /data/servers/serverclass | \
-        sed 's/#.*//' | awk '
+        sed 's/#.*//' | sed 's/^[A-Z].*//' | awk '
         BEGIN { ORS=" " } {
             if (NR == 1) classname = $1; 
             else if ($2 == classname) print $1
