@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.183 2013-03-04 12:56:55 ian Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.184 2013-03-13 09:20:17 ian Exp $';
 
 package main;
 
@@ -159,6 +159,7 @@ my $user = $conf->{'user'};
 my $group = getgrgid($user_gid);
 $conf->{'wildcard_vhost'} = 0 if (!exists($conf->{'wildcard_vhost'}));
 $conf->{'https'} = 0 if (!exists($conf->{'https'}));
+$conf->{'https_only'} = 0 if(!exists($conf->{'https_only'}));
 $conf->{'fastcgi'} = 1 if (!exists($conf->{'fastcgi'}));
 
 # Ensure that the conf_dir and private_conf_dir elements are references to a list of config dirs.
@@ -283,6 +284,7 @@ print FH <<END;
 \$group = '$group';
 \$wildcard_vhost = '$conf->{'wildcard_vhost'}';
 \$https = '$conf->{'https'}';
+\$https_only = '$conf->{'https_only'}';
 \$fastcgi = '$conf->{'fastcgi'}';
 \$randomly = '/data/mysociety/bin/randomly -p 0.5'; # for crontab
 \$database_configs = <<DONE_DATABASE_CONFIGS;
