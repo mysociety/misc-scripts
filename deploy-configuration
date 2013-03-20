@@ -20,7 +20,7 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.59 2012-09-06 11:05:49 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.60 2013-03-20 15:49:01 ian Exp $';
 
 package Oops;
 
@@ -632,7 +632,12 @@ sub compare_installed_files ($$$) {
     my ($h, $tar, $dir) = @_;
     my $n = 0;
     foreach my $f ($tar->list_files([qw(prefix name type uid gid mode linkname devmajor devminor)])) {
-        my $name = "$f->{prefix}/$f->{name}";
+        my $name;
+        if($f->{prefix}) {
+            $name = "$f->{prefix}/$f->{name}";
+        } else {
+            $name = "$f->{name}";
+        }
         my $st = lstat("$dir/$name");
         verbose("CHECKING $dir/$name\n");
         my @what;
