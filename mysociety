@@ -20,8 +20,8 @@ Usage: mysociety [-u] COMMAND [OPTIONS]
 COMMAND is one of:
     config
         Deploy new config for current server from /data/servers/archetypes/...
-    vhost VHOST
-        Deploy latest version of VHOST, e.g. www.pledgebank.com
+    vhost [--server server] VHOST
+        Deploy latest version of VHOST, e.g. www.pledgebank.com, optionally on [server]
     vhost stop/update/start VHOST
         Stop/update/start VHOST, e.g. www.pledgebank.com
     vhost remove VHOST
@@ -204,6 +204,15 @@ END
         COMMAND=deploy
         VHOST=$1
         shift || die "specify a command or a virtual host"
+        if [ "$VHOST" == "--server" ]
+        then
+            SERVER=$1
+            shift || die "specify a server"
+            VHOST=$1
+            shift || die "specify a vhost"
+            ssh -t "$SERVER" sudo mysociety vhost "$VHOST"
+            exit
+        fi
         if [ "$VHOST" == "stop" -o "$VHOST" == "update" -o "$VHOST" == "start" -o "$VHOST" == "remove" ]
         then
             COMMAND=$VHOST
