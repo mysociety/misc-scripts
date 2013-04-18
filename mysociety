@@ -210,7 +210,9 @@ END
             shift || die "specify a server"
             VHOST=$1
             shift || die "specify a vhost"
-            ssh -t "$SERVER" sudo mysociety vhost "$VHOST"
+            for s in $SERVER; do
+                ssh -t "$s" sudo mysociety vhost "$VHOST"
+            done
             exit
         fi
         if [ "$VHOST" == "stop" -o "$VHOST" == "update" -o "$VHOST" == "start" -o "$VHOST" == "remove" ]
