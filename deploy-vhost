@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.184 2013-03-13 09:20:17 ian Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.185 2013-04-22 09:40:07 ian Exp $';
 
 package main;
 
@@ -388,7 +388,7 @@ shell("$mysociety_bin/mugly", "-O", "/etc/apache2/virtualhosts.d/$vhost.conf", "
 
 # Create nginx configuration stanza, if needed
 if ($conf->{'https'} eq 'nginx') {
-    shell("$mysociety_bin/mugly", "-O", "/etc/nginx/conf.d/$vhost.conf", "-p", "$settings_file", "$servers_dir/vhosts/single-vhost-nginx-https-proxy.conf.ugly");
+    shell("$mysociety_bin/mugly", "-O", "/etc/nginx/virtualhosts.d/$vhost.conf", "-p", "$settings_file", "$servers_dir/vhosts/single-vhost-nginx-https-proxy.conf.ugly");
 }
 
 # Work out name of crontab
@@ -1117,7 +1117,7 @@ sub remove_site {
 
     # Remove nginx virtual host config
     if ($conf->{'https'} eq 'nginx') {
-        unlink("/etc/nginx/conf.d/$vhost.conf");
+        unlink("/etc/nginx/virtualhosts.d/$vhost.conf");
     }
     nginx_graceful();
 
