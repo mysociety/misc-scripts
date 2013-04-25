@@ -1,29 +1,72 @@
-#!/bin/bash
+#!/usr/bin/perl
 #
 # update-index:
 # Create Debian repository index files.
 #
-# $Id: debian-vhost-update,v 1.9 2012-10-29 18:14:35 matthew Exp $
-#
 
-if [ "`hostname`" != 'leopard' ]
-then
-    echo "Run on leopard only"
-    exit
-fi
+use strict;
+use warnings;
 
-cd /data/vhost/debian.mysociety.org/docs
+use Sys::Hostname;
 
-for i in `find dists -name "binary-*"`
-do
-	echo "Generating Packages.gz file for: $i"
-	dpkg-scanpackages $i /dev/null | gzip -9c > $i/Packages.gz.new && mv $i/Packages.gz.new $i/Packages.gz || rm $i/Packages.gz.new
-done
-
-for i in `find dists -name source`
-do
-	echo "Generating Sources.gz file for: $i"
-	dpkg-scansources $i /dev/null | gzip -9c > $i/Sources.gz.new && mv $i/Sources.gz.new $i/Sources.gz || rm $i/Sources.gz.new
-done
+my $REPO_HOST='leopard';
+my $REPO_BASE='/data/vhost/debian.mysociety.org/docs';
 
 
+die "Run on $REPO_HOST only" if(hostname() ne $REPO_HOST);
+
+chdir $REPO_BASE or die $!;
+
+my %releases;
+
+
+foreach my $i (glob 'dists/*/*/binary-*') {
+    print "Generating Packages files for: $i\n";
+    system "dpkg-scanpackages $i /dev/null > $i/Packages.new && mv $i/Packages.new $i/Packages || rm $i/Packages.new";
+    system "gzip -9c $i/Packages > $i/Packages.gz.new && mv $i/Packages.gz.new $i/Packages.gz || rm $i/Packages.gz.new";
+
+    print "Generating Release file for: $i\n";
+    my ($dists, $release, $component, $arch)=split /\//, $i;
+    $arch=~s/^binary-//;
+    open RELEASE, ">$i/Release.new" or die "can't create new Release file: $!";
+    print RELEASE "Archive: $release\n";
+    print RELEASE "Component: $component\n";
+    print RELEASE "Origin: mySociety\n";
+    print RELEASE "Label: mySociety\n";
+    print RELEASE "Architecture: $arch\n";
+    close RELEASE;
+    rename "$i/Release.new", "$i/Release";
+    system "/usr/bin/gpg --batch --yes --sign --armor --detach-sig --passphrase-file /data/vhost/debian.mysociety.org/signing_key_passphrase --output $i/Release.gpg $i/Release";
+
+    push @{$releases{$release}{'components'}}, $component;
+    push @{$releases{$release}{'archs'}}, $arch;
+}
+
+foreach my $i (glob 'dists/*/*/source') {
+	print "Generating Sources files for: $i\n";
+	system "dpkg-scansources $i /dev/null > $i/Sources.new && mv $i/Sources.new $i/Sources || rm $i/Sources.new";
+    system "gzip -9c $i/Sources > $i/Sources.gz.new && mv $i/Sources.gz.new $i/Sources.gz || rm $i/Sources.gz.new";
+}
+
+foreach my $i (keys %releases) {
+    print "Generating Release file for $i repo\n";
+    chdir "$REPO_BASE/dists/$i" or die $!;
+
+    open RELEASE, ">Release.new" or die "can't create new Release file: $!";
+    print RELEASE "Origin: mySociety\n";
+    print RELEASE "Label: mySociety\n";
+    print RELEASE "Codename: $i\n";
+    print RELEASE "Components: ".join(' ', @{$releases{$i}{'components'}})."\n";
+    print RELEASE "Architectures: ".join(' ', @{$releases{$i}{'archs'}})."\n";
+    print RELEASE "MD5Sum:\n";
+    foreach my $file (glob '*/*/{Sources*,Release*,Packages*}') {
+        my $md5sum=`md5sum $file`;
+        $md5sum=~s/ .*$//;
+        chop $md5sum;
+        my @st=stat $file;
+        print RELEASE " $md5sum $st[7] $file\n";
+    }
+    close RELEASE;
+    rename "Release.new", "Release";
+    system "/usr/bin/gpg --batch --yes --sign --armor --detach-sig --passphrase-file /data/vhost/debian.mysociety.org/signing_key_passphrase --output Release.gpg Release";
+}
