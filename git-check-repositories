@@ -38,6 +38,16 @@ function check_config {
     fi
 }
 
+function check_config_is_not {
+    KEY="$1"
+    UNWANTED_VALUE="$2"
+    CONFIGURED_VALUE="$(git config "$KEY")"
+    if [ x"$CONFIGURED_VALUE" = x"$UNWANTED_VALUE" ]
+    then
+        echo "The config option $KEY is set to $UNWANTED_VALUE, but that's not allowed."
+    fi
+}
+
 function test_header {
    echo "==== $REPOSITORY_NAME === $1"
 }
@@ -169,9 +179,9 @@ function check_no_github {
     rm -f $TMP_ERR    
 }
 
-function check_no_non_fastword_merges {
-    test_header "Checking that non-fastword merges are forbidden"
-    check_config receive.denyNonFastForwards true
+function check_non_fastforward_merges {
+    test_header "Checking that non-fastword merges are allowed"
+    check_config_is_not receive.denyNonFastForwards true
 }
 
 function check_post_receive_hook {
@@ -248,7 +258,7 @@ function check_repository {
         check_license_present
     fi
 
-    check_no_non_fastword_merges
+    check_non_fastforward_merges
     check_post_receive_hook "git-post-receive-hook"
     check_master_branch_exists
 }
