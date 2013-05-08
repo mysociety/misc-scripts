@@ -145,7 +145,7 @@ STDIN.each do |line|
 
   puts "Now pushing #{refspec} to the mysociety repository on github (#{repository})"
 
-  unless system("git","push",repository,refspec)
+  unless system("git","push","-f",repository,refspec)
     result = 1
   end
 end
