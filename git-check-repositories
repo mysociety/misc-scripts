@@ -203,6 +203,7 @@ function get_expected_private_owner {
    then
        EXPECTED_OWNER="privategit-recruiting"
    else
+       echo "Error: there was no EXPECTED_OWNER defined in $BASH_SOURCE for $REPOSITORY_NAME"
        EXPECTED_OWNER=""
    fi
 }
@@ -230,7 +231,10 @@ function check_repository {
     if [ "$PRIVACY" = 'private' ]
     then
         get_expected_private_owner 
-        check_group_ownership $EXPECTED_OWNER
+        if [ -n "$EXPECTED_OWNER" ]
+        then
+            check_group_ownership $EXPECTED_OWNER
+        fi
         check_no_world_access
         check_no_anonymous_access
         check_no_github
