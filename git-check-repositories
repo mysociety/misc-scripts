@@ -91,6 +91,8 @@ function check_no_world_access {
     then
         NUM_FILES=`cat $FIND_RESULTS | wc -l`
         echo "$NUM_FILES files and directories are world-accessible, please fix"
+        echo "They were:"
+        cat $FIND_RESULTS
     fi
     rm -f $FIND_RESULTS  
 }
