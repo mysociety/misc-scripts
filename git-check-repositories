@@ -265,7 +265,6 @@ function check_repository {
         fi
         check_no_world_access
         check_no_anonymous_access
-        check_no_github
     elif [ "$PRIVACY" = 'public' ]
     then
         check_group_ownership 'publiccvs'
