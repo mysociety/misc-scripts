@@ -208,12 +208,28 @@ function get_expected_private_owner {
    elif [ "$REPOSITORY_NAME" = 'fixmystreet_cities' ]
    then 
        EXPECTED_OWNER="privategit-cities"
+   elif [ "$REPOSITORY_NAME" = 'mapumental' ]
+   then 
+       EXPECTED_OWNER="privategit-mapumental"
+   elif [ "$REPOSITORY_NAME" = 'passengerfocus' ]
+   then 
+       EXPECTED_OWNER="privategit-passengerfocus"
    elif [ "$REPOSITORY_NAME" = 'wtf' ]
    then
        EXPECTED_OWNER="privategit-wtf"
    elif [ "$REPOSITORY_NAME" = 'msjob06' ]
    then
        EXPECTED_OWNER="privategit-recruiting"
+   elif [ "$REPOSITORY_NAME" = 'citizenconnect' ]
+   then
+       EXPECTED_OWNER="privategit-citizenconnect"
+   elif [ "$REPOSITORY_NAME" = 'cpag' ] ||
+        [ "$REPOSITORY_NAME" = 'keys' ] ||
+        [ "$REPOSITORY_NAME" = 'mysociety-servers' ] ||
+        [ "$REPOSITORY_NAME" = 'mysociety-state' ] ||
+        [ "$REPOSITORY_NAME" = 'seesomething' ]
+   then
+       EXPECTED_OWNER="privatecvs"
    else
        echo "Error: there was no EXPECTED_OWNER defined in $BASH_SOURCE for $REPOSITORY_NAME"
        EXPECTED_OWNER=""
