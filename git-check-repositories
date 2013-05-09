@@ -227,6 +227,7 @@ function get_expected_private_owner {
         [ "$REPOSITORY_NAME" = 'keys' ] ||
         [ "$REPOSITORY_NAME" = 'mysociety-servers' ] ||
         [ "$REPOSITORY_NAME" = 'mysociety-state' ] ||
+        [ "$REPOSITORY_NAME" = 'repdata' ] ||
         [ "$REPOSITORY_NAME" = 'seesomething' ]
    then
        EXPECTED_OWNER="privatecvs"
