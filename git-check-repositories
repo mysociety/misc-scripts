@@ -279,8 +279,8 @@ function check_repository {
     check_non_fastforward_merges
     # These two repositories should not have mailing list notifications
     # or be mirrored to GitHub:
-    if [ $REPOSITORY_NAME != 'repdata'] &&
-       [ $REPOSITORY_NAME != 'mysociety-state']
+    if [ $REPOSITORY_NAME != 'repdata' ] &&
+       [ $REPOSITORY_NAME != 'mysociety-state' ]
     then
         check_post_receive_hook "git-post-receive-hook"
     fi
