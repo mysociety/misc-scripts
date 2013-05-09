@@ -18,7 +18,7 @@ ERROR=0
 trap "rm -f $OUTPUT" EXIT
 
 function should_check_hooks {
-    echo $NO_EMAIL_ALERTS | egrep "\b$REPOSITORY_NAME\b" > /dev/null
+    ! echo $NO_EMAIL_ALERTS | egrep "\b$REPOSITORY_NAME\b" > /dev/null
 }
 
 function check_config_present {
@@ -290,6 +290,7 @@ function check_repository {
 
     check_non_fastforward_merges
     if should_check_hooks
+    then
         check_post_receive_hook "git-post-receive-hook"
     fi
     check_master_branch_exists
