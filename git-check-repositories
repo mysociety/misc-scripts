@@ -304,7 +304,7 @@ function check_master_branch_exists {
 
 
             ) >$OUTPUT 2>&1
-            if egrep -v '^( *$| *=)' $OUTPUT
+            if egrep -v '^( *$| *=)' $OUTPUT > /dev/null 2>&1
             then
                 cat $OUTPUT
                 ERROR=1
