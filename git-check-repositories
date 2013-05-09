@@ -287,11 +287,12 @@ function check_repository {
 }
 
 function check_master_branch_exists {
-    test_header "Checking the master branch exists"
-    if ! git rev-parse -q master > /dev/null 2>&1
+    test_header "Checking that some branch exists"
+    BRANCHES="$(git for-each-ref refs/heads)"
+    if [ -z "$BRANCHES" ]
     then
-        echo There seemed to be no master branch in $d
-    fi    
+        echo There seemed to be no branches in $d
+    fi
 }
 
 (
