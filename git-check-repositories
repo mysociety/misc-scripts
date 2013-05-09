@@ -286,11 +286,11 @@ function check_master_branch_exists {
         for d in /data/git/$repository_type/*.git
         do
             (
+                REPOSITORY_NAME=$(basename $(readlink -f "$d") | sed 's/\.git//')
                 test_header "Trying to change into the repository directory"
                 if cd $d
                 then
 
-                    REPOSITORY_NAME=$(basename $(readlink -f $(pwd)) | sed 's/\.git//')
                     REPOSITORY_GITHUB="git@GitHub:mysociety/${REPOSITORY_NAME}.git"
                     REPOSITORY_GIT_DAEMON="git://git.mysociety.org/${REPOSITORY_NAME}"
 
