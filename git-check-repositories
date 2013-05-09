@@ -278,40 +278,30 @@ function check_master_branch_exists {
         echo It should be at least $MINIMUM_GIT_VERSION
     fi
 
-    for d in /data/git/public/*.git
+    for repository_type in public private
     do
-        (
-            cd $d
-            
-            REPOSITORY_NAME=$(basename $(readlink -f $(pwd)) | sed 's/\.git//')
-            REPOSITORY_GITHUB="git@GitHub:mysociety/${REPOSITORY_NAME}.git"
-            REPOSITORY_GIT_DAEMON="git://git.mysociety.org/${REPOSITORY_NAME}"
-            
-            check_repository public
-        ) >$OUTPUT 2>&1
-        if egrep -v '^( *$| *=)' $OUTPUT
-        then
-            cat $OUTPUT
-            ERROR=1
-        fi
-    done
-     
-    for d in /data/git/private/*.git
-    do 
-        (
-            cd $d
-            REPOSITORY_NAME=$(basename $(readlink -f $(pwd)) | sed 's/\.git//')
-            REPOSITORY_GITHUB="git@GitHub:mysociety/${REPOSITORY_NAME}.git"
-            REPOSITORY_GIT_DAEMON="git://git.mysociety.org/${REPOSITORY_NAME}"
 
-            check_repository private
-        ) >$OUTPUT 2>&1
-        if egrep -v '^( *$| *=)' $OUTPUT
-        then
-            cat $OUTPUT
-            ERROR=1
-        fi
-    done  )
+        for d in /data/git/$repository_type/*.git
+        do
+            (
+                cd $d
+
+                REPOSITORY_NAME=$(basename $(readlink -f $(pwd)) | sed 's/\.git//')
+                REPOSITORY_GITHUB="git@GitHub:mysociety/${REPOSITORY_NAME}.git"
+                REPOSITORY_GIT_DAEMON="git://git.mysociety.org/${REPOSITORY_NAME}"
+
+                check_repository $repository_type
+            ) >$OUTPUT 2>&1
+            if egrep -v '^( *$| *=)' $OUTPUT
+            then
+                cat $OUTPUT
+                ERROR=1
+            fi
+        done
+
+    done
+
+)
 
 exit $ERROR
 
