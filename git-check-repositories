@@ -9,9 +9,17 @@ MINIMUM_GIT_VERSION=1.6.3.3
 EMAIL_PREFIX="" # we don't really need this prefix, it's kind of obvious
 GIT_HANG_ERROR="fatal: The remote end hung up unexpectedly"
 
+# Some repositories should not have mailing list notifications
+# or be mirrored to GitHub:
+NO_EMAIL_ALERTS="repdata mysociety-state"
+
 OUTPUT=$(mktemp)
 ERROR=0
 trap "rm -f $OUTPUT" EXIT
+
+function should_check_hooks {
+    echo $NO_EMAIL_ALERTS | egrep "\b$REPOSITORY_NAME\b" > /dev/null
+}
 
 function check_config_present {
     KEY=$1
@@ -255,7 +263,11 @@ function check_repository {
     check_shared_flag
 
     check_no_working_tree
-    check_email_config_vars
+
+    if should_check_hooks
+    then
+        check_email_config_vars
+    fi
 
     if [ "$PRIVACY" = 'private' ]
     then
@@ -277,11 +289,7 @@ function check_repository {
     fi
 
     check_non_fastforward_merges
-    # These two repositories should not have mailing list notifications
-    # or be mirrored to GitHub:
-    if [ $REPOSITORY_NAME != 'repdata' ] &&
-       [ $REPOSITORY_NAME != 'mysociety-state' ]
-    then
+    if should_check_hooks
         check_post_receive_hook "git-post-receive-hook"
     fi
     check_master_branch_exists
