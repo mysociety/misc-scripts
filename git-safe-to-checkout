@@ -2,12 +2,14 @@
 #
 # git-safe-to-checkout:
 # Succeeds if no local changes have been made to a git repository,
-# including submodules recursively.
+# including submodules recursively, and it's safe to checkout a
+# given new commit.
 #
 # Parameters are:
 # $1 - directory of git repository checkout
 # $2 - git ref to check against - name of ref (object name, a tag, or the
-#      remote-tracking branch name) in git
+#      remote-tracking branch name) in git.  If this is not supplied,
+#      then only checking for local modifications is done
 #
 # Copyright (c) 2009 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
@@ -20,9 +22,9 @@ SCRIPT_COMMAND=$(basename $FULL_SCRIPT_COMMAND)
 set -e
 . $(dirname $FULL_SCRIPT_COMMAND)/../shlib/deployfns
 
-if [ "$#" != "2" ]
+if [ "$#" != "1" ] && [ "$#" != "2" ]
 then
-    echo "Usage: $SCRIPT_COMMAND <directory> <git-ref>"
+    echo "Usage: $SCRIPT_COMMAND <directory> [ <git-ref> ]"
     exit 2
 fi
 
@@ -71,16 +73,26 @@ do
     # Get the absolute path of the submodule and the current directory:
     D=$(readlink -f $S)
 
-    # Get the version of the submodule that is committed in the remote branch:
-    V=`git rev-parse $GIT_REF:$S`
+    # If there's a new commit specified and this submodule still
+    # exists in it, we can recursively check the submodule and its new
+    # state - othrewise, just check it for local modifications.
+    if [ -n "$GIT_REF" ] && git rev-parse --verify --quiet $GIT_REF:$S > /dev/null
+    then
 
-    # Recursively check that the submodule is similarly
-    # safe to merge:
-    $FULL_SCRIPT_COMMAND $D $V
+        # Get the version of the submodule that is committed in the remote branch:
+        V=`git rev-parse $GIT_REF:$S`
 
-    # Now check that the submodule version in the remote branch
-    # is actually available in the submodule:
-    cd $S
-    git show $V > /dev/null 2> /dev/null || die "Error: Submodule '$S' commit '$V' not found in `pwd` (submodule hasn't been pushed, perhaps?)"
-    cd - > /dev/null
+        # Recursively check that the submodule is similarly
+        # safe to merge:
+        $FULL_SCRIPT_COMMAND $D $V
+
+        # Now check that the submodule version in the remote branch
+        # is actually available in the submodule:
+        cd $S
+        git show $V > /dev/null 2> /dev/null || die "Error: Submodule '$S' commit '$V' not found in `pwd` (submodule hasn't been pushed, perhaps?)"
+        cd - > /dev/null
+    else
+        $FULL_SCRIPT_COMMAND $D
+    fi
+
 done
