@@ -57,7 +57,7 @@ test -z "$UNTRACKED_FILES" || die "Error: There are untracked (and unignored fil
 # Check that the current ref is contained in one of the remote tracking 
 # branches after "git fetch origin" i.e. that any changes to the
 # deployed repository have been pushed back to the blessed repository.
-BRANCH=$(git branch -r --contains `git rev-parse $GIT_REF`)
+BRANCH=$(git branch -r --contains HEAD)
 if [ -z "$BRANCH" ]
 then
     die "Error: Changes have been made in the deployed repository (in `pwd`) that are not in the blessed repository"
