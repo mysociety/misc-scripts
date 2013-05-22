@@ -22,7 +22,7 @@ COMMAND is one of:
         Deploy new config for current server from /data/servers/archetypes/...
     vhost [--server server] VHOST
         Deploy latest version of VHOST, e.g. www.pledgebank.com, optionally on [server]
-    vhost stop/update/start VHOST
+    vhost stop/update/start [--server server] VHOST
         Stop/update/start VHOST, e.g. www.pledgebank.com
     vhost remove VHOST
         Remove crontab, Apache config, email forwards etc. for VHOST
@@ -204,22 +204,23 @@ END
         COMMAND=deploy
         VHOST=$1
         shift || die "specify a command or a virtual host"
+        if [ "$VHOST" == "stop" -o "$VHOST" == "update" -o "$VHOST" == "start" -o "$VHOST" == "remove" ]
+        then
+            COMMAND=$VHOST
+            VHOST=$1
+            shift || die "specify a virtual host"
+        fi
         if [ "$VHOST" == "--server" ]
         then
             SERVER=$1
             shift || die "specify a server"
             VHOST=$1
             shift || die "specify a vhost"
+            if [ "$COMMAND" == "deploy" ]; then COMMAND=""; fi
             for s in $SERVER; do
-                ssh -t "$s" sudo mysociety vhost "$VHOST"
+                ssh -t "$s" sudo mysociety vhost "$COMMAND" "$VHOST"
             done
             exit
-        fi
-        if [ "$VHOST" == "stop" -o "$VHOST" == "update" -o "$VHOST" == "start" -o "$VHOST" == "remove" ]
-        then
-            COMMAND=$VHOST
-            VHOST=$1
-            shift || die "specify a virtual host"
         fi
         # deploy vhost
         /data/mysociety/bin/deploy-vhost $UML_OPTION $VHOST $COMMAND "$@"
