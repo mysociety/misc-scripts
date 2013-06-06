@@ -15,11 +15,11 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: pgpw,v 1.5 2013-02-04 14:51:53 matthew Exp $';
+my $rcsid = ''; $rcsid .= '$Id: pgpw,v 1.6 2013-06-06 14:45:45 ian Exp $';
 
 use strict;
 
-use Digest::SHA1;
+use Digest::SHA;
 use Errno;
 use IO::File;
 
@@ -27,7 +27,7 @@ my $secret = undef;
 
 sub pgpw ($) {
     my $user = shift;
-    return substr(Digest::SHA1::sha1_base64("$secret$user"), 0, 8);
+    return substr(Digest::SHA::sha1_base64("$secret$user"), 0, 8);
 }
 
 foreach my $file ($ENV{PGSECRET}, '/etc/mysociety/postgres_secret', '/usr/local/etc/mysociety/postgres_secret') {
