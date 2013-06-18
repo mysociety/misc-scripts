@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.185 2013-04-22 09:40:07 ian Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.186 2013-06-18 21:37:55 louise Exp $';
 
 package main;
 
@@ -1021,6 +1021,65 @@ sub make_dot_forward {
     shell("su", "-", $email_user, "-c echo \"|$vhost_dir/$vcspath/$script\" >~$email_user/$forward_file_name");
 }
 
+sub install_or_remove_crontab {
+    my $ok = 0;
+    if ($conf->{'crontab'}) {
+        if ($conf->{'crontab'} eq '1') {
+            $ok = 1;
+        } else {
+            if ($hostname eq $conf->{'crontab'}) {
+                $ok = 1;
+            }
+        }
+    }
+
+    if ($ok) {
+        if ($cvs) {
+            chdir $mysociety_dir;
+            foreach my $conf_dir (@{$conf->{conf_dir}}) {
+                # if a crontab exists in the conf directory in source control, or has been created there 
+                # in the update_conf_dir function, just install it
+                my $crontab = "$conf_dir/crontab";
+                if (-e $crontab) {
+                    copy($crontab, "$cron_name"); 
+                } else {
+                    if( $uml ) {
+                        print STDERR "Not running cvs update on $conf_dir/crontab.ugly due to -u\n";
+                    } else {
+                        shell("cvs", "-Q", "update", "$conf_dir/crontab.ugly");
+                    }
+                    shell("$mysociety_bin/mugly", "-O", $cron_name, "-p", "$settings_file", "$mysociety_dir/$conf_dir/crontab.ugly");
+                } 
+            }
+        } elsif ($git) {
+            my $setup_git_cron = sub {
+                my ( $conf_dir, $git_ref ) = @_;
+                # if a crontab exists in the conf directory in source control, or has been created there 
+                # in the update_conf_dir function, just install it
+                my $crontab = "$conf_dir/crontab";
+                if (-e $crontab) {
+                    copy($crontab, "$cron_name");
+                } else {
+                    my $tmp_crontab_ugly = mktemp("/tmp/deploy-vhost-crontab.ugly-XXXXXXXX");
+                    chdir "$vhost_dir/$vcspath";
+                    return unless -e "$conf_dir/crontab.ugly";
+                    shell("git show $git_ref:$conf_dir/crontab.ugly >$tmp_crontab_ugly");
+                    shell("$mysociety_bin/mugly", "-O", $cron_name, "-p", "$settings_file", "$tmp_crontab_ugly");
+                    unlink $tmp_crontab_ugly;
+                }
+            };
+
+            $setup_git_cron->( $_, $conf->{'git_ref'} )         for @{$conf->{conf_dir}};
+            $setup_git_cron->( $_, $conf->{'private_git_ref'} ) for @{$conf->{private_conf_dir}};
+        } else {
+            die "Unknown version control system";
+        }
+        
+    } else { 
+        unlink($cron_name);
+    }
+}
+
 sub start_site {
     # Up notice
     unlink("$vhost_dir/docs/down.html") or do {
@@ -1032,48 +1091,9 @@ sub start_site {
     foreach my $daemon (keys %{$conf->{'daemons'}}) {
         shell("/etc/init.d/$daemon", "start");
     }
-
-    # Make or remove crontab
-    my $ok = 0;
-    if ($conf->{'crontab'}) {
-        if ($conf->{'crontab'} eq '1') {
-            $ok = 1;
-        } else {
-            if ($hostname eq $conf->{'crontab'}) {
-                $ok = 1;
-            }
-        }
-    }
-    if ($ok) {
-        if ($cvs) {
-            chdir $mysociety_dir;
-            foreach my $conf_dir (@{$conf->{conf_dir}}) {
-                if( $uml ) {
-                    print STDERR "Not running cvs update on $conf_dir/crontab.ugly due to -u\n";
-                } else {
-                    shell("cvs", "-Q", "update", "$conf_dir/crontab.ugly");
-                }
-                shell("$mysociety_bin/mugly", "-O", $cron_name, "-p", "$settings_file", "$mysociety_dir/$conf_dir/crontab.ugly");
-            }
-        } elsif ($git) {
-            my $setup_git_cron = sub {
-                my ( $conf_dir, $git_ref ) = @_;
-                my $tmp_crontab_ugly = mktemp("/tmp/deploy-vhost-crontab.ugly-XXXXXXXX");
-                chdir "$vhost_dir/$vcspath";
-                return unless -e "$conf_dir/crontab.ugly";
-                shell("git show $git_ref:$conf_dir/crontab.ugly >$tmp_crontab_ugly");
-                shell("$mysociety_bin/mugly", "-O", $cron_name, "-p", "$settings_file", "$tmp_crontab_ugly");
-                unlink $tmp_crontab_ugly;
-            };
-            
-            $setup_git_cron->( $_, $conf->{'git_ref'} )         for @{$conf->{conf_dir}};
-            $setup_git_cron->( $_, $conf->{'private_git_ref'} ) for @{$conf->{private_conf_dir}};
-        } else {
-            die "Unknown version control system";
-        }
-    } else {
-        unlink($cron_name);
-    }
+ 
+    # Crontab
+    install_or_remove_crontab();
 
     # Make .forward files
     if ($conf->{'email'}) {
