@@ -48,9 +48,12 @@ fi
 
 A=/data/mysociety/bin/git-post-receive-hook-push-to-mirrors
 B=/data/mysociety/bin/git-post-receive-hook-email
+C=/data/mysociety/bin/git-post-receive-hook-auto-deploy
 
 if [ "`git config --get mysociety.local-only`" != 'true' ]; then
    $A $REPOSITORY_NAME $REPOSITORY_TYPE < $STDIN_CACHE
 fi
 
 $B $REPOSITORY_NAME < $STDIN_CACHE
+
+$C $REPOSITORY_NAME < $STDIN_CACHE
