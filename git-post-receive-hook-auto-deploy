@@ -3,7 +3,7 @@
 # Look in vhosts.pl for vhosts configured to use this repo.  If any of them have
 # the 'auto_deploy' flag set, try to deploy them.
 #
-# $Id: git-post-receive-hook-auto-deploy,v 1.1 2013-07-08 15:24:04 ian Exp $
+# $Id: git-post-receive-hook-auto-deploy,v 1.2 2013-07-11 11:50:13 ian Exp $
 #
 
 use strict;
@@ -15,7 +15,7 @@ use Data::Dumper;
 exit 0 if($< != 1031);
 
 ### We know the repo name from our first arg
-my $REPOSITORY_NAME=$ARGV[0];
+my $REPOSITORY_NAME = $ARGV[0];
 
 ### Get vhost details from vhosts.pl
 our ($sites, $vhosts);
@@ -30,29 +30,29 @@ foreach my $vhost (keys %$vhosts) {
     next if(!defined($$vhosts{$vhost}{'push_actions'}));
 
     ### Get the site and git details this vhost
-    my $site=$$sites{$$vhosts{$vhost}{'site'}};
+    my $site = $$sites{$$vhosts{$vhost}{'site'}};
 
     my $vhost_git_repo;
     if(defined($$site{'private_git_repository'})) {
-        $vhost_git_repo=$$site{'private_git_repository'};
+        $vhost_git_repo = $$site{'private_git_repository'};
     } else {
-        $vhost_git_repo=$$site{'git_repository'};
+        $vhost_git_repo = $$site{'git_repository'};
     }
 
     my $vhost_git_ref;
     if(defined($$vhosts{$vhost}{'private_git_ref'})) {
-        $vhost_git_ref=$$vhosts{$vhost}{'private_git_ref'};
+        $vhost_git_ref = $$vhosts{$vhost}{'private_git_ref'};
     } elsif(defined($$vhosts{$vhost}{'git_ref'})) {
-        $vhost_git_ref=$$vhosts{$vhost}{'git_ref'};
+        $vhost_git_ref = $$vhosts{$vhost}{'git_ref'};
     } elsif(defined($$site{'private_git_ref'})) {
-        $vhost_git_ref=$$site{'private_git_ref'};
+        $vhost_git_ref = $$site{'private_git_ref'};
     } elsif(defined($$site{'git_ref'})) {
-        $vhost_git_ref=$$site{'git_ref'};
+        $vhost_git_ref = $$site{'git_ref'};
     } else {
-        $vhost_git_ref='origin/master';
+        $vhost_git_ref = 'origin/master';
     }
 
-    my ($vhost_git_head, $vhost_git_branch)=split /\//, $vhost_git_ref;
+    my ($vhost_git_head, $vhost_git_branch) = split /\//, $vhost_git_ref;
 
     ### Ignore if its repo doesn't match the one that was just pushed to
     next if($REPOSITORY_NAME ne $vhost_git_repo);
@@ -60,8 +60,8 @@ foreach my $vhost (keys %$vhosts) {
     ### Get pushed branches from the 3rd argument of each line of stdin.
     my @pushed_branches;
     while(<STDIN>) {
-        my ($oldrev, $newrev, $refname)=split /\s+/;
-        my ($ref, $head, $branch)=split /\//, $refname;
+        my ($oldrev, $newrev, $refname) = split /\s+/;
+        my ($ref, $head, $branch) = split /\//, $refname;
         if(!grep(/^$branch$/, @pushed_branches)) {
             push @pushed_branches, $branch;
         }
@@ -70,34 +70,34 @@ foreach my $vhost (keys %$vhosts) {
     ### Ignore if the branch used by this vhost wasn't pushed this time.
     next if(!grep(/^$vhost_git_branch$/, @pushed_branches));
 
-    $actions{$vhost}=$$vhosts{$vhost}{'push_actions'};
+    $actions{$vhost} = $$vhosts{$vhost}{'push_actions'};
 }
 
 ### Now execute the actions we've gathered
 
 foreach my $action_vhost (keys %actions) {
-    my @action_list=split /,/, $actions{$action_vhost};
+    my @action_list = split /,/, $actions{$action_vhost};
     foreach my $action (@action_list) {
-        my $cmd='mysociety ';
+        my $cmd = 'mysociety ';
 
-        if($action eq 'deploy')     { $cmd.='vhost'; }
-        elsif($action eq 'test')    { $cmd.='test'; }
-        elsif($action eq 'remove')  { $cmd.='vhost remove'; }
-        elsif($action eq 'stop')    { $cmd.='vhost stop'; }
-        elsif($action eq 'start')   { $cmd.='vhost start'; }
-        elsif($action eq 'update')  { $cmd.='vhost update'; }
+        if($action eq 'deploy')     { $cmd .= 'vhost'; }
+        elsif($action eq 'test')    { $cmd .= 'test'; }
+        elsif($action eq 'remove')  { $cmd .= 'vhost remove'; }
+        elsif($action eq 'stop')    { $cmd .= 'vhost stop'; }
+        elsif($action eq 'start')   { $cmd .= 'vhost start'; }
+        elsif($action eq 'update')  { $cmd .= 'vhost update'; }
         else {
             warn "unknown action '$action' for vhost '$action_vhost' ignored";
             next;
         }
     
-        $cmd.=" $action_vhost";
+        $cmd .= " $action_vhost";
         
         foreach my $server (@{$$vhosts{$action_vhost}{'servers'}}) {
             print "Running action '$action' for vhost '$action_vhost' on $server...\n";
             system "ssh -t $server sudo $cmd";
-            my $retcode=$? >> 8;
-            if($retcode!=0) {
+            my $retcode = $? >> 8;
+            if($retcode != 0) {
                 warn "action '$action' for vhost '$action_vhost' on $server failed with exit code $retcode";
                 last;
             }
