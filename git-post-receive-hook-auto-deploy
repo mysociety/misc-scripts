@@ -3,16 +3,11 @@
 # Look in vhosts.pl for vhosts configured to use this repo.  If any of them have
 # the 'auto_deploy' flag set, try to deploy them.
 #
-# $Id: git-post-receive-hook-auto-deploy,v 1.3 2013-07-11 13:01:37 ian Exp $
+# $Id: git-post-receive-hook-auto-deploy,v 1.4 2013-07-11 13:35:05 ian Exp $
 #
 
 use strict;
 use warnings;
-
-use Data::Dumper;
-
-### For testing: don't run unless I'm running it
-exit 0 if($< != 1031);
 
 ### We know the repo name from our first arg
 my $REPOSITORY_NAME = $ARGV[0];
