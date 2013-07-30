@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.186 2013-06-18 21:37:55 louise Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.187 2013-07-30 09:01:53 ian Exp $';
 
 package main;
 
@@ -285,6 +285,8 @@ print FH <<END;
 \$wildcard_vhost = '$conf->{'wildcard_vhost'}';
 \$https = '$conf->{'https'}';
 \$https_only = '$conf->{'https_only'}';
+\$ipv4addr = '$conf->{'ipv4addr'}';
+\$ipv6addr = '$conf->{'ipv6addr'}';
 \$fastcgi = '$conf->{'fastcgi'}';
 \$randomly = '/data/mysociety/bin/randomly -p 0.5'; # for crontab
 \$database_configs = <<DONE_DATABASE_CONFIGS;
