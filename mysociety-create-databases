@@ -9,7 +9,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: mysociety-create-databases,v 1.23 2012-09-06 12:03:39 struan Exp $';
+my $rcsid = ''; $rcsid .= '$Id: mysociety-create-databases,v 1.24 2013-08-01 08:52:37 ian Exp $';
 
 package main;
 
@@ -50,6 +50,18 @@ sub pgpw {
 if (getpwuid($>) ne 'postgres' && getpwuid($>) ne 'root') {
     die "Please run as user root, script will be automatically run also as user postgres";
 }
+
+# Get postgres version
+my $pg_version;
+
+open CLUSTERS, '/usr/bin/pg_lsclusters -h|' or die "can't run pg_lsclusters: $!";
+while(<CLUSTERS>) {
+    my ($version, $cluster, $port, $status, $owner, $dir, $logfile) = split /\s+/;
+    $pg_version = $version if($cluster eq 'main');
+}
+close CLUSTERS;
+
+die 'no "main" cluster found in pg_lsclusters output' if(! $pg_version);
 
 # Read in configuration file
 our ($vhosts, $sites, $databases);
@@ -110,8 +122,10 @@ foreach my $database (keys %{$databases}) {
 		if ($params->{encoding}) {
 		    # As we're not using template1, we have to enable PL/pgSQL for the new database
 		    my $dbh_db = DBI->connect("dbi:Pg:dbname=$database;port=$params->{port}", 'postgres', undef, { PrintWarn => 1, PrintError => 1, RaiseError => 0, AutoCommit => 1 }) || die DBI->errstr();
-		    $dbh_db->do("CREATE FUNCTION plpgsql_call_handler() RETURNS OPAQUE AS '\$libdir/plpgsql' LANGUAGE 'C';");
-		    $dbh_db->do("CREATE TRUSTED PROCEDURAL LANGUAGE 'plpgsql' HANDLER plpgsql_call_handler LANCOMPILER 'PL/pgSQL';");
+            if($pg_version =~ /^8\./) {
+                $dbh_db->do("CREATE FUNCTION plpgsql_call_handler() RETURNS OPAQUE AS '\$libdir/plpgsql' LANGUAGE 'C';");
+                $dbh_db->do("CREATE TRUSTED PROCEDURAL LANGUAGE 'plpgsql' HANDLER plpgsql_call_handler LANCOMPILER 'PL/pgSQL';");
+            }
 		    $dbh_db->disconnect;
 		}
             }
