@@ -125,8 +125,9 @@ case $COMMAND in
         # if a puppet agent is running, force it to fetch new configs
         # (and don't use the old configuration system)
         if [ -x '/etc/init.d/puppet' ] ; then
+            set +e
             /etc/init.d/puppet status > /dev/null 2>&1
-            if [ "$?" -eq 0 ]; then
+            if [ "$?" = 0 ]; then
                 if [ -r '/var/run/puppet/agent.pid' ] ; then
                     kill -USR1 "`cat /var/run/puppet/agent.pid`"
                     echo "Signalled puppet to fetch new manifests"
@@ -135,6 +136,7 @@ case $COMMAND in
                 fi
                 exit
             fi
+            set -e
         fi
 
         # don't try to configure if this host isn't known to us
