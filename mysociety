@@ -122,6 +122,21 @@ set -e
 
 case $COMMAND in
     config)
+        # if a puppet agent is running, force it to fetch new configs
+        # (and don't use the old configuration system)
+        if [ -x '/etc/init.d/puppet' ] ; then
+            /etc/init.d/puppet status > /dev/null 2>&1
+            if [ "$?" -eq 0 ]; then
+                if [ -r '/var/run/puppet/agent.pid' ] ; then
+                    kill -USR1 "`cat /var/run/puppet/agent.pid`"
+                    echo "Signalled puppet to fetch new manifests"
+                else
+                    die "puppet agent running, but pid file can't be read"
+                fi
+                exit
+            fi
+        fi
+
         # don't try to configure if this host isn't known to us
         if [ "x$ARCHETYPES" = "x" ] ; then
             die "don't know archetypes for this host ($HOST), add to /data/servers/serverclass"
