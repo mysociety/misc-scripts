@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.188 2013-08-20 09:28:32 ian Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.189 2013-09-03 15:52:13 ian Exp $';
 
 package main;
 
@@ -161,6 +161,7 @@ $conf->{'wildcard_vhost'} = 0 if (!exists($conf->{'wildcard_vhost'}));
 $conf->{'https'} = 0 if (!exists($conf->{'https'}));
 $conf->{'https_only'} = 0 if(!exists($conf->{'https_only'}));
 $conf->{'fastcgi'} = 1 if (!exists($conf->{'fastcgi'}));
+$conf->{'balancer'} = '' if (!exists($conf->{'balancer'}));
 $conf->{'ipv4addr'} = '' if (!exists($conf->{'ipv4addr'}));
 $conf->{'ipv6addr'} = '' if (!exists($conf->{'ipv6addr'}));
 
@@ -287,6 +288,7 @@ print FH <<END;
 \$wildcard_vhost = '$conf->{'wildcard_vhost'}';
 \$https = '$conf->{'https'}';
 \$https_only = '$conf->{'https_only'}';
+\$balancer = '$conf->{'balancer'}';
 \$ipv4addr = '$conf->{'ipv4addr'}';
 \$ipv6addr = '$conf->{'ipv6addr'}';
 \$fastcgi = '$conf->{'fastcgi'}';
