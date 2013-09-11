@@ -1,4 +1,4 @@
-#!/usr/bin/python2.5
+#!/usr/bin/env python
 
 # For migration from one CVS repository to many Git ones.
 
@@ -20,7 +20,7 @@ def subdirectory_to_extract(d):
     return os.path.isdir(os.path.join(mdir,x)) and not re.search('^\.',d)
 
 #directories = [ "perllib", "phplib", "pylib", "shlib", "jslib", "rblib", "cpplib"] 
-directories = [ "hm" ] 
+directories = [ "survey" ] 
 directory_map = {}
 for d in directories:
     directory_map[d] = d

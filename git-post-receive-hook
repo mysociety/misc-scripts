@@ -29,7 +29,7 @@ trap "rm -f $STDIN_CACHE" EXIT
 # the github repository name.
 
 REPOSITORY_PATH=$(readlink -f $(pwd))
-REPOSITORY_NAME=$(basename $REPOSITORY_PATH | sed 's/\.git//')
+REPOSITORY_NAME=$(basename $REPOSITORY_PATH | sed 's/\.git$//')
 REPOSITORY_TYPE=$(dirname $REPOSITORY_PATH | sed 's/\/data\/git\///')
 
 if [ x = x$REPOSITORY_NAME ]
