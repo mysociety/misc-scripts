@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.190 2013-09-19 13:02:23 ian Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.191 2013-09-19 13:45:24 ian Exp $';
 
 package main;
 
@@ -128,7 +128,6 @@ if (exists($conf->{git_repository})) {
         die "git_ref_server_mapping defined, but no mapping for $hostname"
             if(!exists($conf->{'git_ref_server_mapping'}{$hostname}));
         $conf->{'git_ref'} = $conf->{'git_ref_server_mapping'}{$hostname};
-        die $conf->{'git_ref'};
     } elsif (!exists($conf->{'git_ref'})) {
         $conf->{'git_ref'} = 'origin/master';
     }
