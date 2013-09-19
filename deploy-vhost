@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.189 2013-09-03 15:52:13 ian Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.190 2013-09-19 13:02:23 ian Exp $';
 
 package main;
 
@@ -100,6 +100,9 @@ die "Specify 'deploy', 'stop', 'update', 'start' or 'remove' as second parameter
 my $flush = 0;
 $flush = 1 if @ARGV > 2 && $ARGV[2] eq '--flush';
 
+my $hostname = `hostname`;
+chomp($hostname);
+
 # Merge vhost and site configs together
 my $conf;
 foreach my $key ( keys %$site_conf ) { $conf->{$key} = $site_conf->{$key}; }
@@ -121,20 +124,31 @@ if (exists($conf->{git_repository})) {
     die "must specify 'git_user' in vhost config" if (!exists($conf->{git_user}));
     die "must not specify 'cvs_user' in vhost config if you have 'git_repository'" if (exists($conf->{cvs_user}));
     die "can't have blank 'git_user', use 'anon' for anonymous" if ($conf->{git_user} eq '');
-    $conf->{'git_ref'} = 'origin/master' if (!exists($conf->{'git_ref'}));
+    if (exists($conf->{'git_ref_server_mapping'})) {
+        die "git_ref_server_mapping defined, but no mapping for $hostname"
+            if(!exists($conf->{'git_ref_server_mapping'}{$hostname}));
+        $conf->{'git_ref'} = $conf->{'git_ref_server_mapping'}{$hostname};
+        die $conf->{'git_ref'};
+    } elsif (!exists($conf->{'git_ref'})) {
+        $conf->{'git_ref'} = 'origin/master';
+    }
     $vcspath = $conf->{git_repository};
     $git = 1;
 }
 
 if (exists($conf->{private_git_repository})) {
-    $conf->{'private_git_ref'} = 'origin/master' if (!exists($conf->{'private_git_ref'}));
+    if (exists($conf->{'private_git_ref_server_mapping'})) {
+        die "private_git_ref_server_mapping defined, but no mapping for $hostname"
+            if(! exists($conf->{'private_git_ref_server_mapping'}{$hostname}));
+        $conf->{'private_git_ref'} = $conf->{'private_git_ref_server_mapping'}{$hostname};
+    } elsif (!exists($conf->{'private_git_ref'})) {
+        $conf->{'private_git_ref'} = 'origin/master' if (!exists($conf->{'private_git_ref'}));
+    }
     $vcspath = $conf->{private_git_repository} if (!$vcspath);
     $git = 1;
 }
 
 # Verify that this server is listed for this vhost
-my $hostname = `hostname`;
-chomp($hostname);
 die "'$hostname' is not a vhost for '$vhost'" if (!grep { m/^$hostname$/ } @{$conf->{'servers'}}) && $action ne 'remove';
 
 # Deal with redirecting the vhost itself
