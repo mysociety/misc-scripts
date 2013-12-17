@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.191 2013-09-19 13:45:24 ian Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.192 2013-12-17 17:53:15 mark Exp $';
 
 package main;
 
@@ -422,6 +422,23 @@ if ($action ne "remove"){
 #####################################################################
 # Helper functions
 
+sub get_db_host {
+    my ($params, $internal) = @_;
+    if ($params->{host} eq 'localhost') {
+        # If the host is localhost, then it shouldn't be suffixed with
+        # a domain:
+        return $params->{host};
+    } else {
+        # Otherwise suffix it with a ukcod domain:
+        my $network_part = '';
+        if ($internal && $internal_network) {
+            $network_part = 'int.ukcod.org.uk';
+        } else {
+            $network_part = 'ukcod.org.uk';
+        }
+        return "$params->{host}.$network_part";
+    }
+}
 
 sub one_db_conf_php {
     my ($params, $database, $internal) = @_;
@@ -429,15 +446,10 @@ sub one_db_conf_php {
     if ($params->{type} eq 'psql') {
         $port_line = "define('OPTION_$params->{prefix}_DB_PORT', $params->{port});";
     }
-    my $network_part = '';
-    if ($internal && $internal_network) {
-        $network_part = 'int.ukcod.org.uk';
-    } else {
-        $network_part = 'ukcod.org.uk';
-    }
+    my $db_host = get_db_host($params, $internal);
  
     my $conf = <<END;
-define('OPTION_$params->{prefix}_DB_HOST', '$params->{host}.$network_part');
+define('OPTION_$params->{prefix}_DB_HOST', '$db_host');
 $port_line
 define('OPTION_$params->{prefix}_DB_NAME', '$database');
 define('OPTION_$params->{prefix}_DB_USER', '$database');
@@ -453,15 +465,10 @@ sub one_db_conf_yml {
     if ($params->{type} eq 'psql') {
         $port_line = "$params->{prefix}_DB_PORT: $params->{port}";
     }
-    my $network_part = '';
-    if ($internal && $internal_network) {
-        $network_part = 'int.ukcod.org.uk';
-    } else {
-        $network_part = 'ukcod.org.uk';
-    }
+    my $db_host = get_db_host($params, $internal);
  
     my $conf = <<END;
-$params->{prefix}_DB_HOST: '$params->{host}.$network_part'
+$params->{prefix}_DB_HOST: '$db_host';
 $port_line
 $params->{prefix}_DB_NAME: '$database'
 $params->{prefix}_DB_USER: '$database'
@@ -488,13 +495,13 @@ sub db_conf {
             # have to list them in the yml file in right place, so one text
             # option can't), oh well
             if (scalar(@{$conf->{'databases'}}) == 1) {
-                my $domain = ($internal_network) ? "int.ukcod.org.uk" : "ukcod.org.uk";
+                my $db_host = get_db_host($params, $internal_network);
                 $rails_database_config = <<END;
     adapter: postgresql
     database: $database
     username: $database
     password: \${\\(pgpw('$database'))}
-    host: $params->{host}.$domain
+    host: $db_host
     port: $params->{port}
 END
             }
@@ -502,12 +509,13 @@ END
     elsif ($params->{type} eq 'mysql') {
             if (scalar(@{$conf->{'databases'}}) == 1) {
                 my $port = $params->{port} || 3306;
+                my $db_host = get_db_host($params, 0);
                 $rails_database_config = <<END;
     adapter: mysql2
     database: $database
     username: $database
     password: \${\\(pgpw('$database'))}
-    host: $params->{host}.ukcod.org.uk
+    host: $db_host
     port: $port
 END
             }
