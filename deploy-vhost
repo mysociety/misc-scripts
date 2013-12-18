@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.193 2013-12-18 09:46:51 mark Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.194 2013-12-18 10:27:03 mark Exp $';
 
 package main;
 
@@ -453,7 +453,7 @@ sub one_db_conf_yml {
     my $db_host = get_db_host($params, $internal);
  
     my $conf = <<END;
-$params->{prefix}_DB_HOST: '$db_host';
+$params->{prefix}_DB_HOST: '$db_host'
 $port_line
 $params->{prefix}_DB_NAME: '$database'
 $params->{prefix}_DB_USER: '$database'
