@@ -68,12 +68,6 @@ END
 	exit
 }
 
-if [ $1 = "-u" ] ; then
-    UML=1
-    UML_OPTION="-u"
-    shift
-fi
-
 if [ $1 = "--help" ] ; then
     show_help
 fi
@@ -206,7 +200,7 @@ END
             /data/mysociety/bin/deploy-configuration --save-file=/var/lib/deploy-configuration-$ARCHETYPE.tar /data/servers/$ARCHETYPES_DIR/$ARCHETYPE $SETTINGS_FILE "$@"
         done
         if [[ ! "$@" =~ "--dry-run" ]]; then
-            /data/mysociety/bin/deploy-logger $UML_OPTION "Deployed configuration for archetypes \"$ARCHETYPES\" with settings \"$HOST.pl\""
+            /data/mysociety/bin/deploy-logger "Deployed configuration for archetypes \"$ARCHETYPES\" with settings \"$HOST.pl\""
         fi
         # check all packages installed
         for PACKAGE_FILE in `find /etc/mysociety/packages.d/ ! -name "*~" ! -name "*.swp" -type f`
@@ -242,7 +236,7 @@ END
             exit
         fi
         # deploy vhost
-        /data/mysociety/bin/deploy-vhost $UML_OPTION $VHOST $COMMAND "$@"
+        /data/mysociety/bin/deploy-vhost $VHOST $COMMAND "$@"
         ;;
 
     devhost)
@@ -267,7 +261,7 @@ END
         # update code (which also does apachectl graceful, so killing
         # any FastCGI processes holding the database open, so the test script
         # can drop and reload the database)
-        /data/mysociety/bin/deploy-vhost $UML_OPTION $VHOST deploy "$@"
+        /data/mysociety/bin/deploy-vhost $VHOST deploy "$@"
         # sleep for a few seconds to allow the Apache processes mentioned above to die
         sleep 10
         # launch test script

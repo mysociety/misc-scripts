@@ -5,7 +5,7 @@
 #
 # Arguments are the message to log, as in echo(1).
 #
-# $Id: deploy-logger,v 1.19 2012-10-24 09:35:03 ian Exp $
+# $Id: deploy-logger,v 1.20 2013-12-18 09:46:51 mark Exp $
 #
 
 HOST=`hostname`
@@ -15,11 +15,6 @@ PUSH_ATTEMPTS=5
 DATELOG=`date +"%Y-%m-%d %X"`
 WHO=$SUDO_USER
 [ "$WHO" = "" ] && WHO=$USER
-
-if [ "$1" = "-u" ] ; then
-    UML=1
-    shift
-fi
 
 # Stop here if we're an EC2 instance
 [ -f /etc/mysociety/ec2 ] && exit
@@ -47,30 +42,27 @@ then
 fi
 
 # Commit it
-if [ x = x$UML ]
-then
-    git add $LOGFILE
-    git commit -q -m "deploy-logger: $@" $LOGFILE
+git add $LOGFILE
+git commit -q -m "deploy-logger: $@" $LOGFILE
 
-    # Try a few times, as other hosts might be pushing at the same time.
-    pushes=0
-    while [ $pushes -lt $PUSH_ATTEMPTS ]
-    do
-        (( pushes++ ))
-        git push -q origin master 2> /dev/null
-        if [ $? == 0 ]
-        then
-            break
-        fi
-
-        # Pull the changes that have happened since we've been running.
-        git fetch --quiet origin
-        git rebase --quiet origin/master
-    done
-    if [ $pushes == $PUSH_ATTEMPTS ]
+# Try a few times, as other hosts might be pushing at the same time.
+pushes=0
+while [ $pushes -lt $PUSH_ATTEMPTS ]
+do
+    (( pushes++ ))
+    git push -q origin master 2> /dev/null
+    if [ $? == 0 ]
     then
-        echo "warning: couldn't git push deploy-logger changes after $pushes attempts"
+        break
     fi
+
+    # Pull the changes that have happened since we've been running.
+    git fetch --quiet origin
+    git rebase --quiet origin/master
+done
+if [ $pushes == $PUSH_ATTEMPTS ]
+then
+    echo "warning: couldn't git push deploy-logger changes after $pushes attempts"
 fi
 
 exit 0 # otherwise it exits with code of grep
