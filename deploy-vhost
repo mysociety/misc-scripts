@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.196 2014-01-10 15:57:05 mark Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.197 2014-01-10 15:58:41 mark Exp $';
 
 package main;
 
@@ -531,6 +531,16 @@ sub nginx_graceful {
     }
 }
 
+sub graceful {
+    # Prompt webserver to reread files, on machines which have apache...
+    apache_graceful();
+
+    # ...and nginx
+    if ($conf->{'https'} eq 'nginx') {
+        nginx_graceful();
+    }
+}
+
 sub make_cvs_dirs {
    my ($cvs_root, $cvs_user, $cvs_dirs) = @_;
    foreach my $cvs_dir (@{$cvs_dirs}) {
@@ -1004,13 +1014,7 @@ sub update_site {
         }
     }
 
-    # Prompt webserver to reread files, on machines which have apache...
-    apache_graceful();
-
-    # ...and nginx
-    if ($conf->{'https'} eq 'nginx') {
-        nginx_graceful();
-    }
+    graceful();
 
     return $git_log;
 }
