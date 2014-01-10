@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.195 2014-01-10 15:55:33 mark Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.196 2014-01-10 15:57:05 mark Exp $';
 
 package main;
 
@@ -659,7 +659,7 @@ sub check_package_file {
             shell("cvs", "-Q", "update", "packages");
             if (-e "packages") {
                 shell("/data/mysociety/bin/check-packages-installed", "packages")
-            }  
+            }
         } elsif ($git) {
             my $tmp_packages = mktemp("/tmp/deploy-vhost-packages-XXXXXXXX");
             my $git_ref;
@@ -707,7 +707,7 @@ sub stop_site {
     # Stop crontab
     unlink($cron_name);
 
-    # Stop email forwarding 
+    # Stop email forwarding
     # XXX hmmm, maybe not such a good idea to stop this, as emails to, say
     # WhatDoTheyknow, would then not be delivered while deploying new version
     # of it. Really should replace with something that gets exim to try
@@ -778,9 +778,9 @@ sub update_conf_dir {
         my $conf_ugly_file = "$servers_dir/vhosts/$conf_ugly_part.ugly";
         # update the conf/general (or whatever) template in private git repo
         chdir "$servers_dir/vhosts";
-	    shell("git", "pull", "-q", "origin");
+        shell("git", "pull", "-q", "origin");
         # update example we'll be comparing against, to make sure no missing entries.
-        # For public conf files, use the example in the main public checkout. For 
+        # For public conf files, use the example in the main public checkout. For
         # private, use the example in the vhost conf dir.
         my $example_file;
         if ($cvs) {
@@ -825,7 +825,7 @@ sub update_conf_dir {
         if ($make_conf) {
             my $conf_file_tmp = $conf_file;
             $conf_file_tmp =~ s/((\.yml)?)$/.tmp$1/;
-            
+
             # call mugly to generate from template
             shell("$mysociety_bin/mugly", "-O", $conf_file_tmp, "-p", "$settings_file", "$conf_ugly_file");
             if ($name_base eq 'general') {
@@ -839,7 +839,7 @@ sub update_conf_dir {
             copy($conf_file_tmp, "$conf_file");
             chown($user_uid, $user_gid, "$conf_file");
             unlink($conf_file_tmp) or die "couldn't unlink $conf_file_tmp";
-            
+
             # if it's a logrotate file, symlink it to /etc/logrotate.d/
             if ($name_base eq 'logrotate') {
                 shell("ln -snf $conf_file /etc/logrotate.d/$vhost");
@@ -948,12 +948,12 @@ sub update_config_and_schemas {
 
     # Generate all conf files from conf/*-example template files e.g. conf/general
     foreach my $conf_dir (@{$conf->{conf_dir}}) {
-        update_conf_dir($conf_dir, 1, \%unchecked_schemas);        
+        update_conf_dir($conf_dir, 1, \%unchecked_schemas);
     }
     foreach my $conf_dir(@{$conf->{private_conf_dir}}){
         update_conf_dir($conf_dir, 0, \%unchecked_schemas);
     }
-     
+
     # exit if there are any schemas not covered by a config
     foreach my $unchecked_schema (keys %unchecked_schemas) {
         die "$unchecked_schema not configured in conf/general file(s)";
@@ -1018,7 +1018,7 @@ sub update_site {
 sub make_dot_forward {
     my ($email_user, $script, $suffix) = @_;
     my $forward_file_name = defined($suffix) ? ".forward-$suffix" : ".forward";
-    
+
     shell("su", "-", $email_user, "-c echo \"|$vhost_dir/$vcspath/$script\" >~$email_user/$forward_file_name");
 }
 
@@ -1038,20 +1038,20 @@ sub install_or_remove_crontab {
         if ($cvs) {
             chdir $mysociety_dir;
             foreach my $conf_dir (@{$conf->{conf_dir}}) {
-                # if a crontab exists in the conf directory in source control, or has been created there 
+                # if a crontab exists in the conf directory in source control, or has been created there
                 # in the update_conf_dir function, just install it
                 my $crontab = "$conf_dir/crontab";
                 if (-e $crontab) {
-                    copy($crontab, "$cron_name"); 
+                    copy($crontab, "$cron_name");
                 } else {
                     shell("cvs", "-Q", "update", "$conf_dir/crontab.ugly");
                     shell("$mysociety_bin/mugly", "-O", $cron_name, "-p", "$settings_file", "$mysociety_dir/$conf_dir/crontab.ugly");
-                } 
+                }
             }
         } elsif ($git) {
             my $setup_git_cron = sub {
                 my ( $conf_dir, $git_ref ) = @_;
-                # if a crontab exists in the conf directory in source control, or has been created there 
+                # if a crontab exists in the conf directory in source control, or has been created there
                 # in the update_conf_dir function, just install it
                 my $crontab = "$conf_dir/crontab";
                 if (-e $crontab) {
@@ -1071,8 +1071,8 @@ sub install_or_remove_crontab {
         } else {
             die "Unknown version control system";
         }
-        
-    } else { 
+
+    } else {
         unlink($cron_name);
     }
 }
@@ -1088,7 +1088,7 @@ sub start_site {
     foreach my $daemon (keys %{$conf->{'daemons'}}) {
         shell("/etc/init.d/$daemon", "start");
     }
- 
+
     # Crontab
     install_or_remove_crontab();
 
@@ -1121,7 +1121,7 @@ sub remove_site {
     # Remove crontab
     unlink($cron_name);
 
-    # Remove email forwarding 
+    # Remove email forwarding
     if ($conf->{'email'}) {
         foreach my $email_user (keys %{$conf->{'email'}}) {
             unlink("/home/$email_user/.forward");
