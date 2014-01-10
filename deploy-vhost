@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.197 2014-01-10 15:58:41 mark Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.198 2014-01-10 16:00:14 mark Exp $';
 
 package main;
 
@@ -27,6 +27,7 @@ use mySociety::Config;
 use Cwd;
 use Errno;
 use POSIX qw(getuid);
+use Time::Piece;
 use Data::Dumper;
 use File::Slurp;
 use File::Copy;
@@ -109,6 +110,20 @@ if (exists($conf->{cvs_dirs})) {
     $vcspath = "mysociety";
     $cvs = 1;
 }
+
+# Check if we should be deploying to a timestamped directory which is
+# then symlinked into place.
+my $timestamped_deploy = $conf->{timestamped_deploy};
+
+if ($timestamped_deploy) {
+    if (exists($conf->{git_repository}) && exists($conf->{private_git_repository})) {
+        die "For a timestamped deploy you can only specify one of git_repository and private_git_repository";
+    }
+    if (exists($conf->{'private_git_dirs'})) {
+        die "You can't use private_git_dirs with the timestamped_deploy option";
+    }
+}
+
 if (exists($conf->{git_repository})) {
     die "must specify 'git_user' in vhost config" if (!exists($conf->{git_user}));
     die "must not specify 'cvs_user' in vhost config if you have 'git_repository'" if (exists($conf->{cvs_user}));
@@ -166,6 +181,31 @@ $conf->{'fastcgi'} = 1 if (!exists($conf->{'fastcgi'}));
 $conf->{'balancer'} = '' if (!exists($conf->{'balancer'}));
 $conf->{'ipv4addr'} = '' if (!exists($conf->{'ipv4addr'}));
 $conf->{'ipv6addr'} = '' if (!exists($conf->{'ipv6addr'}));
+
+if ($timestamped_deploy) {
+    if ($cvs) {
+        die "The 'timestamped_deploy' option can only be used with git-based sites";
+    }
+
+    # With timestamped_deploy, we use different options to specify hooks
+    # that are run on deploy.
+
+    if ($conf->{'exec_extras'}) {
+        die "exec_extras cannot be used with timestamped_deploy";
+    }
+} else {
+    foreach ("exec_before_down", "exec_while_down") {
+        if ($conf->{$_}) {
+            die "You cannot use $_ without timestamped_deploy";
+        }
+    }
+}
+
+my $vcspath_install = $vcspath;
+my $timestamp = gmtime->strftime('%Y-%m-%dT%H-%M-%S');
+if ($timestamped_deploy) {
+    $vcspath_install = "$vcspath-$timestamp";
+}
 
 # Ensure that the conf_dir and private_conf_dir elements are references to a list of config dirs.
 foreach my $dir (qw( conf_dir private_conf_dir )){
@@ -231,11 +271,11 @@ if ($cvs) {
         } else {
             $git_url_base = $conf->{'git_url_base'};
         }
-        make_git_repository($git_url_base, $conf->{'git_user'}, $conf->{'git_repository'}, $conf->{'git_ref'});
+        make_git_repository($git_url_base, $conf->{'git_user'}, $conf->{'git_repository'}, $conf->{'git_ref'}, $vcspath_install);
     }
     if (exists($conf->{'private_git_repository'})){
         $git_url_base = "ssh://" . $conf->{'user'} . "\@git.mysociety.org/data/git/private/";
-        make_git_repository($git_url_base, $conf->{'user'}, $conf->{'private_git_repository'}, $conf->{'private_git_ref'});
+        make_git_repository($git_url_base, $conf->{'user'}, $conf->{'private_git_repository'}, $conf->{'private_git_ref'}, $vcspath_install);
     }
 } else {
     die "Unknown version control system";
@@ -365,7 +405,7 @@ foreach my $daemon (keys %{$conf->{'daemons'}}) {
         $daemon_mugly = $daemon_mugly_path . $daemon_mugly_file;
     } elsif ($git) {
         $daemon_mugly = mktemp("/tmp/daemon-mugly-file-XXXXXXXX");
-        chdir "$vhost_dir/$vcspath";
+        chdir "$vhost_dir/$vcspath_install";
 
         my $git_ref;
         my $conf_dir;
@@ -578,12 +618,12 @@ sub update_cvs {
 }
 
 sub make_git_repository {
-   my ($git_url_base, $git_user, $git_repository, $git_ref) = @_;
-   my $d = "$vhost_dir/$git_repository/.git";
+   my ($git_url_base, $git_user, $git_repository, $git_ref, $vcspath_to_use) = @_;
+   my $d = "$vhost_dir/$vcspath_to_use/.git";
    my $git_url = "$git_url_base$git_repository.git";
    if (! -d $d) {
-       my $clone_command = "cd \"$vhost_dir\" && git clone --no-checkout $git_url && cd \"$git_repository\" && git checkout $git_ref";
-       my $submodule_command = "cd \"$vhost_dir/$git_repository\" && git submodule update --init";
+       my $clone_command = "cd \"$vhost_dir\" && git clone --no-checkout $git_url $vcspath_to_use && cd \"$vcspath_to_use\" && git checkout $git_ref";
+       my $submodule_command = "cd \"$vhost_dir/$vcspath_to_use\" && git submodule update --init";
        if ($git_user eq 'root') {
            shell($clone_command);
            shell("$submodule_command && chown -R ".$conf->{'user'}.":".$conf->{'user'}." ../");
@@ -592,37 +632,50 @@ sub make_git_repository {
            shell("su", "-", $conf->{'user'}, "-c $submodule_command");
        }
    } else {
-       chdir("$vhost_dir/$git_repository");
+       chdir("$vhost_dir/$vcspath_to_use");
        my $current_url = `git config --get remote.origin.url`;
        $current_url =~ s/\s*$//;
        die "git remote.origin.url in $d is \n\t$current_url\nwhen config says\n\t$git_url\n" if ($current_url ne $git_url);
 
        # get new stuff so various other parts of script can compare before deploying to working directory
-       my $fetch_command = "cd \"$vhost_dir/$git_repository\" && git fetch origin";
+       my $fetch_command = "cd \"$vhost_dir/$vcspath_to_use\" && git fetch origin";
        if ($git_user eq 'root') {
            shell("$fetch_command && chown -R ".$conf->{'user'}.":".$conf->{'user'}." ../");
        } else {
            shell("su", "-", $conf->{'user'}, "-c $fetch_command"); 
        }
        if ($git_user eq 'anon') {
-           shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir/$git_repository\" && $mysociety_bin/git-safe-to-checkout . $git_ref")
+           shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir/$vcspath_to_use\" && $mysociety_bin/git-safe-to-checkout . $git_ref")
        }
    }
    chdir($vhost_dir);
 }
 
 sub update_git {
-    my ($git_user, $git_repository, $git_ref) = @_;
-    die "unexpectedly missing .git directory in update stage" if (! -d "$vhost_dir/$git_repository/.git");
+    my ($git_user, $vcspath, $git_ref) = @_;
+    die "unexpectedly missing .git directory in update stage" if (! -d "$vhost_dir/$vcspath/.git");
     my $update_command = "git fetch origin && git checkout $git_ref && git submodule update --init";
     if ($git_user eq 'root') {
-        shell("cd \"$vhost_dir/$git_repository\" && $update_command && chown -R ".$conf->{'user'}.":".$conf->{'user'}." ../");
+        shell("cd \"$vhost_dir/$vcspath\" && $update_command && chown -R ".$conf->{'user'}.":".$conf->{'user'}." ../");
     } else {
-        shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir/$git_repository\" && $update_command");
+        shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir/$vcspath\" && $update_command");
     }
-    my $hash = `cd "$vhost_dir/$git_repository" && git rev-parse --short HEAD`;
+    my $hash = `cd "$vhost_dir/$vcspath" && git rev-parse --short HEAD`;
     chomp $hash;
     return "branch $git_ref, commit $hash";
+}
+
+sub update_vcspath_symlink {
+    unless ($timestamped_deploy) {
+        die "You can only use update_vcspath_symlink with timestamped_deploy";
+    }
+    chdir($vhost_dir);
+    # If there's a real directory there, rather than a symlink, move
+    # it out of the way:
+    if (-d $vcspath && ! -l $vcspath) {
+        rename($vcspath, "$vcspath.moved");
+    }
+    shell("ln -snf $vcspath_install $vcspath");
 }
 
 #####################################################################
@@ -638,16 +691,28 @@ if ($action eq "stop") {
 } elsif ($action eq "update") {
     update_config_and_schemas();
     my $git_log = update_site();
+    graceful();
     deploy_logger("Updated vhost $vhost ($git_log)");
 } elsif ($action eq "start") {
     start_site();
     deploy_logger("Started vhost $vhost");
 } elsif ($action eq "deploy") {
+    my $deploy_log_message;
     update_config_and_schemas();
+    if ($timestamped_deploy) {
+        $deploy_log_message = update_site();
+    }
     stop_site();
-    my $git_log = update_site();
+    if ($timestamped_deploy) {
+        run_tasks_from_config(%{$conf->{'exec_while_down'}});
+        update_vcspath_symlink();
+        graceful();
+    } else {
+        $deploy_log_message = update_site();
+        graceful();
+    }
     start_site();
-    deploy_logger("Deployed vhost $vhost ($git_log)")
+    deploy_logger("Deployed vhost $vhost ($deploy_log_message)")
         unless $vhost =~ /testharness/;
     if ($flush) {
         use mySociety::Memcached;
@@ -673,11 +738,10 @@ sub check_package_file {
         } elsif ($git) {
             my $tmp_packages = mktemp("/tmp/deploy-vhost-packages-XXXXXXXX");
             my $git_ref;
+            chdir "$vhost_dir/$vcspath_install";
             if ($public) {
-                chdir "$vhost_dir/$conf->{'git_repository'}";
                 $git_ref = $conf->{'git_ref'};
             } else {
-                chdir "$vhost_dir/$conf->{'private_git_repository'}";
                 $git_ref = $conf->{'private_git_ref'};
             }
             if (-e "$conf_dir/packages") {
@@ -732,17 +796,18 @@ sub stop_site {
     #    }
     #}
 
-    if(-s "$vhost_dir/docs/down.current.html") {
-        unlink("$vhost_dir/docs/down.html");
-        symlink("$vhost_dir/docs/down.current.html", "$vhost_dir/docs/down.html");
-    } elsif (-s "$vhost_dir/docs/down.default.html") {
-        unlink("$vhost_dir/docs/down.html");
-        symlink("$vhost_dir/docs/down.default.html", "$vhost_dir/docs/down.html");
-    } else {
-        # Down notice
-        open(FH, "> $vhost_dir/docs/.down.html.new")
-            or die "Failed to open $vhost_dir/docs/.down.html.new for writing: $!\n";
-        print FH <<END;
+    if (-d "$vhost_dir/docs") {
+        if(-s "$vhost_dir/docs/down.current.html") {
+            unlink("$vhost_dir/docs/down.html");
+            symlink("$vhost_dir/docs/down.current.html", "$vhost_dir/docs/down.html");
+        } elsif (-s "$vhost_dir/docs/down.default.html") {
+            unlink("$vhost_dir/docs/down.html");
+            symlink("$vhost_dir/docs/down.default.html", "$vhost_dir/docs/down.html");
+        } else {
+            # Down notice
+            open(FH, "> $vhost_dir/docs/.down.html.new")
+                or die "Failed to open $vhost_dir/docs/.down.html.new for writing: $!\n";
+            print FH <<END;
         <html>
         <head>
         <title>$vhost - Down for Maintenance</title>
@@ -753,24 +818,25 @@ sub stop_site {
         restored to order.  Thanks for your patience!
         <p> &mdash; the <a href="http://www.mysociety.org/">mySociety</a> developers
         </body>
-        </html> 
+        </html>
 END
-        close FH;
-        unlink("$vhost_dir/docs/down.html");
-        rename("$vhost_dir/docs/.down.html.new", "$vhost_dir/docs/down.html")
-            or die "failed to rename .down.html.new to down.html in $vhost_dir/docs: $!";
-        chown($user_uid, $user_gid, "$vhost_dir/docs/down.html");
+            close FH;
+            unlink("$vhost_dir/docs/down.html");
+            rename("$vhost_dir/docs/.down.html.new", "$vhost_dir/docs/down.html")
+                or die "failed to rename .down.html.new to down.html in $vhost_dir/docs: $!";
+            chown($user_uid, $user_gid, "$vhost_dir/docs/down.html");
+        }
     }
 }
 
 # Update a config dir
 sub update_conf_dir {
     my ($conf_dir, $public, $unchecked_schemas) = @_;
-    foreach my $glob (glob "$vhost_dir/$vcspath/$conf_dir/*-example") {
+    foreach my $glob (glob "$vhost_dir/$vcspath_install/$conf_dir/*-example") {
        $glob =~ m#^.*/(.*?)-example$#;
 
         my $name_part = $1;
-        my $conf_file = "$vhost_dir/$vcspath/$conf_dir/$name_part"; # destination file
+        my $conf_file = "$vhost_dir/$vcspath_install/$conf_dir/$name_part"; # destination file
         my $old_umask = umask(0027);
         my $name_base = $name_part;
         $name_base =~ s/\.yml$//;
@@ -798,7 +864,7 @@ sub update_conf_dir {
             if ($public) {
                 $example_file_dir = "$mysociety_dir/$conf_dir";
             } else {
-                $example_file_dir = "$vhost_dir/$vcspath/$conf_dir";
+                $example_file_dir = "$vhost_dir/$vcspath_install/$conf_dir";
             }
             chdir $example_file_dir;
             if ($public  || $conf->{'private_cvs_user'} eq '') {
@@ -810,8 +876,8 @@ sub update_conf_dir {
         } elsif ($git) {
             my $git_ref;
             $example_file = mktemp("/tmp/deploy-vhost-$name_part-example-XXXXXXXX");
-            if ($public) { 
-                chdir "$vhost_dir/$vcspath";
+            if ($public) {
+                chdir "$vhost_dir/$vcspath_install";
                 $git_ref = $conf->{'git_ref'};
             } else {
                 chdir "$vhost_dir/" . $conf->{'private_git_repository'};
@@ -897,7 +963,7 @@ sub update_conf_dir {
                     shell("./psql-schema-compare", $mysociety_dir.'/'.$psql_schema, $conf->{'user'}, $psql_name, $psql_user, $psql_host, $psql_port);
                 } elsif ($git) {
                     my $tmp_psql_schema = mktemp("/tmp/deploy-vhost-psql-schema-XXXXXXXX");
-                    chdir "$vhost_dir/$vcspath";
+                    chdir "$vhost_dir/$vcspath_install";
                     my $git_ref = $conf->{'git_ref'};
                     shell("git show $git_ref:$psql_schema >$tmp_psql_schema");
                     chdir $mysociety_bin;
@@ -933,7 +999,7 @@ sub update_conf_dir {
                     $schema_full_path = $mysociety_dir.'/'.$mysql_schema
                 } elsif ($git) {
                     $schema_full_path = mktemp("/tmp/deploy-vhost-mysociety-schema.sql-XXXXXXXX");
-                    chdir "$vhost_dir/$vcspath";
+                    chdir "$vhost_dir/$vcspath_install";
                     my $git_ref = $conf->{'git_ref'};
                     shell("git show $git_ref:$mysql_schema >$schema_full_path");
                 } else {
@@ -970,6 +1036,20 @@ sub update_config_and_schemas {
     }
 }
 
+sub run_tasks_from_config {
+    my (%exec_extras) = @_;
+    foreach my $exec_extra (@{$exec_extras{'user'}}) {
+        chdir("$vhost_dir/$vcspath_install");
+        `pwd`;
+        shell("su", $conf->{'user'}, "-c $exec_extra");
+    }
+    foreach my $exec_extra (@{$exec_extras{'root'}}) {
+        chdir("$vhost_dir/$vcspath_install");
+        `pwd`;
+        shell("$exec_extra");
+    }
+}
+
 sub update_site {
     my $git_log = '';
 
@@ -984,15 +1064,17 @@ sub update_site {
         my $git_repository;
         if (exists($conf->{'git_repository'})) {
             $git_repository =  $conf->{'git_repository'};
-            $git_log = update_git($conf->{'git_user'}, $git_repository, $conf->{'git_ref'});
+            $git_log = update_git($conf->{'git_user'}, $vcspath_install, $conf->{'git_ref'});
         }
         # softlink any private dirs into the public directory structure
         if (exists($conf->{'private_git_repository'})){
             my $private_git_repository = $conf->{'private_git_repository'};
-            $git_log = update_git($conf->{'user'}, $private_git_repository, $conf->{'private_git_ref'});
-            if (exists($conf->{'private_git_dirs'})){
-                foreach my $private_dir (@{$conf->{'private_git_dirs'}}) {
-                    shell("ln -snf $vhost_dir/$private_git_repository/$private_dir $vhost_dir/$git_repository/$private_dir");
+            $git_log = update_git($conf->{'user'}, $vcspath_install, $conf->{'private_git_ref'});
+            unless ($timestamped_deploy) {
+                if (exists($conf->{'private_git_dirs'})){
+                    foreach my $private_dir (@{$conf->{'private_git_dirs'}}) {
+                        shell("ln -snf $vhost_dir/$private_git_repository/$private_dir $vhost_dir/$git_repository/$private_dir");
+                    }
                 }
             }
         }
@@ -1000,21 +1082,17 @@ sub update_site {
         die "Unknown version control system";
     }
     # Run any extra executables
-    if (exists($conf->{'exec_extras'})) {
-        my %exec_extras = %{$conf->{'exec_extras'}}; 
-        foreach my $exec_extra (@{$exec_extras{'user'}}) {
-            chdir("$vhost_dir/$vcspath");
-            `pwd`;
-            shell("su", $conf->{'user'}, "-c $exec_extra");
+    if ($timestamped_deploy) {
+        if (exists($conf->{'exec_extras'})) {
+            run_tasks_from_config(%{$conf->{'exec_before_down'}});
         }
-        foreach my $exec_extra (@{$exec_extras{'root'}}) {
-            chdir("$vhost_dir/$vcspath");
-            `pwd`;
-            shell("$exec_extra");
+    } else {
+        if (exists($conf->{'exec_extras'})) {
+            run_tasks_from_config(%{$conf->{'exec_extras'}});
         }
     }
 
-    graceful();
+    $git_log .= ", updating in $vhost_dir/$vcspath_install";
 
     return $git_log;
 }
@@ -1062,7 +1140,7 @@ sub install_or_remove_crontab {
                     copy($crontab, "$cron_name");
                 } else {
                     my $tmp_crontab_ugly = mktemp("/tmp/deploy-vhost-crontab.ugly-XXXXXXXX");
-                    chdir "$vhost_dir/$vcspath";
+                    chdir "$vhost_dir/$vcspath_install";
                     return unless -e "$conf_dir/crontab.ugly";
                     shell("git show $git_ref:$conf_dir/crontab.ugly >$tmp_crontab_ugly");
                     shell("$mysociety_bin/mugly", "-O", $cron_name, "-p", "$settings_file", "$tmp_crontab_ugly");
