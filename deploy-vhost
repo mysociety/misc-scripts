@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.198 2014-01-10 16:00:14 mark Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.199 2014-01-10 16:02:11 mark Exp $';
 
 package main;
 
@@ -1040,12 +1040,10 @@ sub run_tasks_from_config {
     my (%exec_extras) = @_;
     foreach my $exec_extra (@{$exec_extras{'user'}}) {
         chdir("$vhost_dir/$vcspath_install");
-        `pwd`;
         shell("su", $conf->{'user'}, "-c $exec_extra");
     }
     foreach my $exec_extra (@{$exec_extras{'root'}}) {
         chdir("$vhost_dir/$vcspath_install");
-        `pwd`;
         shell("$exec_extra");
     }
 }
