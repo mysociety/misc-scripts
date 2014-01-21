@@ -1,4 +1,8 @@
 #!/bin/perl
+#
+# Generate a file that can be included in a DNS zone
+# that contains our DKIM public keys
+#
 
 use File::Temp qw/tempfile/;
 use File::Basename;
