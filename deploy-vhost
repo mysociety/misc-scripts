@@ -7,7 +7,7 @@
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.200 2014-01-23 09:37:32 mark Exp $';
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.201 2014-01-23 10:51:37 mark Exp $';
 
 package main;
 
@@ -678,6 +678,7 @@ sub update_vcspath_symlink {
     unless ($timestamped_deploy) {
         die "You can only use update_vcspath_symlink with timestamped_deploy";
     }
+    my $old_cwd = getcwd();
     chdir_verbose(__LINE__, $vhost_dir);
     # If there's a real directory there, rather than a symlink, move
     # it out of the way:
@@ -685,6 +686,7 @@ sub update_vcspath_symlink {
         rename($vcspath, "$vcspath.moved");
     }
     shell("ln -snf $vcspath_install $vcspath");
+    chdir_verbose(__LINE__, $old_cwd);
 }
 
 #####################################################################
