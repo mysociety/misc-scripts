@@ -20,15 +20,15 @@ def subdirectory_to_extract(d):
     return os.path.isdir(os.path.join(mdir,x)) and not re.search('^\.',d)
 
 #directories = [ "perllib", "phplib", "pylib", "shlib", "jslib", "rblib", "cpplib"] 
-directories = [ "survey" ] 
+#directories = [ "survey" ] 
+directories = [ "cop", "piwik", "hostedby", "na", "placeopedia", "yhh", "ideasbank", "cvswww", "track", "boxes", "gia", "ivfyb", "panopticon", "glocaliser", "rt", "mscouk", "meinedata", "utils" ]
 directory_map = {}
 for d in directories:
     directory_map[d] = d
 
 # We might want to overwrite a few of these names when creating
 # repositories:
-
-directory_map["hm"] = "hassleme"
+#directory_map["hm"] = "hassleme"
 #directory_map["twfy"] = "theyworkforyou"
 #directory_map["ms"] = "mysocietywww"
 #directory_map["bci"] = "fixmystreet"
