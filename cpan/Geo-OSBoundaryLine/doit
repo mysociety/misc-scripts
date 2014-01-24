@@ -1,0 +1,34 @@
+#!/bin/sh
+#
+# doit:
+# Make the Geo-OSBoundaryLine distribution.
+#
+# Called with arguments being the path to a new temporary directory from which
+# the distribution tarball will be constructed, and the path to the root of the
+# mySociety CVS tree.
+#
+# Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
+# Email: chris@mysociety.org; WWW: http://www.mysociety.org/
+#
+# $Id: doit,v 1.1 2005-12-16 16:17:18 chris Exp $
+#
+
+dist=$1
+cvs=$2
+
+die () {
+    echo "doit:" "$@" 1>&2
+    exit 1
+}
+
+if [ x$dist = x -o ! -d "$dist" ] ; then
+    die "first argument should be path to new temporary directory"
+fi
+if [ x$cvs = x -o ! -d "$cvs" ] ; then
+    die "second argument should be path to root of CVS checkout"
+fi
+
+set -e
+
+mkdir $dist/lib $dist/lib/Geo
+install $cvs/services/perllib/Geo/OSBoundaryLine.pm $dist/lib/Geo

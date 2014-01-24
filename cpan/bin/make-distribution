@@ -1,0 +1,79 @@
+#!/usr/bin/perl -w
+#
+# make-distribution:
+# From a skeleton in mysociety/cpan, make a distribution of a perl module or
+# modules.
+#
+# The idea here is that the perl modules themselves are going to be in a
+# perllib/ directory somewhere, but the various CPAN scaffolding should be
+# separate. Therefore, for each distribution, we have a "skeleton" distribution
+# in mysociety/cpan, which contains (inter alia) a "doit" script which is
+# responsible for populating a copy of that skeleton with required files (such
+# as the modules themselves). This script makes a temporary copy of the
+# skeleton, and runs various commands to make the distribution tarball.
+#
+# Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
+# Email: chris@mysociety.org; WWW: http://www.mysociety.org/
+#
+
+my $rcsid = ''; $rcsid .= '$Id: make-distribution,v 1.3 2007-08-02 11:45:00 matthew Exp $';
+
+use strict;
+
+use FindBin;
+use lib "$FindBin::Bin/../../perllib";
+
+use Cwd;
+
+use mySociety::TempFiles;
+
+sub System (@) {
+    print STDERR "+ ", join(' ', @_), "\n";
+    system(@_);
+    die if ($?);
+}
+
+if (@ARGV != 1) {
+    die "single argument should be path to a CPAN distribution skeleton";
+}
+
+my $skeleton = $ARGV[0];
+if (!-d $skeleton) {
+    die "'$skeleton' is not an existing directory";
+}
+
+my $d = mySociety::TempFiles::tempdir();
+$SIG{__DIE__} = sub { system("rm", "-rf", $d); die(@_); };
+
+# Now we need to copy things into the temporary directory, with various
+# exceptions.
+System('rsync', '-r', '-C', '--exclude=doit', "$skeleton/.", "$d/.");
+
+# Run the doit script.
+System("$skeleton/doit", $d, "$skeleton/../..");
+
+
+my $cwd = getcwd();
+chdir($d) || die "chdir: $d: $!";
+
+# ugh
+System("touch MANIFEST && find . -type f | sed 's#^\\\./##' > MANIFEST");
+System("cat", "MANIFEST");
+
+System("perl", "Makefile.PL");
+System("make", "test");
+System("make", "distdir");
+System("make", "tardist");
+
+my @dd = glob("*[0-9].tar.gz");
+if (@dd == 0) {
+    die "make tardist failed (no .tar.gz file)";
+} elsif (@dd > 1) {
+    die "more than one .tar.gz file in temporary directory";
+}
+
+chdir($cwd) || die "chdir: $cwd: $!";
+System("cp", "$d/$dd[0]", ".");
+System("rm", "-rf", $d);
+
+exit(0);
