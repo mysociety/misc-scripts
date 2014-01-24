@@ -1,0 +1,354 @@
+#!/bin/bash
+
+# This script checks all the git repositories in /data/git/public/*.git 
+# and /data/git/private/*.git to check that they are all configured correctly.
+# It doesn't attempt to fix things, just reports any problems it finds.
+
+GIT_VERSION=$(git --version|sed 's/^git version //')
+MINIMUM_GIT_VERSION=1.6.3.3
+EMAIL_PREFIX="" # we don't really need this prefix, it's kind of obvious
+GIT_HANG_ERROR="fatal: The remote end hung up unexpectedly"
+
+# Some repositories should not have mailing list notifications
+# or be mirrored to GitHub:
+NO_EMAIL_ALERTS="repdata mysociety-state"
+
+OUTPUT=$(mktemp)
+ERROR=0
+trap "rm -f $OUTPUT" EXIT
+
+function should_check_hooks {
+    ! echo $NO_EMAIL_ALERTS | egrep "\b$REPOSITORY_NAME\b" > /dev/null
+}
+
+function check_config_present {
+    KEY=$1
+    CONFIGURED_VALUE=$(git config $KEY)
+    if [ x$? != x0 ]
+    then
+        echo There was no $KEY config variable set
+        echo in the repository $d
+    fi
+}
+
+function check_config {
+    KEY=$1
+    INTENDED_VALUE=$2
+    CONFIGURED_VALUE=$(git config $KEY)
+    if [ x$? != x0 ]
+    then
+        echo There was no $KEY config variable set
+        echo in the repository $d
+    elif [ "x$CONFIGURED_VALUE" != "x$INTENDED_VALUE" ]
+    then
+        echo The config value for $KEY in $d
+        echo was \"$CONFIGURED_VALUE\" when it should be \"$INTENDED_VALUE\"
+    fi
+}
+
+function check_config_is_not {
+    KEY="$1"
+    UNWANTED_VALUE="$2"
+    CONFIGURED_VALUE="$(git config "$KEY")"
+    if [ x"$CONFIGURED_VALUE" = x"$UNWANTED_VALUE" ]
+    then
+        echo "The config option $KEY is set to $UNWANTED_VALUE, but that's not allowed."
+    fi
+}
+
+function test_header {
+   echo "==== $REPOSITORY_NAME === $1"
+}
+
+function check_shared_flag {
+   test_header "Checking that the repository was created --shared"
+   FIND_RESULTS=$(mktemp)
+   find $d -type d \! -perm -02010 -exec ls -ld {} \; > $FIND_RESULTS
+   if [ -s $FIND_RESULTS ]
+   then
+      echo "The following directories didn't have g+s set:"
+      cat $FIND_RESULTS
+   fi
+   rm -f $FIND_RESULTS
+}
+
+function check_group_ownership {
+    GROUP=$1
+    
+    test_header "Checking that expected group ownership is known"
+    if [ "$GROUP" = "" ] 
+    then 
+        echo "The expected group for files in this repository has not been set in the git-check-repositories script"
+    fi
+    test_header "Checking that group ownership is $GROUP"
+    FIND_RESULTS=$(mktemp)
+    find $d ! -group $GROUP -exec ls -ld {} \; > $FIND_RESULTS
+    if [ -s $FIND_RESULTS ]
+    then
+        echo "The following files and directories weren't group owned by $GROUP:"
+        cat $FIND_RESULTS
+    fi
+    rm -f $FIND_RESULTS  
+}
+
+function check_no_world_access {
+    test_header "Checking that repository is not world-anything"
+    FIND_RESULTS=$(mktemp)
+    find $d -maxdepth 1 ! -type l -perm /007 -exec ls -ld {} \; > $FIND_RESULTS
+    if [ -s $FIND_RESULTS ]
+    then
+        NUM_FILES=`cat $FIND_RESULTS | wc -l`
+        echo "$NUM_FILES files and directories are world-accessible, please fix"
+        echo "They were:"
+        cat $FIND_RESULTS
+    fi
+    rm -f $FIND_RESULTS  
+}
+
+function check_no_working_tree {
+    test_header "Checking that there is no working tree"
+    if [ -d $d/.git ]
+    then
+        echo "There appears to be a .git directory under ${d}"
+        echo "These repositories should have working trees."
+    fi
+}
+
+function check_anonymous_access {
+    test_header "Checking that git-daemon-export-ok exists"
+    if [ ! -e git-daemon-export-ok ]
+    then
+        echo "You need to touch git-daemon-export-ok in $d"
+        echo "in order to make the repository available via git-daemon"
+    fi
+
+    test_header "Checking that git daemon repository is working"
+    if ! git ls-remote $REPOSITORY_GIT_DAEMON > /dev/null
+    then
+        echo "The repository $REPOSITORY_NAME is not exported by git-daemon"
+        echo "The URL of the repository should be $REPOSITORY_GIT_DAEMON"
+    fi    
+}
+
+function check_no_anonymous_access {
+    test_header "Checking that git-daemon-export-ok does not exist"
+    if [ -e git-daemon-export-ok ]
+    then
+        echo "Private repositories should not be available via git-daemon"
+        echo "You need to remove git-daemon-export-ok in $d"
+    fi
+    
+    test_header "Checking there is no git daemon repository"
+    TMP_ERR=$(mktemp)
+    git ls-remote $REPOSITORY_GIT_DAEMON > /dev/null 2> $TMP_ERR
+
+    # Produce output for anything but a hang up  from the git daemon repository
+    DIFF=`echo "$GIT_HANG_ERROR" | diff $TMP_ERR -`
+    if [ -n "$DIFF" ]
+    then
+        echo "The git daemon repository $REPOSITORY_NAME did not hang up immediately"
+    fi
+    rm -f $TMP_ERR
+}
+
+function check_email_config_vars {
+    # FIXME: find where we should retrieve the mailing list address
+    # from, so that we don't have to store it in the public CVS
+    # repository.  For the moment just check that something is set:
+    test_header "Checking for the mailing list config"
+    check_config_present hooks.mailinglist
+
+    test_header "Checking for the email prefix config"
+    check_config hooks.emailprefix $EMAIL_PREFIX    
+
+    test_header "Checking that diffs are included in emails"
+    check_config hooks.showrev "git show -C %s; echo"
+}
+
+function check_github {
+    test_header "Checking that github repository is working"
+    if ! git ls-remote $REPOSITORY_GITHUB > /dev/null
+    then
+       echo "There was no corresponding repository for $REPOSITORY_NAME on github"
+       echo "It should be $REPOSITORY_GITHUB"
+    fi    
+}
+
+function check_no_github {
+    test_header "Checking that there is no github repository of a private repository"
+    TMP_ERR=$(mktemp)
+    git ls-remote $REPOSITORY_GITHUB > /dev/null 2> $TMP_ERR
+ 
+    # Produce output for anything but a hang up from the github repository
+    NO_REPO_ERROR="ERROR: Repository not found."
+    DIFF=`echo -e "$NO_REPO_ERROR\n$GIT_HANG_ERROR" | diff $TMP_ERR -`
+    if [ -n "$DIFF" ]
+    then
+       echo "A request for private repository $REPOSITORY_NAME on github was not immediately hung up on"
+    fi
+    rm -f $TMP_ERR    
+}
+
+function check_non_fastforward_merges {
+    test_header "Checking that non-fastword merges are allowed"
+    check_config_is_not receive.denyNonFastForwards true
+}
+
+function check_post_receive_hook {
+    # Get the current version of the post-receive hook from CVS, compare
+    # it to the installed version.
+    HOOK_FILE=$1
+    test_header "Checking the post-receive hook is up to date"
+    if ! diff -u /data/mysociety/bin/$HOOK_FILE $d/hooks/post-receive
+    then
+        echo "$d/hooks/post-receive differed from the standard post-receive-hook $HOOK_FILE"
+        echo "in version control."
+    fi
+}
+
+function get_expected_private_owner {
+   if [ "$REPOSITORY_NAME" = 'gut' ]
+   then
+       EXPECTED_OWNER="privategit-gut"
+   elif [ "$REPOSITORY_NAME" = 'writetothem_cities' ]
+   then 
+       EXPECTED_OWNER="privategit-cities"
+   elif [ "$REPOSITORY_NAME" = 'c4emptyhomes' ]
+   then 
+       EXPECTED_OWNER="privategit-c4eh"
+   elif [ "$REPOSITORY_NAME" = 'fixmystreet_cities' ]
+   then 
+       EXPECTED_OWNER="privategit-cities"
+   elif [ "$REPOSITORY_NAME" = 'mapumental' ]
+   then 
+       EXPECTED_OWNER="privategit-mapumental"
+   elif [ "$REPOSITORY_NAME" = 'passengerfocus' ]
+   then 
+       EXPECTED_OWNER="privategit-passengerfocus"
+   elif [ "$REPOSITORY_NAME" = 'wtf' ]
+   then
+       EXPECTED_OWNER="privategit-wtf"
+   elif [ "$REPOSITORY_NAME" = 'msjob06' ]
+   then
+       EXPECTED_OWNER="privategit-recruiting"
+   elif [ "$REPOSITORY_NAME" = 'citizenconnect' ]
+   then
+       EXPECTED_OWNER="privategit-citizenconnect"
+   elif [ "$REPOSITORY_NAME" = 'cpag' ] ||
+        [ "$REPOSITORY_NAME" = 'keys' ] ||
+        [ "$REPOSITORY_NAME" = 'mysociety-servers' ] ||
+        [ "$REPOSITORY_NAME" = 'mysociety-state' ] ||
+        [ "$REPOSITORY_NAME" = 'repdata' ] ||
+        [ "$REPOSITORY_NAME" = 'seesomething' ]
+   then
+       EXPECTED_OWNER="privatecvs"
+   else
+       echo "Error: there was no EXPECTED_OWNER defined in $BASH_SOURCE for $REPOSITORY_NAME"
+       EXPECTED_OWNER=""
+   fi
+}
+
+function check_license_present {
+    if ! git show HEAD:LICENSE.txt >/dev/null 2>/dev/null
+    then
+    : #    echo "There is no LICENSE.txt file (in HEAD at any rate)"
+    fi
+}
+
+function check_repository {
+    PRIVACY=$1
+
+    if [ "$PRIVACY" != 'private' -a "$PRIVACY" != 'public' ]; then
+        echo "Internal error, PRIVACY set to $PRIVACY"
+        exit 1
+    fi
+
+    check_shared_flag
+
+    check_no_working_tree
+
+    if should_check_hooks
+    then
+        check_email_config_vars
+    fi
+
+    if [ "$PRIVACY" = 'private' ]
+    then
+        get_expected_private_owner 
+        if [ -n "$EXPECTED_OWNER" ]
+        then
+            check_group_ownership $EXPECTED_OWNER
+        fi
+        check_no_world_access
+        check_no_anonymous_access
+    elif [ "$PRIVACY" = 'public' ]
+    then
+        check_group_ownership 'publiccvs'
+
+        check_anonymous_access
+        check_github
+
+        check_license_present
+    fi
+
+    check_non_fastforward_merges
+    if should_check_hooks
+    then
+        check_post_receive_hook "git-post-receive-hook"
+    fi
+    check_master_branch_exists
+}
+
+function check_master_branch_exists {
+    test_header "Checking that some branch exists"
+    BRANCHES="$(git for-each-ref refs/heads)"
+    if [ -z "$BRANCHES" ]
+    then
+        echo There seemed to be no branches in $d
+    fi
+}
+
+(
+    if dpkg --compare-versions $GIT_VERSION lt $MINIMUM_GIT_VERSION
+    then
+        echo "The version of git in PATH is too old ($GIT_VERSION) -"
+        echo It should be at least $MINIMUM_GIT_VERSION
+    fi
+
+    for repository_type in public private
+    do
+
+        for d in /data/git/$repository_type/*.git
+        do
+            (
+                REPOSITORY_NAME=$(basename $(readlink -f "$d") | sed 's/\.git//')
+                test_header "Trying to change into the repository directory"
+                if cd $d
+                then
+
+                    REPOSITORY_GITHUB="git@GitHub:mysociety/${REPOSITORY_NAME}.git"
+                    REPOSITORY_GIT_DAEMON="git://git.mysociety.org/${REPOSITORY_NAME}"
+
+                    check_repository $repository_type
+
+                else
+
+                    echo "Couldn't change into $d"
+
+                fi
+
+
+            ) >$OUTPUT 2>&1
+            if egrep -v '^( *$| *=)' $OUTPUT > /dev/null 2>&1
+            then
+                cat $OUTPUT
+                ERROR=1
+            fi
+        done
+
+    done
+
+)
+
+exit $ERROR
+

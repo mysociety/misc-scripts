@@ -1,0 +1,93 @@
+#!/bin/bash
+#
+# backup-stuff:
+# Backup mySociety CVS repository and other things.
+#
+# Copyright (c) 2004 UK Citizens Online Democracy. All rights reserved.
+# Email: chris@mysociety.org; WWW: http://www.mysociety.org/
+#
+# $Id: backup-stuff,v 1.38 2010-09-03 09:30:05 francis Exp $
+#
+
+set -e
+PATH=/software/bin:$PATH
+
+RSYNC_RSH=ssh
+export RSYNC_RSH
+# * --delete is to delete files no longer in the backup, but in previous copy we
+# use to speed up backup
+# * --partial is in case it is interrupted, may as well keep what we got
+# * We don't use --inplace as it slows down transfers of "gzip --rsyncable" SQL
+# dumps, "(5) the efficiency of rsync’s delta-transfer algorithm may be reduced
+# if some data in the destination file is overwritten before it can be copied
+# to a position later in the file"
+rsyncopts="--partial -raq --delete"
+
+if tty 2>&1 > /dev/null ; then
+    function debug () {
+        echo "backup-cvs:" "$@" 1>&2
+    }
+    rsyncopts="-rav --delete"
+else
+    function debug () {
+        :
+    }
+fi
+
+# Delete old backups of some databases on a fast cycle for privacy/space (one week)
+# Delete every database backup older than a slow cycle (2 months)
+deletefastcycle="fyr mapit evel twfy"
+fastcycle=$( date +%Y%m%dT%H%M%S --date='1 week ago')
+slowcycle=$( date +%Y%m%dT%H%M%S --date='6 weeks ago')
+for X in _data_backups_????????T??????; do
+    # Delete older than fast cycle
+    if [[ "$X" < "_data_backups_$fastcycle" ]]; then
+        #echo "delete fast cycle: $X"
+        chmod u+w $X
+        for Y in $deletefastcycle
+        do
+            #echo "deleting fast cycle: $X $Y"
+            rm -fr $X/$Y.*
+        done
+        chmod u-w $X
+    fi
+    # Delete older than slow cycle
+    if [[ "$X" < "_data_backups_$slowcycle" ]]; then
+        #echo "deleting slow cycle: $X"
+        chmod u+w $X
+        rm -fr $X
+    fi
+done
+
+# Get daily copy of backups from server
+for thing in /data/backups; do
+    dir=$( echo $thing | sed s@/@_@g )
+    now=$( date +%Y%m%dT%H%M%S )
+    target=${dir}_$now
+
+    debug "date of current backup is $now"
+
+    # Find latest backup
+    latest=$( ls -d ${dir}_????????T?????? 2> /dev/null | tail -n 1 )
+
+    if [ x$latest = x$target ] ; then
+        debug "last backup has same timestamp; waiting and trying again"
+        sleep 1
+        exec $0 "$@"
+    fi
+
+    # this is a bit daft, as small errors lose any backup there was
+    #trap "echo 'backup of $thing failed' 1>&2 ; rm -rf $target; exit 1" EXIT
+
+    # make copy of previous backup to speed things up
+    if [ x$latest != x ] ; then
+        cp -a $latest $target
+    else
+        mkdir $target
+    fi
+
+    rsync $rsyncopts readbackups@peas.ukcod.org.uk:$thing/. $target/.
+
+    #trap '' EXIT
+done
+

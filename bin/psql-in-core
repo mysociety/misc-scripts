@@ -1,0 +1,60 @@
+#!/bin/bash
+#
+# psql-in-core:
+# Estimate the fraction of the data in each PostgreSQL database that is
+# currently in core.
+# 
+# Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
+# Email: chris@mysociety.org; WWW: http://www.mysociety.org/
+#
+
+set -e
+#set -x # debug
+
+MINCORE=$(dirname $(readlink -f $0))/../utils/mincore
+if [ ! -e "$MINCORE" ]
+then
+	echo "Please compile $MINCORE first"
+	exit
+fi
+
+trap '[ x$DUFILE != x ] && rm $DUFILE ; [ x$IDMAP != x ] && rm $IDMAP' EXIT
+
+# XXX tempfile usage is not safe here
+IDMAP=`tempfile`
+DUFILE=`tempfile`
+
+for VERSION in 7.4 8.1 8.3
+do
+    if [ -e "/etc/init.d/postgresql-$VERSION" ]
+    then
+        PORT=`grep "port = " /etc/postgresql/$VERSION/main/postgresql.conf | sed "s/port = //" | sed "s/#.*$//" `
+
+        DBDIR=`readlink --canonicalize /etc/postgresql/$VERSION/main/pgdata`
+        if [ ! -e "$DBDIR" ] # on 8.3 we just use default location
+        then
+            DBDIR=/var/lib/postgresql/$VERSION/main
+        fi
+
+        if [ -e "$DBDIR" ]
+        then
+            echo "version $VERSION"
+
+            # Get mapping between disk ids and names of databases
+            cat <<END | su postgres -c "psql -p $PORT template1" | egrep -v "Output format|rows\)|datid|pgsql_tmp" | sort -k 1b,1 | sed "s/|/ /" > $IDMAP
+            \pset format unaligned
+            select datid,datname from pg_stat_database
+END
+
+            # Get disk space used up by each id
+            cd $DBDIR/base
+            #du -hs * | sed "s/\t/ /g;" | sort -n +1 >$DUFILE
+
+            for i in * ; do echo -n "$i " ; find $i -type f | xargs $MINCORE | awk '{ if ($3 > 0) { size += $3 / 1024.; incore += $2 / 1024.; } } END { printf "%.1f%% %.1fMB\n", 100. * incore / size, size / 1024.; }' ; done | egrep -v "psql_tmp" | sort -k 1b,1 > $DUFILE
+
+            # Merge them together
+            join -j 1 -t " " -o 1.2,2.2,2.3 $IDMAP $DUFILE | sort -k 1
+            #echo $IDMAP $DUFILE
+        fi
+    fi
+done

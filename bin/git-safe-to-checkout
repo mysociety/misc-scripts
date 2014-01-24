@@ -1,0 +1,98 @@
+#!/bin/bash
+#
+# git-safe-to-checkout:
+# Succeeds if no local changes have been made to a git repository,
+# including submodules recursively, and it's safe to checkout a
+# given new commit.
+#
+# Parameters are:
+# $1 - directory of git repository checkout
+# $2 - git ref to check against - name of ref (object name, a tag, or the
+#      remote-tracking branch name) in git.  If this is not supplied,
+#      then only checking for local modifications is done
+#
+# Copyright (c) 2009 UK Citizens Online Democracy. All rights reserved.
+# Email: francis@mysociety.org; WWW: http://www.mysociety.org/
+
+#set -x # debug
+
+FULL_SCRIPT_COMMAND=$(readlink -f $0)
+SCRIPT_COMMAND=$(basename $FULL_SCRIPT_COMMAND)
+
+set -e
+. $(dirname $FULL_SCRIPT_COMMAND)/../shlib/deployfns
+
+if [ "$#" != "1" ] && [ "$#" != "2" ]
+then
+    echo "Usage: $SCRIPT_COMMAND <directory> [ <git-ref> ]"
+    exit 2
+fi
+
+DIRECTORY="$1"
+GIT_REF="$2"
+
+cd "$DIRECTORY"
+
+# Check that we have a working tree (taken from require_work_tree in
+# git-sh-setup):
+test x$(git rev-parse --is-inside-work-tree) = xtrue || die "Error: The directory `pwd` must be a git repository with a working tree."
+
+# Check that the directory is the top level of the repository,
+# i.e. that there is a .git directory in $DIRECTORY.  (Similarly,
+# this test is suggested by git-sh-setup.)
+test -z $(git rev-parse --show-cdup) || die "Error: The directory `pwd` must be the top level of a repository."
+
+# Update all the remote-tracking branches from origin:
+git fetch origin || die "Error: 'git fetch origin' in `pwd` failed."
+
+# Check there are no changes in the working tree that aren't in the
+# index:
+git diff --exit-code || die "Error: Uncommitted changes in the working copy in `pwd`."
+
+# Check that there are no uncommitted changes in the index:
+git diff --cached --exit-code || die "Error: Staged changes exist in the index in `pwd`."
+
+# Check for any untracked files in the working tree:
+UNTRACKED_FILES=$(git ls-files --others --directory --no-empty-directory --exclude-standard)
+test -z "$UNTRACKED_FILES" || die "Error: There are untracked (and unignored files) in the repository:\n$UNTRACKED_FILES"
+
+# Check that the current ref is contained in one of the remote tracking 
+# branches after "git fetch origin" i.e. that any changes to the
+# deployed repository have been pushed back to the blessed repository.
+BRANCH=$(git branch -r --contains HEAD)
+if [ -z "$BRANCH" ]
+then
+    die "Error: Changes have been made in the deployed repository (in `pwd`) that are not in the blessed repository"
+fi
+
+# Go through each submodule, from:
+SUBMODULES=$(git submodule status | awk '{ print $2; }')
+# ... to check that the remote-tracking branches are up to date:
+for S in $SUBMODULES
+do
+    # Get the absolute path of the submodule and the current directory:
+    D=$(readlink -f $S)
+
+    # If there's a new commit specified and this submodule still
+    # exists in it, we can recursively check the submodule and its new
+    # state - othrewise, just check it for local modifications.
+    if [ -n "$GIT_REF" ] && git rev-parse --verify --quiet $GIT_REF:$S > /dev/null
+    then
+
+        # Get the version of the submodule that is committed in the remote branch:
+        V=`git rev-parse $GIT_REF:$S`
+
+        # Recursively check that the submodule is similarly
+        # safe to merge:
+        $FULL_SCRIPT_COMMAND $D $V
+
+        # Now check that the submodule version in the remote branch
+        # is actually available in the submodule:
+        cd $S
+        git show $V > /dev/null 2> /dev/null || die "Error: Submodule '$S' commit '$V' not found in `pwd` (submodule hasn't been pushed, perhaps?)"
+        cd - > /dev/null
+    else
+        $FULL_SCRIPT_COMMAND $D
+    fi
+
+done

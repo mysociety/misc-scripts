@@ -1,0 +1,54 @@
+#!/usr/bin/perl -w
+#
+# mysociety-check-deployed-hosts
+# Says which sites in vhosts.pl aren't actually deployed. (So you can remove
+# them from vhosts.pl)
+#
+# Copyright (c) 2009 UK Citizens Online Democracy. All rights reserved.
+# Email: francis@mysociety.org; WWW: http://www.mysociety.org/
+#
+
+my $rcsid = ''; $rcsid .= '$Id: mysociety-check-deployed-hosts,v 1.1 2009-12-10 11:25:24 francis Exp $';
+
+package main;
+
+use strict;
+require 5.8.0;
+
+use FindBin;
+use lib "$FindBin::RealBin/../perllib";
+my $mysociety_bin = $FindBin::RealBin;
+my $servers_dir = "$FindBin::RealBin/../../servers";
+my $mysociety_dir = "$FindBin::RealBin/../../mysociety";
+
+use mySociety::SystemMisc qw(shell);
+use mySociety::Config;
+
+use Data::Dumper;
+use DBI
+
+our $verbose = $ENV{VERBOSE} ? 1 : 0;
+
+#####################################################################
+# Main code
+
+# Read in configuration file
+our ($vhosts, $sites, $databases);
+require "$servers_dir/vhosts.pl";
+
+# Go through each vhost
+my $database_configs;
+foreach my $vhost (keys %{$vhosts}) {
+    my $params = $vhosts->{$vhost};
+    foreach my $server (@{$params->{'servers'}}) {
+        next if $server eq 'hotpot'; # skip it for now
+        #print "====", $vhost, $server, "\n";
+        system("ssh", $server, "test -e /data/vhost/$vhost");
+        if ($?) {
+            print "$vhost on $server not deployed\n";
+        }
+    }
+}
+
+
+

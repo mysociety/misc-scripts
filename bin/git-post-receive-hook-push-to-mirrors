@@ -1,0 +1,153 @@
+#!/usr/bin/ruby -w
+
+require 'json'
+require 'net/https'
+
+usage_message = <<EOUSAGE
+Usage: git-post-receive-hook-push-to-mirrors <RESPOSITORY-NAME> (public|private)
+
+  <RESPOSITORY-NAME> is used to form the github repository URL,
+  e.g. 'whatdotheyknow' means the repository URL will be
+  'git@GitHub:mysociety/whatdotheyknow.git'.  The second parameter
+  must be either 'public' or 'private' indicating whether the named
+  repository is in /data/git/public or /data/git/private
+EOUSAGE
+
+unless ARGV.length == 2
+  STDERR.puts usage_message
+  exit(1)
+end
+
+repository_name, repository_type = ARGV
+
+unless ['public', 'private'].include? repository_type
+  STDERR.puts usage_message
+  exit(1)
+end
+
+ssh_alias = 'GitHub'
+personal_ssh_alias = 'GitHubAsMe'
+
+# GitHub exposes the user that pushed rather more than I think it
+# should - usually the pusher is uninteresting compared to the author
+# or committer.  However, because GitHub shows the generic
+# "mysociety-pusher" user in the activity log, among other places,
+# people have requested the push should appear to come from
+# themselves.  We want to transition smoothly to this for people who
+# care about that, so we check if an alias called GitHubAsMe exists in
+# their ~/.ssh/config, and if so, use that instead.
+
+# The ~/.ssh/config should look like:
+#
+# Host GitHubAsMe
+#   Hostname=github.com
+#   User=git
+#   IdentityFile=/home/mark/.ssh/id_rsa
+#
+# ... where the user should make sure the IdentityFile is the private
+# key corresponding to a public key they have added to their personal
+# GitHub account's SSH keys.
+
+ssh_config_filename = File.join(ENV['HOME'], '.ssh', 'config')
+if File.exists? ssh_config_filename
+  open(ssh_config_filename) do |f|
+    unless f.grep(/^Host\s+#{Regexp.escape(personal_ssh_alias)}\b/).empty?
+      ssh_alias = personal_ssh_alias
+    end
+  end
+end
+
+# Use the GitHub API to check that the respository we're trying to
+# push to exists, and that it the public / private status matches:
+
+token = nil
+open('/etc/mysociety/github-oauth/token.json') do |f|
+  token = JSON.parse(f.read)['token']
+end
+
+unless token
+  STDERR.puts "Failed to find the GitHub API token"
+  exit(1)
+end
+
+# Now fetch the list of repositories from the GitHub API:
+
+http = Net::HTTP.new('api.github.com', 443)
+http.use_ssl = true
+http.verify_mode = OpenSSL::SSL::VERIFY_PEER
+
+# Bizarrely, specifying the path to the certificate directory fails
+# with the version of libruby1.8 on majestic (1.8.7.352-2).  The same
+# code seems to be fine on my laptop with libruby1.8 at version
+# 1.8.7.352-2ubuntu1, with the correct certificate being present on
+# both systems.  However, it seems that specifying the certificate
+# that's required here manually does work.  That's unsatisfying, but
+# it's probably a waste of time trying to track down a bug that's
+# clearly been fixed in some later version...
+
+# http.ca_path = '/etc/ssl/certs'
+http.ca_file = '/etc/ssl/certs/DigiCert_High_Assurance_EV_Root_CA.pem'
+
+response = http.get('/orgs/mysociety/repos?per_page=100',
+                    'User-Agent' => 'mySociety.org/1.0',
+                    'Authorization' => "bearer #{token}")
+
+if response.code != '200'
+  STDERR.puts "The GitHub API call failed with status #{response.code}: #{response.body}"
+  exit(1)
+end
+
+all_repositories = JSON.parse(response.body)
+
+matching = all_repositories.select { |r| r['name'] == repository_name }
+
+if matching.empty?
+  STDERR.puts "There was no GitHub repository called '#{repository_name}'"
+  STDERR.puts "Please create it on GitHub."
+  if repository_type == 'private'
+    STDERR.puts "(Make sure that it is private!)"
+  end
+  # As a note, we could use the API to create the repository here.
+  exit(1)
+elsif matching.length > 1
+  STDERR.puts "There were multiple mysociety repositories called '#{repository_name}' (!?!)"
+  exit(1)
+end
+
+repository_info = matching[0]
+
+github_type = 'public'
+# Make sure that we test for equality with true, since any string
+# would be truthy, even "false":
+if repository_info['private'] == true
+  github_type = 'private'
+end
+
+unless github_type == repository_type
+  STDERR.puts "Refushing to mirror the #{repository_type} repository '#{repository_name}'"
+  STDERR.puts "to the #{github_type} repository mysociety/#{repository_name} on GitHub."
+  exit(1)
+end
+
+repository = "git@#{ssh_alias}:mysociety/#{repository_name}.git"
+result = 0
+
+STDIN.each do |line|
+  rev_old, rev_new, ref = line.chomp.split(" ")
+
+  # If object name of the new commit is all zeros, that indicates that
+  # the ref is being deleted.  In that case, the left hand side of the
+  # refspec that we push should be empty:
+
+  rev_new = '' if rev_new =~ /^0{40}$/
+
+  refspec = "#{rev_new}:#{ref}"
+
+  puts "Now pushing #{refspec} to the mysociety repository on github (#{repository})"
+
+  unless system("git","push","-f",repository,refspec)
+    result = 1
+  end
+end
+
+exit(result)

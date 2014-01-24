@@ -1,0 +1,31 @@
+#!/bin/sh
+#
+# bin/latest-log-symlink
+# Creates symbolic links to latest error_log and access_log
+#
+# Copyright (c) 2004 UK Citizens Online Democracy. All rights reserved.
+# Email: francis@mysociety.org; WWW: http://www.mysociety.org/
+#
+# $Id: latest-log-symlink,v 1.2 2004-12-14 17:31:28 francis Exp $
+#
+
+set -e
+
+for VHOST in /data/vhost/*
+do
+    for TYPE in access_log error_log
+    do
+        LATEST=$( ls $VHOST/logs/$TYPE* 2>/dev/null | sort | tail -1 )
+        if [ x$LATEST != x ]
+        then
+            SYMLINK=$VHOST/logs/$TYPE
+            if [ -e $SYMLINK -a ! -h $SYMLINK ]
+            then
+                echo >&2 "Error $SYMLINK is a file"
+                exit 1
+            fi
+            ln -fs $LATEST $VHOST/logs/$TYPE
+        fi
+    done
+done
+

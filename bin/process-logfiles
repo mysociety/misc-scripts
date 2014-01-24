@@ -1,0 +1,84 @@
+#!/usr/bin/perl -w
+#
+# Sync logfiles to machine secure.mysociety.org is on, run them
+# through awstats.
+#
+
+use strict;
+use Sys::Hostname;
+use Data::Dumper;
+use FindBin;
+
+use lib "$FindBin::RealBin/../perllib";
+use mySociety::ServerClass;
+
+# Global config
+my $cache_dir = '/var/cache/process-logfiles';
+my $awstats_output_dir = '/var/lib/awstats';
+my $awstats = '/usr/lib/cgi-bin/awstats.pl';
+
+our ($vhosts, $sites, $databases);
+require "/data/servers/vhosts.pl";
+
+my $awstats_server = $vhosts->{'secure.mysociety.org'}{servers}[0];
+
+my (@vhosts, %other_servers);
+foreach (keys %$vhosts) {
+    my $staging = $vhosts->{$_}{staging};
+    my @servers = @{$vhosts->{$_}{servers}};
+    my $stats = defined($vhosts->{$_}{stats})
+        ? $vhosts->{$_}{stats}
+        : $sites->{$vhosts->{$_}{site}}{stats};
+    if (!$staging && $stats) {
+        $_ .= '.81' if $_ eq 'parlvid.mysociety.org';
+        push @vhosts, $_;
+        foreach (@servers) {
+            my $server = $_;
+            next if $server eq $awstats_server;
+            next if (!mySociety::ServerClass::server_in_class($server, "webserver"));
+            $other_servers{$server} = 1;
+        }
+    }
+} 
+my @other_servers = sort keys %other_servers;
+
+
+
+system("mkdir -p $cache_dir");
+my $today = `date +"%Y-%m-%d"`;
+my $yesterday = `date --date yesterday +"%Y-%m-%d"`;
+
+# All servers need the config files generating (for the web interface)
+foreach (@vhosts) {
+    # Generate awstats conf file from template file
+    (my $vhost_alias = $_) =~ s/www\.//;
+    $vhost_alias =~ s/\./\\\\./g;
+    system("echo '\$awstats_vhost = \"$_\"; \$awstats_vhost_aliases = \"$vhost_alias\";' | /data/mysociety/bin/mugly -O /etc/awstats/awstats.$_.conf -p - /etc/awstats/awstats.template.conf");
+}
+
+# Exit unless we're on the awstats server
+exit if hostname ne $awstats_server;
+
+# Copy log files locally, collate them, process them and copy output back to all servers
+foreach my $vhost (@vhosts) {
+    # Copy all log files from all machines to the cache directory
+    foreach my $server ($awstats_server, @other_servers) {
+        # Check to see if server has the vhost, if so get its log files
+        (my $vhost_escaped = $vhost) =~ s/\./\\\\./g;
+        if (!system("rsync --rsh='ssh' $server:/data/vhost/ | grep $vhost_escaped\$ >/dev/null")) {
+            system("rsync --rsh='ssh' --include 'access_log.*' --exclude '*' --delete --archive $server:/data/vhost/$vhost/logs/ $cache_dir/$vhost-$server/");
+        }
+    }
+
+    # Process all the log files, except for today's (because you want to be sure all
+    # the files from all the servers have rotated, so everything is available to
+    # be merged together in order)
+    my $log_files = `find $cache_dir -type f | grep "/$vhost-.*/" | grep -v $today`;
+    $log_files =~ s/\n/ /g;
+    if ($log_files) {
+        system("/usr/bin/zmergelog $log_files | $awstats -update -config=$vhost >/dev/null");
+    } else {
+        print "No log files found for $vhost, probably remove it from process-logfiles\n";
+    }
+}
+

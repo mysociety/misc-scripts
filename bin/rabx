@@ -1,0 +1,52 @@
+#!/usr/bin/perl -w -I ../perllib/
+#
+# rabx:
+# Calls RABX functions from command line.  Run with no parameters for help.
+# 
+# Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
+# Email: francis@mysociety.org; WWW: http://www.mysociety.org/
+
+my $rcsid = ''; $rcsid .= '$Id: rabx,v 1.4 2007-10-17 10:03:44 francis Exp $';
+
+use strict;
+use RABX;
+use Data::Dumper;
+$Data::Dumper::Terse = 1;
+
+if (!scalar(@ARGV)) {
+print <<END;
+Make a remote function call to a specified RABX service.
+
+    ./rabx URL FUNCTION [PARAMS ...]
+    
+PARAMS are interpreted as separate scalar parameters to the function.
+If a PARAM contains a , it will be split on that and used as an array
+parameter. If it contains a => it will be split on that and , and used
+as a hash parameter. The return value is displayed in the same format as
+Perl's Data::Dumper.
+
+Examples:
+
+./rabx http://gaze.mysociety.org/gaze Gaze.get_country_from_ip 216.239.37.99
+(gets the country code for IP address 216.239.37.99)
+END
+exit;
+}
+
+my $url = shift @ARGV or die "Specify URL as first parameter";
+my $function = shift @ARGV or die "Specify function name as second parameter";
+
+my $rabx = new RABX::Client($url) or die "Failed to create RABX client for $url";
+my @params;
+foreach (@ARGV) {
+    if (/=>/) {
+        push @params, { split /=>|,/ };
+    } elsif (/,/) {
+        push @params, [ split /,/ ];
+    } else {
+        push @params, $_;
+    }
+}
+my $result = $rabx->call($function, @params);
+print Dumper($result);
+

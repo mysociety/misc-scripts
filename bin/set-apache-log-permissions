@@ -1,0 +1,23 @@
+#!/usr/bin/perl
+#
+# For staging sites, set Apache log permission to the owner of the site.
+#
+
+use strict;
+use warnings;
+
+use File::Basename;
+
+do '/data/servers/vhosts.pl';
+our $vhosts;
+
+foreach my $i (glob '/data/vhost/*') {
+    my $vhost=basename($i);
+    if(defined($vhosts->{$vhost})) {
+        if($vhosts->{$vhost}{'staging'}) {
+            do "/data/vhost/$vhost/settings-autogen.pl";
+            our ($user, $group);
+            system "chown $user:$group /data/vhost/$vhost/logs/access_log /data/vhost/$vhost/logs/error_log";
+        }
+    }
+}

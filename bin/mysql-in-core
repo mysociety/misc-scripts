@@ -1,0 +1,44 @@
+#!/bin/bash
+#
+# mysql-in-core:
+# Estimate the fraction of the data in each MySQL database that is currently in
+# core memory.
+# 
+# Copyright (c) 2007 UK Citizens Online Democracy. All rights reserved.
+# Email: francis@mysociety.org; WWW: http://www.mysociety.org/
+#
+
+set -e
+
+MINCORE=$(dirname $(readlink -f $0))/../utils/mincore
+if [ ! -e "$MINCORE" ]
+then
+	echo "Please compile $MINCORE first"
+	exit
+fi
+
+# The obvious method of grepping in /etc/my.cnf for datadir doesn't help as
+# that value isn't always there, so use mysqladmin instead.
+DBDIR=`mysqladmin variables | grep datadir | cut -d "|" -f 3 | sed "s/ //g"`
+
+if [ -e "$DBDIR" ]
+then
+	# Get disk space used up by each id
+	cd $DBDIR
+
+	for i in *
+	do 
+	    if [ -d "$i" ]
+	    then
+		echo -n "$i "
+		find $i -type f | xargs $MINCORE | awk '{ if ($3 > 0) { size += $3 / 1024.; incore += $2 / 1024.; } } END { printf "%.1f%% %.1fMB\n", (size > 0 ? 100. * incore / size : -0), size / 1024.; }'
+	    else
+		echo -n
+		#echo "Skipping $i, not a directory"
+	    fi
+	done
+else
+	echo "Can't find MySQL data directory"
+fi
+
+

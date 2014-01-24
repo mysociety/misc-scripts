@@ -1,0 +1,131 @@
+#!/usr/bin/perl -w
+#
+# generate-pgpass:
+# Creates ~/.pgpass files for users to whom it is convenient to give access to
+# databases. Overwrites any existing ~/.pgpass file for the specified users.
+#
+# Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
+# Email: francis@mysociety.org; WWW: http://www.mysociety.org/
+# 
+
+my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.168 2013-01-09 15:41:05 louise Exp $';
+
+use strict;
+require 5.8.0;
+
+use FindBin;
+use lib "$FindBin::Bin/../perllib";
+use POSIX;
+
+use mySociety::TempFiles;
+use mySociety::ServerClass;
+
+my $servers_dir = "$FindBin::Bin/../../servers";
+require "$servers_dir/vhosts.pl";
+
+our ($vhosts, $sites, $databases);
+
+# Permissions above the automatic ones, e.g. for people to have access to live
+# databases, or for services that aren't set up as standard.
+# XXX these should be moved into flags in vhosts.pl
+my %extra_perms = (
+    'atlas' => {
+	'louise' => [ 'foi' ],
+        'skenaja' => [ 'foi' ], # so he can do stats and stuff
+    },
+    'milo' => {
+        'tilma' => [ 'openstreetmap', 'openstreetmap-gb' ],
+    },
+    'stork' => {
+        'tilma' => [ 'openstreetmap', 'openstreetmap-gb' ],
+    },
+    'buffalo' => {
+        'debbi' => [ 'bci', 'ycml', 'fyr' ],
+        'matthew' => [ 'bci', 'bci-emptyhomes', 'pb', 'ycml', 'ycml-cllr', 'fyr' ],
+        'timsk' => [ 'pb' ],
+    },
+    'elephant' => {
+        'matthew' => [ 'openstreetmap-gb', 'openstreetmap' ],
+        'louise' => [ 'hm' ],
+    },
+    'vulcan' => {
+        'matthew' => ['bbcparlvid'],
+        'louise' => ['bbcparlvid'],
+    },
+    'majestic' => {
+        # Is this needed on new services too?
+        'dademcron' => ['fyr'],
+    },
+    'arrow' => {
+        # What was this needed for?
+        'mssecure' => ['donate'],
+    },
+    'victory' => {
+       'louise' => [ 'foi-demo' ],
+    },
+);
+
+# begin with the overrides from above ...
+my %perms;
+foreach my $host (keys %extra_perms) {
+    foreach my $user (keys %{$extra_perms{$host}}) {
+        foreach (@{$extra_perms{$host}{$user}}) {
+            $perms{$host}{$user}{$_} = 1;
+            $perms{$host}{'root'}{$_} = 1;
+        }
+    }
+}
+
+# ... add in logging as the database user on the appropriate server
+foreach my $vhost (values %$vhosts) {
+    next unless $vhost->{databases};
+    my $user = $vhost->{user} || $sites->{$vhost->{site}}->{user};
+    foreach my $db (@{$vhost->{databases}}) {
+	foreach my $server (@{$vhost->{servers}}) {
+	    $perms{$server}{$user}{$db} = 1;
+	}
+        $perms{$databases->{$db}{host}}{'root'}{$db} = 1;
+    }
+}
+
+foreach my $database_name (keys %$databases) {
+    my $database_info = $databases->{$database_name};
+
+    # ... on backup hosts, give root access to all databases
+    if ($database_info->{backup}) {
+        foreach my $server (mySociety::ServerClass::all_servers_in_class("backups")) {
+            $perms{$server}{'root'}{$database_name} = 1;
+        }
+    }
+
+    # ... add root access to databases not associated with vhosts
+    $perms{$database_info->{host}}{'root'}{$database_name} = 1;
+}
+
+my $server = (uname())[1];
+my $database_permissions = $perms{$server};
+die "generate-pgpass not configured for server $server" unless $database_permissions;
+
+foreach my $user (sort keys %$database_permissions) {
+    my @x = getpwnam($user) or die "$user: getpwnam: $!";
+    my ($user_login, $user_pass, $user_uid, $user_gid) = @x;
+    my $user_home = $x[7];
+
+    my ($tmpn, $tmph) = mySociety::TempFiles::create_file_to_replace("$user_home/.pgpass") or die "open: $!";
+    $tmph->print("# DO NOT EDIT - edit and rerun generate-pgpass instead\n");
+
+    my $databases = $database_permissions->{$user};
+    foreach my $database (sort keys %$databases) {
+        my $password = `$FindBin::Bin/pgpw $database`;
+        chomp $password;
+        $tmph->print("*:*:$database:$database:$password\n") || throw Oops("$tmpn: write: $!");
+    }
+    $tmph->close();
+
+    chmod 0400, $tmpn;
+    chown($user_uid, $user_gid, $tmpn);
+
+    my $dest = "$user_home/.pgpass";
+    rename($tmpn, $dest);
+}
+

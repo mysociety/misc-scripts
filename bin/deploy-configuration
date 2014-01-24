@@ -1,0 +1,962 @@
+#!/usr/bin/perl -w
+#
+# deploy-configuration:
+# Deploy the configuration of a server, using a tree of configuration files
+# (presumably under revision control) and a file of definitions.
+#
+# This program does three things:
+#
+# - Check that the currently-installed configuration files are the same as
+#   those which were last installed (using a copy of those installed on the
+#   last run stored in a tar file).
+#
+# - Construct a set of files suitable for installation from those in version
+#   control, by processing _perm, *.symlink and *.ugly files where appropriate,
+#   and copying everything else.
+#
+# - Install the constructed set of files onto the real filesystem.
+#
+# Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
+# Email: chris@mysociety.org; WWW: http://www.mysociety.org/
+#
+
+my $rcsid = ''; $rcsid .= '$Id: deploy-configuration,v 1.60 2013-03-20 15:49:01 ian Exp $';
+
+package Oops;
+
+use strict;
+@Oops::ISA = qw(Error::Simple);
+
+package main;
+
+use strict;
+require 5.8.0;
+
+use FindBin;
+use lib "$FindBin::Bin/../perllib";
+
+use Archive::Tar;
+use Archive::Tar::Constant;
+use Errno;
+use Error qw(:try);
+use Fcntl qw(:mode);
+use File::Find;
+use File::Spec;
+use File::Copy;
+use File::stat;
+use File::SymbolicMode;
+use Getopt::Long;
+use IO::File;
+use IO::Pipe;
+use Pod::Usage;
+use POSIX qw(getuid mkfifo);
+use Unix::Mknod qw(major minor makedev mknod);
+
+use mySociety::SystemMisc;
+use mySociety::TempFiles;
+
+umask(0000);
+
+my $default_uid = 0;
+my $default_gid = 0;
+my $default_file_mode = 0640;
+my $default_dir_mode = 0750;
+
+my $mugly_bin = "$FindBin::Bin/mugly";
+
+my $save_file;
+
+sub System (@) {
+    system(@_);
+    throw Oops("$_[0]: " . mySociety::SystemMisc::describe_waitval($?, "system"))
+        if ($?);
+}
+
+my $be_verbose = 0;
+sub verbose (@) {
+    return unless ($be_verbose);
+    print STDERR @_;
+}
+
+# install_file SOURCE DESTINATION DATA [KEY VALUE ...]
+# Install the file at SOURCE to DESTINATION. Optionally set the uid, gid and
+# mode of the installed file using appropriate KEYs and VALUEs. If DATA is
+# defined, it should be a reference to a scalar into which the contents of the
+# file will be stored.
+sub install_file ($$%) {
+    my ($source, $dest, $data, %options) = @_;
+
+    my $st = stat($source) || throw Oops("$source: stat: $!");
+    
+    $options{uid} ||= $st->uid();
+    $options{gid} ||= $st->gid();
+    $options{mode} ||= $st->mode() & 07777;
+
+    my $f = new IO::File($source, O_RDONLY)
+                || throw Oops("$source: open: $!");
+    my $g;
+    my $tempname;
+    try {
+        while (1) {
+            $tempname = sprintf('%s.%08x', $dest, int(rand(0xffffffff)));
+            $g = new IO::File($tempname, O_WRONLY | O_CREAT | O_EXCL, $options{mode});
+            if ($g) {
+                last;
+            } elsif (!$!{EEXIST}) {
+                throw Oops("$tempname: open: $!");
+            }
+        }
+        my $buf = '';
+        my $n;
+        do {
+            $n = $f->read($buf, 65536);
+            throw Oops("$source: read: $!") if (!defined($n));
+            $$data .= $buf if ($data);
+            $g->print($buf) || throw Oops("$dest: write: $!");
+        } while ($n > 0);
+        $f->close();
+        $g->close() || throw Oops("$tempname: close: $!");
+        chown($options{uid}, $options{gid}, $tempname)
+            || throw Oops("$tempname: chown: $!");
+        rename($tempname, $dest)
+            || throw Oops("$tempname: rename: $!");
+    } finally {
+        unlink($tempname) if (defined($tempname));
+    };
+}
+
+# install_mknod SOURCE DESTINATION [KEY VALUE ...]
+# Install the device special file at SOURCE to DESTINATION. Optionally set the
+# uid and gid of the symlink using appropriate KEYs and VALUEs.
+sub install_mknod ($$%) {
+    my ($source, $dest, %options) = @_;
+
+    my $st = stat($source) || throw Oops("$source: stat: $!");
+
+    $options{uid} ||= $st->uid();
+    $options{gid} ||= $st->uid();
+    
+    my $mode = $st->mode();
+    throw Oops("$source: is not a block device, character device, or named pipe")
+        if (!S_ISCHR($mode) && !S_ISBLK($mode) && !S_ISFIFO($mode));
+
+    my $tempname;
+    try {
+        while (1) {
+            $tempname = sprintf('%s.%08x', $dest, int(rand(0xffffffff)));
+            my $fn = 'mkfifo';
+            my $res;
+            if (S_ISFIFO($st->mode())) {
+                $res = mkfifo($tempname, $st->mode());
+            } else {
+                # NB mknod doesn't follow perl's convention for syscall return
+                # values.
+                $res = mknod($tempname, $st->mode(), $st->rdev()) == -1 ? undef : 1;
+                
+                $fn = sprintf('mknod %s %d %d', S_ISCHR($st->mode()) ? 'c' : 'b', major($st->rdev()), minor($st->rdev()));
+            }
+            if ($res) {
+                last;
+            } elsif (!$!{EEXIST}) {
+                throw Oops("$tempname: $fn: $!");
+            }
+        }
+        chown($options{uid}, $options{gid}, $tempname)
+            || throw Oops("$tempname: chown: $!");
+        rename($tempname, $dest)
+            || throw Oops("$tempname: rename: $!");
+    } finally {
+        unlink($tempname);
+    };
+}
+
+# install_symlink SOURCE DESTINATION [KEY VALUE ...]
+# Install the symlink at SOURCE to DESTINATION. Optionally set the uid and gid
+# of the symlink using appropriate KEYs and VALUEs.
+sub install_symlink ($$%) {
+    my ($source, $dest, %options) = @_;
+
+    my $st = lstat($source) || throw Oops("$source: lstat: $!");
+    my $target = readlink($source) || throw Oops("$source: readlink: $!");
+
+    $options{uid} ||= $st->uid();
+    $options{gid} ||= $st->gid();
+
+    my $tempname;
+    try {
+        while (1) {
+            $tempname = sprintf('%s.%08x', $dest, int(rand(0xffffffff)));
+            if (symlink($target, $tempname)) {
+                last;
+            } elsif (!$!{EEXIST}) {
+                throw Oops("$tempname: symlink: $!");
+            }
+        }
+
+        System('chown', '-h', "$options{uid}:$options{gid}", $tempname);
+
+        rename($tempname, $dest) || throw Oops("$tempname: rename: $!");
+    } finally {
+        unlink($tempname);
+    };
+
+    return $target;
+}
+
+# read_perms DIRECTORY
+# If there is in DIRECTORY a _perm file indicating ownership and permissions
+# for files in that directory, read its contents and return them as a reference
+# to a hash of FILENAME => [UID, GID, MODE]. Dies on error.
+sub read_perms ($) {
+    my $indir = shift;
+    $indir =~ s#(?<!^)/$##;
+    my $f = new IO::File("$indir/_perm");
+    my $h = { };
+    try {
+        if (!$f) {
+            if ($!{ENOENT}) {
+                return { };
+            } else {
+                throw Oops("$indir/_perm: $!");
+            }
+        }
+
+        verbose("READPERMS $indir/_perm\n");
+
+        my $n = 0;
+        while (defined(my $line = $f->getline())) {
+            ++$n;
+            chomp($line);
+            # Skip lines which are blank or begin #.
+            next if ($line =~ /^#/ || $line =~ /^\s*$/);
+
+            $line =~ s/^\s+//;
+            $line =~ s/\s+$//;
+
+            my ($name, $owner, $mode) = split(/\s+/, $line);
+
+            my ($uid, $gid, $perm);
+
+            # Ownership.
+            if ($owner =~ /([^:]+):([^:]+)/) {
+                ($uid, $gid) = ($1, $2);
+                if ($uid !~ /^(0|[1-9][0-9]*)$/) {
+                    $uid = getpwnam($uid);
+                    throw Oops("$indir/_perm:$n: '$1' is not a valid UID or username")
+                        if (!defined($uid));
+                }
+                if ($gid !~ /^(0|[1-9][0-9]*)$/) {
+                    $gid = getgrnam($gid);
+                    throw Oops("$indir/_perm:$n: '$2' is not a valid GID or groupname")
+                        if (!defined($gid));
+                }
+            } elsif ($owner ne '-') {
+                throw Oops("$indir/_perm:$n: '$owner' is not a valid owner string (should be U:G)");
+            }
+
+            # Permissions.
+            if ($mode eq '-') {
+                ;
+            } elsif ($mode =~ /^0?[0-7]+$/) {
+                $perm = oct($mode);
+            } elsif (!defined($perm = File::SymbolicMode::symbolic_mode(0, $mode))) {
+                throw Oops("$indir/_perm:$n: '$mode' is neither a valid octal nor a symbolic mode");
+            }
+
+            $uid = $default_uid if (!defined($uid));
+            $gid = $default_gid if (!defined($uid));
+            if (!defined($perm)) {
+                my $st = stat("$indir/$name");
+                if ($st) {
+                    $perm = $st->mode() & 07777;
+                } else {
+                    $perm = $default_file_mode;
+                }
+            }
+
+            $h->{$name} = [$uid, $gid, $perm];
+        }
+
+        throw Oops("$indir/_perm:$n: $!") if ($f->error());
+    } finally {
+        $f->close() if (defined($f));
+    };
+
+    return $h;
+}
+
+# process_directory INDIR OUTDIR SETTINGS
+# Process the contents of INDIR (configuration file templates under version
+# control), writing it into OUTDIR, and using the given SETTINGS file (which is
+# passed by the -p option to mugly). Operates recursively, processing files
+# before subdirectories. Dies on error.
+sub process_directory ($$$);
+sub process_directory ($$$) {
+    my ($indir, $outdir, $settings) = @_;
+    $indir =~ s#(?<!^)/$##;
+    $outdir =~ s#(?<!^)/$##;
+
+    verbose("PROCESS $indir\n");
+    my $perm = read_perms($indir);
+
+    my %havefile;
+    my @subdirs = ( );
+    opendir(D, $indir) or die "$indir: opendir: $!";
+    while (defined(my $name = readdir(D))) {
+        # XXX should have an exclusion list (maybe use .cvsignore?)
+        next if ($name eq '_perm' || $name eq '.' || $name eq '..' || $name eq 'CVS' || $name =~ /~$/ || $name =~ /^\.#/);
+        throw Oops("$indir/$name: already created $name, from $havefile{$name}")
+            if (exists($havefile{$name}));
+        my $s = lstat("$indir/$name");
+        my $mode = $s->mode() & 00755;
+        my $is_symlink = 0;
+        if (S_ISDIR($s->mode())) {
+            # This is a directory. Create it in the output, and add it to the
+            # list of subdirectories into which to recurse.
+            my $m = exists($perm->{$name}) ? $perm->{$name}->[2] : $mode;
+            verbose("DIRECTORY $indir/$name\n");
+            mkdir("$outdir/$name", $m) or throw Oops("$outdir/$name: mkdir: $!");
+            $havefile{$name} = $name;
+            push(@subdirs, $name);
+        } elsif (S_ISREG($s->mode())) {
+            if ($name =~ /.\.symlink$/ || $name =~ /.\.symlink\.ugly$/) {
+                # Do any template processing on symlink target
+                my $mugly = 0;
+                if ($name =~ /\.ugly$/) {
+                    $name =~ s/\.ugly$//;
+                    # make temporary file with .symlink extension
+                    System($mugly_bin, '-O', "$indir/$name", "-p", $settings, "$indir/$name.ugly");
+                    $mugly = 1; # remember to unlink to symlink file later
+                }
+                # File specifies a symlink which should be created.
+                my $f = new IO::File("$indir/$name")
+                    or throw Oops("$indir/$name: open: $!");
+                my $target = join('', $f->getlines());
+                throw Oops("$indir/$name: read: $!") if ($f->error());
+                $f->close();
+                $name =~ s/\.symlink$//;
+                throw Oops("$indir/$name.symlink: already created $name, from $havefile{$name}")
+                    if (exists($havefile{$name}));
+                $target =~ s#\n$##s;
+                throw Oops("$indir/$name.symlink: symlink file syntax is 'To: TARGET\\n'") if ($target !~ /^To:/);
+                $target =~ s#^To:\s*##;
+                throw Oops("$indir/$name.symlink: specified symlink target contains illegal characters") if ($target =~ /[\0\n]/);
+                # absolute symlinks are bad if during disaster recovery the drive is mounted
+                # somewhere other than /
+                print STDERR "$indir/$name.symlink: warning: symlink target is absolute\n" if ($target =~ m#^/#);
+                verbose("SYMLINK $indir/$name\n");
+                symlink($target, "$outdir/$name") or throw Oops("$outdir/$name: symlink: $!");
+                $havefile{$name} = "$name.symlink";
+                $is_symlink = 1;
+                unlink("$indir/$name.symlink") if $mugly;
+            } elsif ($name =~ /.\.mknod$/) {
+                # File specifies a block or character device or a named pipe.
+                my $f = new IO::File("$indir/$name")
+                    or throw Oops("$indir/$name: open: $!");
+                my $spec = join('', $f->getlines());
+                throw Oops("$indir/$name: read: $!") if ($f->error());
+                $f->close();
+
+                $name =~ s/\.mknod$//;
+                throw Oops("$indir/$name.mknod: already created $name, from $havefile{$name}")
+                    if (exists($havefile{$name}));
+
+                $spec =~ s/^\s*//s;
+                $spec =~ s/\s*$//s;
+                if ($spec eq 'p') {
+                    verbose("MKFIFO $indir/$name");
+                    throw Oops("$outdir/$name: mkfifo: $!")
+                        unless (mkfifo("$outdir/$name", $mode));
+                } if ($spec =~ m#^([bcp])\s+([1-9]\d*)\s+([1-9]\d*)$#) {
+                    # Device special file.
+                    verbose("MKNOD $indir/$name\n");
+                    my ($major, $minor, $type);
+                    $type = $1 eq 'b' ? S_IFBLK : S_IFCHR;
+                    $major = $2;
+                    $minor = $3;
+                    throw Oops("$outdir/$name: mknod $1 $major $minor: $!")
+                        unless (mknod("$outdir/$name", $type | $mode, makedev($major, $minor)) == 0);
+                        # NB mknod's odd return-value convention
+                } else {
+                    throw Oops("$indir/$name: mknod file syntax is 'p' or 'b MAJOR MINOR' or 'c MAJOR MINOR'");
+                }
+                $havefile{$name} = "$name.mknod";
+            } elsif ($name =~ /.\.ugly$/) {
+                # File specifies macro source.
+                $name =~ s/\.ugly$//;
+                throw Oops("$indir/$name: already created $name, from $havefile{$name}")
+                    if (exists($havefile{$name}));
+                verbose("MUGLY $indir/$name\n");
+                System($mugly_bin, '-O', "$outdir/$name", "-p", $settings, "$indir/$name.ugly");
+                $havefile{$name} = "$name.ugly";
+            } else {
+                verbose("COPY $indir/$name\n");
+                install_file("$indir/$name", "$outdir/$name", undef,
+                              mode => exists($perm->{$name}) ? $perm->{$name}->[2] : $mode);
+                $havefile{$name} = $name;
+            }
+        } else {
+            throw Oops("$indir/$name: not a regular file or a directory");
+        }
+
+        my ($uid, $gid) = ($default_uid, $default_gid);
+        if (exists($perm->{$name})) {
+            ($uid, $gid) = @{$perm->{$name}};
+            $mode = $perm->{$name}->[2];
+        }
+        if ($is_symlink) {
+            # perl lacks lchown
+            System('chown', '-h', "$uid:$gid", "$outdir/$name");
+        } else {
+            chown($uid, $gid, "$outdir/$name")
+                or throw Oops("$outdir/$name: chown: $!");
+            chmod($mode, "$outdir/$name")
+                or throw Oops("$outdir/$name: chmod: $!");
+        }
+    } 
+    closedir(D);
+
+    foreach my $dir (@subdirs) {
+        process_directory("$indir/$dir", "$outdir/$dir", $settings);
+    }
+}
+
+# file_type MODE
+# Return a description of the type of the file with the given MODE bits.
+sub file_type ($) {
+    my $m = shift;
+    if (S_ISDIR($m)) {
+        return "directory";
+    } elsif (S_ISREG($m)) {
+        return "regular file";
+    } elsif (S_ISLNK($m)) {
+        return "symbolic link";
+    } elsif (S_ISFIFO($m)) {
+        return "named pipe";
+    } elsif (S_ISCHR($m)) {
+        return "character device";
+    } elsif (S_ISBLK($m)) {
+        return "block device";
+    }
+}
+
+# file_type_tar MODE
+# Return the tar file type for a file with the given MODE bits.
+sub file_type_tar ($) {
+    my $m = shift;
+    if (S_ISDIR($m)) {
+        return Archive::Tar::Constant::DIR;
+    } elsif (S_ISREG($m)) {
+        return Archive::Tar::Constant::FILE;
+    } elsif (S_ISLNK($m)) {
+        return Archive::Tar::Constant::SYMLINK;
+    } elsif (S_ISFIFO($m)) {
+        return Archive::Tar::Constant::FIFO;
+    } elsif (S_ISCHR($m)) {
+        return Archive::Tar::Constant::CHARDEV;
+    } elsif (S_ISBLK($m)) {
+        return Archive::Tar::Constant::BLOCKDEV;
+    }
+}
+
+# file_type_from_tar TYPE
+# Give the tar file TYPE of a file, return a description of its type.
+sub file_type_from_tar ($) {
+    my $t = shift;
+    if ($t == Archive::Tar::Constant::DIR) {
+        return "directory";
+    } elsif ($t == Archive::Tar::Constant::FILE) {
+        return "regular file";
+    } elsif ($t == Archive::Tar::Constant::SYMLINK) {
+        return "symbolic link";
+    } elsif ($t == Archive::Tar::Constant::FIFO) {
+        return "named pipe";
+    } elsif ($t == Archive::Tar::Constant::CHARDEV) {
+        return "character device";
+    } elsif ($t == Archive::Tar::Constant::BLOCKDEV) {
+        return "block device";
+    }
+}
+
+# install_files TAR INDIR [OUTDIR]
+# Install files from INDIR (presumably, the OUTDIR previously passed to
+# process_files) onto the real system to OUTDIR, or, if it is not specified, /.
+# Record the files saved in TAR so that they can be compared against those on
+# the real system later.
+sub install_files ($$;$);
+use Data::Dumper;
+sub install_files ($$;$) {
+    my ($tar, $indir, $outdir) = @_;
+    $indir =~ s#(?<!^)/$##;
+    $outdir ||= '/';
+
+    verbose("INSTALL TO $outdir\n");
+
+    my @subdirs = ( );
+    opendir(D, $indir) or throw Oops("$indir: opendir: $!");
+    while (defined(my $name = readdir(D))) {
+        next if ($name eq '.' || $name eq '..');
+        my $outname = $outdir eq '/' ? "$outdir$name" : "$outdir/$name";
+        $outname = File::Spec->canonpath($outname);
+        my $st = lstat("$indir/$name") || throw Oops("$indir/$name: lstat: $!");
+
+        my %taropts = (
+                uid => $st->uid(),
+                uname => scalar(getpwuid($st->uid())),
+                gid => $st->gid(),
+                gname => scalar(getgrgid($st->gid())),
+                mode => S_IMODE($st->mode()),
+                type => file_type_tar($st->mode())
+            );
+
+        if (S_ISDIR($st->mode())) {
+            my $st2 = lstat($outname);
+            throw Oops("$outname: lstat: $!") if (!$st2 && !$!{ENOENT});
+            throw Oops("$outname: already exists, but is a " . file_type($st2->mode()) . ", not a directory")
+                if ($st2 && !S_ISDIR($st2->mode()));
+            verbose("DIRECTORY $outname\n");
+            if (!$st2) {
+                mkdir($outname, $st->mode() & 07777)
+                    || throw Oops("$outname: mkdir: $!");
+            }
+            chmod($st->mode() & 07777, $outname)
+                || throw Oops("$outname: chmod: $!");
+            chown($st->uid(), $st->gid(), $outname)
+                || throw Oops("$outname: chown: $!");
+            push(@subdirs, $name);
+            $tar->add_data(".$outname", "", \%taropts);
+        } elsif (S_ISREG($st->mode())) {
+            my $filedata;
+            verbose("FILE $outname\n");
+            install_file("$indir/$name", $outname, \$filedata);
+            $tar->add_data(".$outname", $filedata, \%taropts);
+        } elsif (S_ISCHR($st->mode()) || S_ISBLK($st->mode())) {
+            $taropts{devmajor} = major($st->rdev());
+            $taropts{devminor} = minor($st->rdev());
+            verbose("MKNOD $outname\n");
+            install_mknod("$indir/$name", $outname);
+            $tar->add_data(".$outname", "", \%taropts);
+        } elsif (S_ISLNK($st->mode())) {
+            verbose("SYMLINK $outname\n");
+            $taropts{linkname} = install_symlink("$indir/$name", $outname);
+            $tar->add_data(".$outname", "", \%taropts);
+        } else {
+            throw Oops("$indir/$name: not a regular file, directory, block or character device, or symlink");
+        }
+    }
+    closedir(D);
+    
+    foreach my $dir (@subdirs) {
+        my $outname = $outdir eq '/' ? "$outdir$dir" : "$outdir/$dir";
+        install_files($tar, "$indir/$dir", $outname);
+    }
+}
+
+# Internal use by install_files_dry_run
+sub compare_modes ($$$) {
+    my ($outname, $st, $st2) = @_;
+    if (!$st2 || ($st->mode() & 07777) != ($st2->mode() & 07777)) {
+        print "chmod " . ($st->mode() & 07777) . " $outname\n";
+    }
+    if (!$st2 || $st->uid() != $st2->uid() || $st->gid() != $st2->gid()) {
+        print "chown " . getpwuid($st->uid()) . ":" . getgrgid($st->gid()) . " $outname\n";
+    }
+}
+
+# install_files_dry_run INDIR [OUTDIR]
+# Output what would happen if installing files from INDIR (presumably, the
+# OUTDIR previously passed to process_files) onto the real system to OUTDIR,
+# or, if it is not specified, /.
+sub install_files_dry_run ($;$);
+use Data::Dumper;
+sub install_files_dry_run ($;$) {
+    my ($indir, $outdir) = @_;
+    $indir =~ s#(?<!^)/$##;
+    $outdir ||= '/';
+
+    my @subdirs = ( );
+    opendir(D, $indir) or throw Oops("$indir: opendir: $!");
+    while (defined(my $name = readdir(D))) {
+        next if ($name eq '.' || $name eq '..');
+        my $outname = $outdir eq '/' ? "$outdir$name" : "$outdir/$name";
+        $outname = File::Spec->canonpath($outname);
+        my $st = lstat("$indir/$name") || throw Oops("$indir/$name: lstat: $!");
+        my $st2 = lstat($outname);
+        throw Oops("$outname: lstat: $!") if (!$st2 && !$!{ENOENT});
+
+        if (S_ISDIR($st->mode())) {
+            throw Oops("$outname: already exists, but is a " . file_type($st2->mode()) . ", not a directory")
+                if ($st2 && !S_ISDIR($st2->mode()));
+            if (!$st2) {
+                print "mkdir $outname\n";
+            }
+            compare_modes($outname, $st, $st2);
+            push(@subdirs, $name);
+        } elsif (S_ISREG($st->mode())) {
+            if (!$st2) {
+                print "cat >$outname <<DEPLOYEND\n";
+                system('cat', "$indir/$name");
+                print "DEPLOYEND\n";
+            } else {
+                system('diff', '-u', $outname, "$indir/$name");
+            }
+            compare_modes($outname, $st, $st2);
+        } elsif (S_ISCHR($st->mode()) || S_ISBLK($st->mode())) {
+            if (!$st2) {
+                printf("mknod %s %s %d %d\n", $outname, S_ISCHR($st->mode()) ? 'c' : 'b', major($st->rdev()), minor($st->rdev()));
+            }
+            compare_modes($outname, $st, $st2);
+        } elsif (S_ISLNK($st->mode())) {
+            if (!$st2) {
+                print "ln -s " . readlink("$indir/$name") . " $outname\n";
+            }
+            compare_modes($outname, $st, $st2);
+        } else {
+            throw Oops("$indir/$name: not a regular file, directory, block or character device, or symlink");
+        }
+    }
+    closedir(D);
+    
+    foreach my $dir (@subdirs) {
+        my $outname = $outdir eq '/' ? "$outdir$dir" : "$outdir/$dir";
+        install_files_dry_run("$indir/$dir", $outname);
+    }
+}
+
+
+# compare_installed_files H TAR DIR
+# Compare the files installed on the machine (under DIR) with those archived in
+# TAR. Discrepancies are reported to H, and the total number of discrepancies
+# returned.
+sub compare_installed_files ($$$) {
+    my ($h, $tar, $dir) = @_;
+    my $n = 0;
+    foreach my $f ($tar->list_files([qw(prefix name type uid gid mode linkname devmajor devminor)])) {
+        my $name;
+        if($f->{prefix}) {
+            $name = "$f->{prefix}/$f->{name}";
+        } else {
+            $name = "$f->{name}";
+        }
+        my $st = lstat("$dir/$name");
+        verbose("CHECKING $dir/$name\n");
+        my @what;
+        if (!$st) {
+            if ($!{ENOENT}) {
+                push(@what, "removed");
+            } else {
+                throw Oops("$dir/$name: lstat: $!");
+            }
+        } else {
+            # Metadata.
+            push(@what, sprintf('UID changed: was %d; now %d', $f->{uid}, $st->uid()))
+                if ($st->uid() != $f->{uid});
+            push(@what, sprintf('GID changed: was %d; now %d', $f->{gid}, $st->gid()))
+                if ($st->gid() != $f->{gid});
+            push(@what, sprintf('permissions changed: were %04o; now %04o', S_IMODE($f->{mode}), S_IMODE($st->mode())))
+                if (S_IMODE($f->{mode}) != S_IMODE($st->mode()));
+            push(@what, sprintf('file type changed: was %s; now %s', file_type_from_tar($f->{type}), file_type($st->mode())))
+                if ($f->{type} != file_type_tar($st->mode()));
+            if ($f->{type} == Archive::Tar::Constant::SYMLINK && $f->{type} == file_type_tar($st->mode())) {
+                my $target = readlink("$dir/$name")
+                                || throw Oops("$dir/$name: readlink: $!");
+                push(@what, sprintf('target of symbolic link changed: was %s; now %s', $f->{linkname}, $target))
+                    if ($f->{linkname} ne $target);
+            } elsif ($f->{type} == Archive::Tar::Constant::BLOCKDEV || $f->{type} == Archive::Tar::Constant::CHARDEV && $f->{type} == file_type_tar($st->mode())) {
+                # XXX from <sys/sysmacros.h>, but this will probably break with
+                # a later kernel or libc.
+                my $major = major($st->rdev());
+                my $minor = minor($st->rdev());
+                push(@what, sprintf('type of device changed: was %d %d; now %d %d', $f->{devmajor}, $f->{devminor}, $major, $minor))
+                    if ($major != $f->{devmajor} || $minor != $f->{devminor});
+            } elsif ($f->{type} == Archive::Tar::Constant::FILE && $f->{type} == file_type_tar($st->mode())) {
+                # Compare the two files.
+                my ($tmph, $tmpn) = mySociety::TempFiles::named_tempfile();
+                try {
+                    $tmph->print($tar->get_content($name))
+                        || throw Oops("$tmpn: write: $!");
+                    $tmph->close();
+                    my $p = new IO::Pipe() || throw Oops("pipe: $!");
+                    $p->reader("diff", "-au", $tmpn, "$dir/$name");
+                    my @diff;
+                    while (defined(my $line = $p->getline())) {
+                        chomp($line);
+                        push(@diff, $line);
+                    }
+                    throw Oops("read from diff: $!") if ($p->error());
+                    $p->close(); # calls wait
+                    if ($? & 127) {
+                        throw Oops("diff: died with signal " . ($? & 127));
+                    } elsif ($? >> 8) {
+                        push(@what,
+                            'contents of file changed; diff follows:',
+                            map { "> $_" } 
+                                '--- as last installed',
+                                '+++ at present',
+                                @diff[2 .. $#diff]);
+                    }
+                } finally {
+                    unlink($tmpn);
+                };
+            }
+        }
+
+        if (@what) {
+            ++$n;
+            my $path = File::Spec->canonpath("$dir/$name");
+            $h->print("$path\n", map { "  $_\n" } @what);
+        }
+    }
+
+    return $n;
+}
+
+my $retval = 0;
+my $tempdir;
+try {
+    my $help;
+    my $only_check_existing = 0;
+    my $no_check_existing = 0;
+    my $only_check_new = 0;
+    my $dry_run = 0; # produces a diff, but doesn't install anything
+    my $target = '/';
+    if (!GetOptions(
+            'help' =>               \$help,
+            'verbose' =>            \$be_verbose,
+            'check-existing' =>     \$only_check_existing,
+            'no-check-existing' =>  \$no_check_existing,
+            'check-new' =>          \$only_check_new,
+            'dry-run' =>            \$dry_run,
+            'save-file=s' =>        \$save_file,
+            'mugly-path=s' =>       \$mugly_bin,
+            'target=s' =>           \$target
+        )) {
+        throw Oops("bad options; try --help for help");
+    }
+
+    if ($help) {
+        pod2usage(-exitval => 0, -verbose => 2);
+        exit(0);
+    }
+
+    throw Oops("--no-check-existing does not make sense with --check-existing")
+        if ($only_check_existing && $no_check_existing);
+
+    throw Oops("--check-new does not make sense with --check-existing")
+        if ($only_check_existing && $only_check_new);
+
+    throw Oops("--save-file required, e.g. /var/lib/deploy-configuration.tar")
+        if (!$save_file);
+
+    throw Oops("can't find executable mugly (tried $mugly_bin)")
+        unless ($only_check_existing || -x $mugly_bin);
+    throw Oops("must be run as root")
+        if (getuid() != 0);
+    throw Oops("target directory '$target' does not exist")
+        unless (-d $target);
+
+    my ($tree, $settings);
+
+    if (!$only_check_existing) {
+        throw Oops("two arguments must be template configuration tree and settings file")
+            if (@ARGV != 2);
+
+        ($tree, $settings) = @ARGV;
+
+        throw Oops("first argument must be a directory: $tree")
+            if (!-d $tree);
+        # Not -f in case user wants to specify /dev/null
+        throw Oops("can't read settings file")
+            if (!-e $settings || !-r $settings);
+    }
+
+    # Compare existing files to those in a named archive.
+    if (!$no_check_existing && !$only_check_new) {
+        verbose("reading previous configuration from $save_file\n");
+        throw Oops("Server has probably been added to a new archetype, please run with --no-check-existing to make new config reference tarball. Not found: $save_file") if !-e $save_file;
+        my $tar = new Archive::Tar();
+        my $h = new IO::File($save_file, O_RDONLY)
+                    || throw Oops("$save_file: $!");
+        # Archive::Tar doesn't have what you'd really call error *handling*, so
+        # just handle any exception that gets thrown.
+        try {
+            $tar->read($h);
+        } catch Error with {
+            throw Oops("$save_file: not a valid tar file");
+        } finally {
+            $h->close();
+        };
+        $retval = compare_installed_files(\*STDOUT, $tar, '/');
+        verbose("differences in $retval files\n");
+
+        throw Oops("$retval files differ between installed and new")
+            if ($retval && !$only_check_existing);
+    }
+
+    # Build the tree of new configuration files.
+    if ($retval == 0 && !$only_check_existing) {
+        verbose("installing files from $tree with settings from $settings\n");
+        verbose("building tree of new configuration files...\n");
+        $tempdir = mySociety::TempFiles::tempdir();
+        verbose("temporary directory is $tempdir\n");
+        process_directory($tree, $tempdir, $settings);
+
+        if ($dry_run) {
+            install_files_dry_run($tempdir, $target);
+        } elsif (!$only_check_new) {
+            my $tar = new Archive::Tar();
+            verbose("installing new configuration files...\n");
+            install_files($tar, $tempdir, $target);
+
+            verbose("saving current configuration in $save_file\n");
+            my $f;
+            my $t;
+            while (1) {
+                $t = sprintf('%s.%08x', $save_file, int(rand(0xffffffff)));
+                $f = new IO::File($t, O_WRONLY | O_CREAT | O_EXCL, 0600);
+                if ($f) {
+                    last;
+                } elsif (!$!{EEXIST}) {
+                    throw Oops("$t: open: $!");
+                }
+            }
+            try {
+                $tar->write($f);
+            } catch Error with {
+                unlink($t);
+                throw Oops("$t: write: $!");
+            };
+            # New versions of Archive::Tar close the file when they write to it
+            # so check before we close. Can remove once we are all at Etch and above.
+            if ($f->opened()) {
+                $f->close() || throw Oops("$t: close: $!");
+            }
+            if (!rename($t, $save_file)) {
+                unlink($t);
+                throw Oops("$t: rename: $!");
+            }
+        }
+    }
+} catch Oops with {
+    my $E = shift;
+    print STDERR "deploy-configuration: ", $E->text(), "\n";
+    $retval ||= 1;
+} finally {
+    mySociety::TempFiles::tempdir_cleanup($tempdir) if ($tempdir);
+};
+
+exit($retval);
+
+__END__
+
+=head1 NAME
+
+deploy-configuration
+
+=head1 SYNOPSIS
+
+deploy-configuration --help | [OPTIONS] [TREE SETTINGS]
+
+=head1 DESCRIPTION
+
+Check and deploy machine configurations from a TREE of files under version
+control, applying further configuration information from a SETTINGS file.
+
+Certain files within TREE are treated specially by this program. These are:
+
+=over 4
+
+=item *.mknod
+
+The contents of the file, which should be either "p", "b MAJOR MINOR", or
+"c MAJOR MINOR" are read, and used to create a named pipe, block device file,
+or character device file, in the manner of mknod(1).
+
+
+=item *.symlink
+
+The contents of the file, which should be a single line reading "To: TARGET",
+are read, and a correspondingly named symbolic link to the given TARGET is
+created.
+
+=item *.ugly
+
+These files are run through with the mugly macro processor to produce an
+output file without the ".ugly" suffix. mugly is invoked with "-p SETTINGS"
+preceding the named file, so that variable assignments etc. made in that file
+are available.
+
+=item *.symlink.ugly
+
+Makes symbolic links just like *.symlink, only the file is first processed with
+mugly as for *.ugly files. This lets you have variables in the symbolic link
+target.
+
+=item _perm
+
+The contents of _perm are used to set the permissions and ownership of other
+files in the same directory as the _perm file. Each line in _perm should be
+blank, or start with a "#", or give the name, ownership and permissions of a
+single file. Ownership is specified as USER:GROUP, where each part may be
+either a UID/GID or a named user or group. Permissions may be specified as an
+octal bitmask, or as a chmod(1)-style symbolic mode. Permissions in any _perm
+file override those on corresponding files in TREE.
+
+=back
+
+deploy-configuration copies and processes files from TREE into a temporary
+directory, and then installs files from that directory into the root
+directory.
+
+=head1 OPTIONS
+
+=over 4
+
+=item --help
+
+Display this help message.
+
+=item --verbose
+
+Print lots of verbose debugging information on standard error.
+
+=item --check-existing
+
+Only check that the existing configuration files match those last installed by
+this program; do not generate or install any new configuration files. If this
+argument is specified, you need not specify TREE or SETTINGS.
+
+=item --no-check-existing
+
+Do not check that the existing configuration files match those last installed
+by this program. Use with caution.
+
+=item --check-new
+
+Only check that the new configuration files can be generated from TREE and
+SETTINGS; do not check the existing files or install the new ones.
+
+=item --dry-run
+
+Don't actually install the new configuration, instead output the changes that
+will be made to the destination. You can combine this with --no-check-existing,
+which can be useful/confusing; it will display diffs from the point of view of
+any local modifications that are going to be wiped.
+
+=item --save-file TARFILE
+
+Save the newly-installed configuration files in TARFILE and read the previous
+files from that location. Required unless doing --no-check-existing.
+
+=item --mugly-path PATH
+
+Set the PATH to the mugly macro-processor (or a compatible program with the
+same invocation semantics).
+
+=item --target DIRECTORY
+
+Install files into DIRECTORY and its subdirectories, rather than /.
+
+=back
+
+=cut

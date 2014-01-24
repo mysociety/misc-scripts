@@ -1,0 +1,31 @@
+#!/bin/sh
+#
+# Synchronise NFS servers' files.
+#
+# Ian Chard <ian@mysociety.org>
+#
+
+SYNC_PATH='/export/'
+UNISON='/opt/unison/bin/unison'
+
+case "$HOSTNAME" in
+    'elephant')
+        SYNC_PAIR='buffalo'
+	;;
+    'buffalo')
+        SYNC_PAIR=''    # we want the timestamp file but nothing else
+	;;
+    *)
+	exit 0
+        ;;
+esac
+
+# Update the timestamp on a 'flag' file, so we can check that synchronisation is working.
+touch $SYNC_PATH/.$HOSTNAME-timestamp
+
+# Don't continue unless we have a synchronisation target
+[ "$SYNC_PAIR" ] || exit
+
+# Run the sync as the last command so the exit status is preserved.
+# Errors will still go to stderr despite '-silent'.
+/usr/bin/ionice -c 3 $UNISON -batch -times -owner -group -retry 5 -preferpartial "Path .$HOSTNAME-timestamp -> $SYNC_PATH" "$SYNC_PATH" "ssh://$SYNC_PAIR//$SYNC_PATH" >> /var/log/unison.log 2>&1

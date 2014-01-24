@@ -1,0 +1,27 @@
+#!/bin/sh
+
+
+# Script to execute the "megarc" binary for LINUX ONLY
+# This script opens a node at run time. It gets the major
+# no of the megadev and then opens a node with the major number.
+# If the node is already present, it removes the node first
+# and then creates a fresh node.
+# The binary "megarc.bin" must be present in the same directoy
+# where the script is invoked from.
+
+
+# Get the major number of the megadev ioctl node
+MAJOR=`grep megadev /proc/devices|awk '{print $1}'`
+
+if [ ! x$MAJOR = x ]
+then
+	# major device number found
+	rm -f /dev/megadev0 	# remove if already there, ignore if not.
+	mknod /dev/megadev0  c $MAJOR 0
+fi
+
+# Execute the megarc binary with the cmd line parameters
+
+./megarc.bin $*
+
+

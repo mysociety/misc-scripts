@@ -1,0 +1,1245 @@
+#!/usr/bin/perl -w
+#
+# deploy-vhost:
+# Deploy a virtual host.
+#
+# Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
+# Email: francis@mysociety.org; WWW: http://www.mysociety.org/
+#
+
+my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.201 2014-01-23 10:51:37 mark Exp $';
+
+package main;
+
+use strict;
+require 5.8.0;
+
+use FindBin;
+use lib "$FindBin::Bin/../perllib";
+my $mysociety_bin = $FindBin::Bin;
+my $servers_dir = "$FindBin::Bin/../../servers";
+my $machines_dir = "$servers_dir/machines";
+my $mysociety_dir = "$FindBin::Bin/../../mysociety";
+
+use mySociety::SystemMisc qw(shell);
+use mySociety::Config;
+
+use Cwd;
+use Errno;
+use POSIX qw(getuid);
+use Time::Piece;
+use Data::Dumper;
+use File::Slurp;
+use File::Copy;
+use File::Temp qw(tempfile mktemp);
+
+our $verbose = $ENV{VERBOSE} ? 1 : 0;
+
+sub deploy_logger {
+    my $message = shift;
+    shell("/data/mysociety/bin/deploy-logger", $message);
+}
+
+#####################################################################
+# General functions
+
+sub make_dir {
+    my $dir = shift;
+    if (! -d $dir) {
+        mkdir($dir) || die "failed to mkdir '$dir'";
+    }
+}
+
+sub make_symlink {
+    my ($a, $b) = @_;
+    my $current = readlink($b);
+    if (!$current) {
+        symlink($a, $b) || die "failed to make symlink '$b' -> '$a'";
+    } elsif ($current ne $a) {
+        die "remove existing wrong symlink '$b' -> '$current' first, so can become '$b' -> '$a'";
+    }
+}
+
+sub pgpw {
+    $_ = shift;
+    $_ = `/data/mysociety/bin/pgpw $_`;
+    die "pgpw failed with error code $?" if $? > 0;
+    s/\s+$//;
+    return $_;
+}
+
+sub chdir_verbose {
+    my ($line, $dir) = @_;
+    if ($verbose) {
+        print STDERR "Changing directory (at line $line) to $dir\n";
+    }
+    chdir $dir;
+}
+
+#####################################################################
+# Main code
+
+# Read in configuration file
+our ($vhosts, $sites, $databases);
+require "$servers_dir/vhosts.pl";
+
+# Check command line parameters, look up in config file
+die "Specify virtual host name as first parameter, deploy/stop/update/start/remove as second parameter" if scalar(@ARGV) < 2;
+my $vhost = $ARGV[0];
+my $vhost_conf = $vhosts->{$vhost};
+die "vhost '$vhost' is not in vhosts.pl" if !$vhost_conf;
+my $site = $vhost_conf->{'site'};
+die "site not specified for '$vhost' in vhosts.pl" if !$site;
+my $site_conf = $sites->{$site};
+die "site '$site' is not in vhosts.pl" if !$site_conf;
+my $vhost_dir = "/data/vhost/$vhost";
+my $action = $ARGV[1];
+die "Specify 'deploy', 'stop', 'update', 'start' or 'remove' as second parameter" if $action ne "deploy" && $action ne "stop" && $action ne "update" && $action ne "start" && $action ne 'remove';
+
+my $flush = 0;
+$flush = 1 if @ARGV > 2 && $ARGV[2] eq '--flush';
+
+my $hostname = `hostname`;
+chomp($hostname);
+
+# Merge vhost and site configs together
+my $conf;
+foreach my $key ( keys %$site_conf ) { $conf->{$key} = $site_conf->{$key}; }
+foreach my $key ( keys %$vhost_conf ) { $conf->{$key} = $vhost_conf->{$key}; }
+die "must specify 'servers' in vhost config" if (!exists($conf->{servers}));
+die "must specify 'staging' in vhost config" if (!exists($conf->{staging}));
+die "must specify one of 'cvs_dirs' or 'git_repository' or 'private_git_repository' in vhost config" if (!exists($conf->{cvs_dirs}) && !exists($conf->{git_repository}) && !exists($conf->{private_git_repository}));
+die "must specify 'cvs_dirs' or 'git_repository' (not both) in vhost config" if (exists($conf->{cvs_dirs}) && exists($conf->{git_repository}) );
+my $vcspath;
+my $cvs = 0;
+my $git = 0;
+if (exists($conf->{cvs_dirs})) {
+    die "must specify 'cvs_user' in vhost config" if (!exists($conf->{cvs_user}));
+    die "must not specify 'git_user' in vhost config if you have 'cvs_dirs'" if (exists($conf->{git_user}));
+    $vcspath = "mysociety";
+    $cvs = 1;
+}
+
+# Check if we should be deploying to a timestamped directory which is
+# then symlinked into place.
+my $timestamped_deploy = $conf->{timestamped_deploy};
+
+if ($timestamped_deploy) {
+    if (exists($conf->{git_repository}) && exists($conf->{private_git_repository})) {
+        die "For a timestamped deploy you can only specify one of git_repository and private_git_repository";
+    }
+    if (exists($conf->{'private_git_dirs'})) {
+        die "You can't use private_git_dirs with the timestamped_deploy option";
+    }
+}
+
+if (exists($conf->{git_repository})) {
+    die "must specify 'git_user' in vhost config" if (!exists($conf->{git_user}));
+    die "must not specify 'cvs_user' in vhost config if you have 'git_repository'" if (exists($conf->{cvs_user}));
+    die "can't have blank 'git_user', use 'anon' for anonymous" if ($conf->{git_user} eq '');
+    if (exists($conf->{'git_ref_server_mapping'})) {
+        die "git_ref_server_mapping defined, but no mapping for $hostname"
+            if(!exists($conf->{'git_ref_server_mapping'}{$hostname}));
+        $conf->{'git_ref'} = $conf->{'git_ref_server_mapping'}{$hostname};
+    } elsif (!exists($conf->{'git_ref'})) {
+        $conf->{'git_ref'} = 'origin/master';
+    }
+    $vcspath = $conf->{git_repository};
+    $git = 1;
+}
+
+if (exists($conf->{private_git_repository})) {
+    if (exists($conf->{'private_git_ref_server_mapping'})) {
+        die "private_git_ref_server_mapping defined, but no mapping for $hostname"
+            if(! exists($conf->{'private_git_ref_server_mapping'}{$hostname}));
+        $conf->{'private_git_ref'} = $conf->{'private_git_ref_server_mapping'}{$hostname};
+    } elsif (!exists($conf->{'private_git_ref'})) {
+        $conf->{'private_git_ref'} = 'origin/master' if (!exists($conf->{'private_git_ref'}));
+    }
+    $vcspath = $conf->{private_git_repository} if (!$vcspath);
+    $git = 1;
+}
+
+# Verify that this server is listed for this vhost
+die "'$hostname' is not a vhost for '$vhost'" if (!grep { m/^$hostname$/ } @{$conf->{'servers'}}) && $action ne 'remove';
+
+# Deal with redirecting the vhost itself
+my $server_name = $vhost;
+my $aliases = $conf->{'aliases'};
+my %redirects = map { $_ => 1 } @{ $conf->{'redirects'} };
+if ($redirects{$vhost}) {
+    # We want to redirect the name used for the vhost.
+    die "Redirect for '$vhost' requires alias to be present" unless @$aliases;
+    die "Alias '$aliases->[0]' must not match vhost '$vhost'" if $aliases->[0] eq $vhost;
+    $server_name = shift @$aliases;
+}
+
+# Look up some values
+my ($user_login, $user_pass, $user_uid, $user_gid, 
+    $user_quota, $user_comment, 
+    $user_real_name, $user_home_dir, $user_shell,
+    $user_expire) = getpwnam($conf->{'user'});
+die "Unknown user '".$conf->{'user'}."'" if !$user_uid;
+die "Unknown group for user '".$conf->{'user'}."'" if !$user_gid;
+my $user = $conf->{'user'};
+my $group = getgrgid($user_gid);
+$conf->{'wildcard_vhost'} = 0 if (!exists($conf->{'wildcard_vhost'}));
+$conf->{'https'} = 0 if (!exists($conf->{'https'}));
+$conf->{'https_only'} = 0 if(!exists($conf->{'https_only'}));
+$conf->{'fastcgi'} = 1 if (!exists($conf->{'fastcgi'}));
+$conf->{'balancer'} = '' if (!exists($conf->{'balancer'}));
+$conf->{'ipv4addr'} = '' if (!exists($conf->{'ipv4addr'}));
+$conf->{'ipv6addr'} = '' if (!exists($conf->{'ipv6addr'}));
+
+if ($timestamped_deploy) {
+    if ($cvs) {
+        die "The 'timestamped_deploy' option can only be used with git-based sites";
+    }
+
+    # With timestamped_deploy, we use different options to specify hooks
+    # that are run on deploy.
+
+    if ($conf->{'exec_extras'}) {
+        die "exec_extras cannot be used with timestamped_deploy";
+    }
+} else {
+    foreach ("exec_before_down", "exec_while_down") {
+        if ($conf->{$_}) {
+            die "You cannot use $_ without timestamped_deploy";
+        }
+    }
+}
+
+my $vcspath_install = $vcspath;
+my $timestamp = gmtime->strftime('%Y-%m-%dT%H-%M-%S');
+if ($timestamped_deploy) {
+    $vcspath_install = "$vcspath-$timestamp";
+}
+
+# Ensure that the conf_dir and private_conf_dir elements are references to a list of config dirs.
+foreach my $dir (qw( conf_dir private_conf_dir )){
+    my $c = $conf->{$dir};
+    $c ||= [];
+    $c = [$c] if (!ref($c));
+    $conf->{$dir} = $c;
+}
+
+# Read in relevant stuff from machine configuration file
+our ($internal_network);
+if(-f '/etc/mysociety/ec2') {
+    require "$machines_dir/EC2.pl";
+} else {
+    require "$machines_dir/$hostname.pl";
+}
+
+#####################################################################
+# Make directories and conf files, check database and conf files
+
+# Create directories and symlink to docs
+make_dir("/data");
+make_dir("/data/vhost");
+make_dir("$vhost_dir");
+chown($user_uid, $user_gid, "$vhost_dir");
+make_dir("$vhost_dir/logs");
+chown($user_uid, $user_gid, "$vhost_dir/logs");
+make_symlink("$vcspath/".$conf->{'web_dir'}, "$vhost_dir/docs");
+shell("chown", "-h", "$user_uid:$user_gid", "$vhost_dir/docs"); # perl's chown doesn't do symlinks
+
+if ($cvs) {
+    # Initial checkout, for CVS directories which don't exist
+    my $cvsroot;
+    if ($conf->{'cvs_user'} eq "") {
+        $cvsroot = "cvs.mysociety.org:/usr/local/cvs";
+    } elsif ($conf->{'cvs_user'} eq 'anon') {
+        $cvsroot = ':pserver:anonymous@cvs.mysociety.org:/repos';
+        # for some reason, CVS gives a warning if there is no .cvspass file during 
+        # anoncvs client use, so we make an empty file
+        if (! -e "$user_home_dir/.cvspass") {
+            system("su $conf->{'user'} -c \"touch ~$conf->{'user'}/.cvspass\"");
+        }
+        # note that anoncvs is now freshly updated automatically by anoncvs-wrapper
+    } else {
+        $cvsroot = $conf->{'cvs_user'} . "\@cvs.mysociety.org:/usr/local/cvs";
+    }
+    make_cvs_dirs($cvsroot, $conf->{'cvs_user'}, $conf->{'cvs_dirs'});
+    if (exists($conf->{'private_cvs_dirs'})){
+        die "must specify 'private_cvs_user' in vhost config" if (!exists($conf->{'private_cvs_user'}));
+        my $privatecvsroot = $conf->{'private_cvs_user'} . "\@cvs.mysociety.org:/usr/local/privatecvs";
+        make_cvs_dirs($privatecvsroot, $conf->{'private_cvs_user'}, $conf->{'private_cvs_dirs'});
+    }
+} elsif ($git) {
+    # Initial clone, for git repository that don't exist
+    my $git_url_base;
+    if (exists($conf->{'git_repository'})){
+        if (!exists($conf->{'git_url_base'})) {
+            if ($conf->{'git_user'} eq 'anon') {
+                $git_url_base = "git://git.mysociety.org/"
+            } else {
+                $git_url_base = "ssh://" . $conf->{'git_user'} . "\@git.mysociety.org/data/git/public/";
+            }
+        } else {
+            $git_url_base = $conf->{'git_url_base'};
+        }
+        make_git_repository($git_url_base, $conf->{'git_user'}, $conf->{'git_repository'}, $conf->{'git_ref'}, $vcspath_install);
+    }
+    if (exists($conf->{'private_git_repository'})){
+        $git_url_base = "ssh://" . $conf->{'user'} . "\@git.mysociety.org/data/git/private/";
+        make_git_repository($git_url_base, $conf->{'user'}, $conf->{'private_git_repository'}, $conf->{'private_git_ref'}, $vcspath_install);
+    }
+} else {
+    die "Unknown version control system";
+}
+
+# Make public directories
+foreach my $public_dir (@{$conf->{'public_dirs'}}) {
+    make_dir("$vhost_dir/$public_dir");
+    chown($user_uid, $user_gid, "$vhost_dir/$public_dir");
+}
+
+# Make database config settings
+my $database_configs = "";
+my $external_database_configs = "";
+my $database_configs_yml = "";
+my $external_database_configs_yml = "";
+my $rails_database_config = "";
+if (defined $conf->{'databases'}) {
+    foreach my $database (@{$conf->{'databases'}}) {
+        my $params = $databases->{$database};
+        db_conf($params, $database);
+    }
+}
+
+# Create a settings file:
+sub write_settings_file {
+    my ($settings_file, $settings_file_namepart) = @_;
+
+    $vhost =~ m/^([^.]+)\.(.*)$/;
+    my $vhost_first = $1;
+    my $vhost_rest = $2;
+
+    my $global_settings_file = "/etc/mysociety/config-settings.pl";
+    my $global_settings = read_file($global_settings_file) or die "failed to read /etc/mysociety/config-settings.pl, which is made by deploy-configuration";
+    my $old_umask = umask(0077);
+    open(FH, "> $settings_file") or die "failed to open $settings_file for write";
+    print FH <<END;
+#
+# $settings_file_namepart
+#
+
+\$site = '$site';
+\$vhost = '$vhost';
+\$vhost_dir = '$vhost_dir';
+\$vcspath = '$vcspath';
+\$cvs = '$cvs';
+\$git = '$git';
+\$site = '$site';
+\$staging = '$conf->{'staging'}';
+\$vhost_first = '$vhost_first';
+\$vhost_rest = '$vhost_rest';
+\$user = '$user';
+\$group = '$group';
+\$wildcard_vhost = '$conf->{'wildcard_vhost'}';
+\$https = '$conf->{'https'}';
+\$https_only = '$conf->{'https_only'}';
+\$balancer = '$conf->{'balancer'}';
+\$ipv4addr = '$conf->{'ipv4addr'}';
+\$ipv6addr = '$conf->{'ipv6addr'}';
+\$fastcgi = '$conf->{'fastcgi'}';
+\$randomly = '/data/mysociety/bin/randomly -p 0.5'; # for crontab
+\$database_configs = <<DONE_DATABASE_CONFIGS;
+$database_configs
+DONE_DATABASE_CONFIGS
+\$database_configs_yml = <<DONE_DATABASE_CONFIGS_YML;
+$database_configs_yml
+DONE_DATABASE_CONFIGS_YML
+\$rails_database_config = <<DONE_RAILS_DATABASE_CONFIG;
+$rails_database_config
+DONE_RAILS_DATABASE_CONFIG
+\$external_database_configs = <<DONE_EXTERNAL_DATABASE_CONFIGS;
+$external_database_configs
+DONE_EXTERNAL_DATABASE_CONFIGS
+\$external_database_configs_yml = <<DONE_EXTERNAL_DATABASE_CONFIGS_YML;
+$external_database_configs_yml
+DONE_EXTERNAL_DATABASE_CONFIGS_YML
+END
+
+    print FH Dumper($conf->{conf_dir});
+    print FH "\$conf_dirs = \$VAR1;\n";
+    print FH Dumper($conf->{private_conf_dir});
+    print FH "\$private_conf_dirs = \$VAR1;\n";
+    print FH "\$admin_dir = '$conf->{'admin_dir'}';\n" if $conf->{'admin_dir'};
+    print FH "\$admin_group = '$conf->{'admin_group'}';\n" if $conf->{'admin_group'};
+    print FH "\$admin_uri = '$conf->{'admin_uri'}';\n" if $conf->{'admin_uri'};
+    print FH "\$internal_access_only = '$conf->{'internal_access_only'}';\n" if $conf->{'internal_access_only'};
+    print FH Dumper($conf->{'public_dirs'});
+    print FH "\$public_dirs = \$VAR1;\n";
+    print FH "\$server_name = '$server_name';\n";
+    print FH Dumper($conf->{'redirects'});
+    print FH "\$redirects = \$VAR1;\n";
+    print FH Dumper($aliases);
+    print FH "\$aliases = \$VAR1;\n";
+    print FH <<END;
+
+# ---------------------------------------------------------
+# Settings from here on are copied from:
+# $global_settings_file
+
+$global_settings
+END
+    close FH;
+    chown($user_uid, $user_gid, $settings_file);
+    umask($old_umask);
+}
+
+my $settings_file_namepart = "settings-autogen.pl";
+my $settings_file = "$vhost_dir/$settings_file_namepart";
+
+write_settings_file($settings_file,
+                    $settings_file_namepart);
+
+# Generate daemon init scripts from templates
+foreach my $daemon (keys %{$conf->{'daemons'}}) {
+    my $daemon_mugly_file = $conf->{'daemons'}->{$daemon};
+    my $daemon_mugly;
+
+    if ($cvs) {
+        # XXX assume daemon is configured from first conf_dir.
+        my $daemon_mugly_path = $mysociety_dir . '/' . $conf->{conf_dir}->[0] . '/';
+        chdir_verbose(__LINE__, $daemon_mugly_path);
+
+        # XXX This update is a bit of a hack in CVS, to let us get the future version
+        # from the global CVS directory before deploying it. Under git we don't
+        # do that, instead we use "git show" to get the future version directly.
+        shell("cvs", "-Q", "update", "$daemon_mugly_file");
+        $daemon_mugly = $daemon_mugly_path . $daemon_mugly_file;
+    } elsif ($git) {
+        $daemon_mugly = mktemp("/tmp/daemon-mugly-file-XXXXXXXX");
+        chdir_verbose(__LINE__, "$vhost_dir/$vcspath_install");
+
+        my $git_ref;
+        my $conf_dir;
+        if ( $conf->{git_ref} ) {
+            $git_ref = $conf->{git_ref};
+            $conf_dir = $conf->{conf_dir}->[0]
+        } elsif ( $conf->{private_git_ref} ) {
+            $git_ref = $conf->{private_git_ref};
+            $conf_dir = $conf->{private_conf_dir}->[0]
+        }
+
+        shell("git show $git_ref:" . $conf_dir . "/$daemon_mugly_file >$daemon_mugly");
+    } else {
+        die "Unknown version control system";
+    }
+
+    my ($fh, $filename) = tempfile();
+    open(FH, ">$filename") or die "failed to open $filename for write";
+    print FH "\$daemon_name = '$daemon';\n";
+    close FH;
+    shell("$mysociety_bin/mugly", "-O", "/etc/init.d/$daemon", "-p", "$settings_file", "-p", "$filename", "$daemon_mugly");
+    unlink($filename);
+    chmod 0755, "/etc/init.d/$daemon";
+    system("update-rc.d $daemon defaults | grep -v \"System startup links for .* already exist\"");
+
+    if ($git) {
+        unlink($daemon_mugly);
+    }
+}
+
+# Create apache configuration stanza
+shell("$mysociety_bin/mugly", "-O", "/etc/apache2/virtualhosts.d/$vhost.conf", "-p", "$settings_file", "$servers_dir/vhosts/single-vhost.conf.ugly");
+
+# Create nginx configuration stanza, if needed
+if ($conf->{'https'} eq 'nginx') {
+    shell("$mysociety_bin/mugly", "-O", "/etc/nginx/virtualhosts.d/$vhost.conf", "-p", "$settings_file", "$servers_dir/vhosts/single-vhost-nginx-https-proxy.conf.ugly");
+}
+
+# Work out name of crontab
+my $cron_name = "vhost-$vhost";
+$cron_name =~ s/\./-/g;
+$cron_name = "/etc/cron.d/$cron_name";
+
+if ($action ne "remove"){
+    check_packages();
+}
+
+#####################################################################
+# Helper functions
+
+sub get_db_host {
+    my ($params, $internal) = @_;
+    if ($params->{host} eq 'localhost') {
+        # If the host is localhost, then it shouldn't be suffixed with
+        # a domain:
+        return $params->{host};
+    } else {
+        # Otherwise suffix it with a ukcod domain:
+        my $network_part = '';
+        if ($internal && $internal_network) {
+            $network_part = 'int.ukcod.org.uk';
+        } else {
+            $network_part = 'ukcod.org.uk';
+        }
+        return "$params->{host}.$network_part";
+    }
+}
+
+sub one_db_conf_php {
+    my ($params, $database, $internal) = @_;
+    my $port_line = '';
+    if ($params->{type} eq 'psql') {
+        $port_line = "define('OPTION_$params->{prefix}_DB_PORT', $params->{port});";
+    }
+    my $db_host = get_db_host($params, $internal);
+ 
+    my $conf = <<END;
+define('OPTION_$params->{prefix}_DB_HOST', '$db_host');
+$port_line
+define('OPTION_$params->{prefix}_DB_NAME', '$database');
+define('OPTION_$params->{prefix}_DB_USER', '$database');
+define('OPTION_$params->{prefix}_DB_PASS', '\${\\(pgpw('$database'))}');
+END
+    return $conf;
+
+}
+
+sub one_db_conf_yml {
+    my ($params, $database, $internal) = @_;
+    my $port_line = '';
+    if ($params->{type} eq 'psql') {
+        $port_line = "$params->{prefix}_DB_PORT: $params->{port}";
+    }
+    my $db_host = get_db_host($params, $internal);
+ 
+    my $conf = <<END;
+$params->{prefix}_DB_HOST: '$db_host'
+$port_line
+$params->{prefix}_DB_NAME: '$database'
+$params->{prefix}_DB_USER: '$database'
+$params->{prefix}_DB_PASS: '\${\\(pgpw('$database'))}'
+END
+    return $conf;
+
+}
+
+sub db_conf {
+    my ($params, $database, $one_db_conf) = @_;
+    if ($params->{type} ne 'mysql' && $params->{type} ne 'psql'){
+        die "unknown database type '$params->{type}'";
+    }
+    
+    $database_configs .= one_db_conf_php($params, $database, 1);
+    $external_database_configs .= one_db_conf_php($params, $database, 0);
+    
+    $database_configs_yml .= one_db_conf_yml($params, $database, 1);
+    $external_database_configs_yml .= one_db_conf_yml($params, $database, 0);
+    
+    if ($params->{type} eq 'psql') {
+            # XXX doesn't cope with multiple Rails database configs (as you
+            # have to list them in the yml file in right place, so one text
+            # option can't), oh well
+            if (scalar(@{$conf->{'databases'}}) == 1) {
+                my $db_host = get_db_host($params, $internal_network);
+                $rails_database_config = <<END;
+    adapter: postgresql
+    database: $database
+    username: $database
+    password: \${\\(pgpw('$database'))}
+    host: $db_host
+    port: $params->{port}
+END
+            }
+    }
+    elsif ($params->{type} eq 'mysql') {
+            if (scalar(@{$conf->{'databases'}}) == 1) {
+                my $port = $params->{port} || 3306;
+                my $db_host = get_db_host($params, 0);
+                $rails_database_config = <<END;
+    adapter: mysql2
+    database: $database
+    username: $database
+    password: \${\\(pgpw('$database'))}
+    host: $db_host
+    port: $port
+END
+            }
+    }
+} 
+
+sub apache_graceful {
+    if (-e "/usr/sbin/apache") {
+        shell("apachectl", "graceful");
+    }
+    if (-e "/usr/sbin/apache2") {
+        shell("apache2ctl", "graceful");
+    }
+}
+
+sub nginx_graceful {
+    if (-e "/etc/init.d/nginx") {
+        shell("/etc/init.d/nginx", "reload");
+    }
+}
+
+sub graceful {
+    # Prompt webserver to reread files, on machines which have apache...
+    apache_graceful();
+
+    # ...and nginx
+    if ($conf->{'https'} eq 'nginx') {
+        nginx_graceful();
+    }
+}
+
+sub make_cvs_dirs {
+   my ($cvs_root, $cvs_user, $cvs_dirs) = @_;
+   foreach my $cvs_dir (@{$cvs_dirs}) {
+       my $d = "$vhost_dir/mysociety/$cvs_dir/CVS";
+       if (! -d $d) {
+           if ($cvs_user eq "") { 
+               shell("cd \"$vhost_dir\" && cvs -Q -d \"$cvs_root\" co mysociety/$cvs_dir".
+                    " && chown -R ".$conf->{'user'}.":".$conf->{'user'}." mysociety");
+           } else {
+               shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir\" && cvs -Q -d \"$cvs_root\" co mysociety/$cvs_dir");
+           }
+       } else {
+           my $current_root = read_file("$d/Root");
+           $current_root =~ s/\s*$//;
+           die "CVSROOT in $d is \n\t$current_root\nwhen config says\n\t$cvs_root\n" if ($current_root ne $cvs_root);
+           if ($cvs_user eq 'anon') {
+               chdir_verbose(__LINE__, "$vhost_dir/mysociety/$cvs_dir");
+               # XXX detect errors.  
+               system("cvs -Q diff -u") == 0 || die "Files checked out with anonymous CVS have been modified in $vhost_dir/mysociety/$cvs_dir";
+           }
+       }
+   }
+}
+
+sub update_cvs {
+    my ($cvs_user, $cvs_dirs) = @_;
+    foreach my $cvs_dir (@{$cvs_dirs}) {
+        die "unexpectedly missing cvs directory in update stage" if (! -d "$vhost_dir/mysociety/$cvs_dir/CVS");
+        if ($cvs_user eq "") {
+            shell("cd \"$vhost_dir/mysociety/$cvs_dir\" && cvs -Q update -dP && chown -R ".$conf->{'user'}.":".$conf->{'user'}." ../");
+        } else {
+            shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir/mysociety/$cvs_dir\" && cvs -Q update -dP");
+        }
+    }
+}
+
+sub make_git_repository {
+   my ($git_url_base, $git_user, $git_repository, $git_ref, $vcspath_to_use) = @_;
+   my $d = "$vhost_dir/$vcspath_to_use/.git";
+   my $git_url = "$git_url_base$git_repository.git";
+   if (! -d $d) {
+       my $clone_command = "cd \"$vhost_dir\" && git clone --no-checkout $git_url $vcspath_to_use && cd \"$vcspath_to_use\" && git checkout $git_ref";
+       my $submodule_command = "cd \"$vhost_dir/$vcspath_to_use\" && git submodule update --init";
+       if ($git_user eq 'root') {
+           shell($clone_command);
+           shell("$submodule_command && chown -R ".$conf->{'user'}.":".$conf->{'user'}." ../");
+       } else {
+           shell("su", "-", $conf->{'user'}, "-c $clone_command");
+           shell("su", "-", $conf->{'user'}, "-c $submodule_command");
+       }
+   } else {
+       chdir_verbose(__LINE__, "$vhost_dir/$vcspath_to_use");
+       my $current_url = `git config --get remote.origin.url`;
+       $current_url =~ s/\s*$//;
+       die "git remote.origin.url in $d is \n\t$current_url\nwhen config says\n\t$git_url\n" if ($current_url ne $git_url);
+
+       # get new stuff so various other parts of script can compare before deploying to working directory
+       my $fetch_command = "cd \"$vhost_dir/$vcspath_to_use\" && git fetch origin";
+       if ($git_user eq 'root') {
+           shell("$fetch_command && chown -R ".$conf->{'user'}.":".$conf->{'user'}." ../");
+       } else {
+           shell("su", "-", $conf->{'user'}, "-c $fetch_command"); 
+       }
+       if ($git_user eq 'anon') {
+           shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir/$vcspath_to_use\" && $mysociety_bin/git-safe-to-checkout . $git_ref")
+       }
+   }
+   chdir_verbose(__LINE__, $vhost_dir);
+}
+
+sub update_git {
+    my ($git_user, $vcspath, $git_ref) = @_;
+    die "unexpectedly missing .git directory in update stage" if (! -d "$vhost_dir/$vcspath/.git");
+    my $update_command = "git fetch origin && git checkout $git_ref && git submodule update --init";
+    if ($git_user eq 'root') {
+        shell("cd \"$vhost_dir/$vcspath\" && $update_command && chown -R ".$conf->{'user'}.":".$conf->{'user'}." ../");
+    } else {
+        shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir/$vcspath\" && $update_command");
+    }
+    my $hash = `cd "$vhost_dir/$vcspath" && git rev-parse --short HEAD`;
+    chomp $hash;
+    return "branch $git_ref, commit $hash";
+}
+
+sub update_vcspath_symlink {
+    unless ($timestamped_deploy) {
+        die "You can only use update_vcspath_symlink with timestamped_deploy";
+    }
+    my $old_cwd = getcwd();
+    chdir_verbose(__LINE__, $vhost_dir);
+    # If there's a real directory there, rather than a symlink, move
+    # it out of the way:
+    if (-d $vcspath && ! -l $vcspath) {
+        rename($vcspath, "$vcspath.moved");
+    }
+    shell("ln -snf $vcspath_install $vcspath");
+    chdir_verbose(__LINE__, $old_cwd);
+}
+
+#####################################################################
+# Shut down services, update, start services
+
+# XXX Bit annoying that the global things above (e.g. Apache config), are done
+# even if we're just stopping/starting. Should split into separate check and
+# live update functions. But mainly harmless to update live config so hey.
+
+if ($action eq "stop") {
+    stop_site();
+    deploy_logger("Stopped vhost $vhost");
+} elsif ($action eq "update") {
+    update_config_and_schemas();
+    my $git_log = update_site();
+    graceful();
+    deploy_logger("Updated vhost $vhost ($git_log)");
+} elsif ($action eq "start") {
+    start_site();
+    deploy_logger("Started vhost $vhost");
+} elsif ($action eq "deploy") {
+    my $deploy_log_message;
+    update_config_and_schemas();
+    if ($timestamped_deploy) {
+        $deploy_log_message = update_site();
+    }
+    stop_site();
+    if ($timestamped_deploy) {
+        run_tasks_from_config(%{$conf->{'exec_while_down'}});
+        update_vcspath_symlink();
+        graceful();
+    } else {
+        $deploy_log_message = update_site();
+        graceful();
+    }
+    start_site();
+    deploy_logger("Deployed vhost $vhost ($deploy_log_message)")
+        unless $vhost =~ /testharness/;
+    if ($flush) {
+        use mySociety::Memcached;
+        mySociety::Memcached::flush_all();
+        print `varnishadm -T localhost:6082 -S /etc/varnish/secret purge req.http.host == "$vhost"`;
+    }
+} elsif ($action eq "remove") {
+    stop_site();
+    remove_site();
+    deploy_logger("Removed vhost $vhost");
+} else {
+    die "unknown action";
+}
+
+sub check_package_file {
+    my ($conf_dir, $public) = @_;
+    if ($cvs) {
+            chdir_verbose(__LINE__, "$mysociety_dir/$conf_dir");
+            shell("cvs", "-Q", "update", "packages");
+            if (-e "packages") {
+                shell("/data/mysociety/bin/check-packages-installed", "packages")
+            }
+        } elsif ($git) {
+            my $tmp_packages = mktemp("/tmp/deploy-vhost-packages-XXXXXXXX");
+            my $git_ref;
+            chdir_verbose(__LINE__, "$vhost_dir/$vcspath_install");
+            if ($public) {
+                $git_ref = $conf->{'git_ref'};
+            } else {
+                $git_ref = $conf->{'private_git_ref'};
+            }
+            if (-e "$conf_dir/packages") {
+                my $tree = `git ls-tree $git_ref $conf_dir/packages`;
+                if ($tree =~ /^120000/) {
+                    $tree = `git show $git_ref:$conf_dir/packages`;
+                    shell("git show $git_ref:$conf_dir/$tree >$tmp_packages");
+                } else {
+                    shell("git show $git_ref:$conf_dir/packages >$tmp_packages");
+                }
+                shell("/data/mysociety/bin/check-packages-installed", "$tmp_packages");
+                unlink $tmp_packages;
+            }
+       } else {
+           die "Unknown version control system";
+       }
+
+}
+
+sub check_packages {
+    # Check Debian packages are all installed, if there is a conf/packages file
+    foreach my $conf_dir (@{$conf->{conf_dir}}) {
+        check_package_file($conf_dir, 1);
+    }
+    foreach my $conf_dir (@{$conf->{private_conf_dir}}) {
+        check_package_file($conf_dir, 0);
+    }
+}
+
+# Halt any daemons, crontabs, email systems, and the web host itself
+sub stop_site {
+    # Stop daemons
+    foreach my $daemon (keys %{$conf->{'daemons'}}) {
+        shell("/etc/init.d/$daemon", "stop");
+    }
+
+    # Stop crontab
+    unlink($cron_name);
+
+    # Stop email forwarding
+    # XXX hmmm, maybe not such a good idea to stop this, as emails to, say
+    # WhatDoTheyknow, would then not be delivered while deploying new version
+    # of it. Really should replace with something that gets exim to try
+    # redelivery?
+    #
+    # XXXX Note that this commented-out code was written before support was
+    # added for .forward-foo files, and does not support them; so do not just
+    # blindly uncomment it.
+    #if ($conf->{'email'}) {
+    #    foreach my $email_user (keys %{$conf->{'email'}}) {
+    #        unlink("/home/$email_user/.forward");
+    #    }
+    #}
+
+    if (-d "$vhost_dir/docs") {
+        if(-s "$vhost_dir/docs/down.current.html") {
+            unlink("$vhost_dir/docs/down.html");
+            symlink("$vhost_dir/docs/down.current.html", "$vhost_dir/docs/down.html");
+        } elsif (-s "$vhost_dir/docs/down.default.html") {
+            unlink("$vhost_dir/docs/down.html");
+            symlink("$vhost_dir/docs/down.default.html", "$vhost_dir/docs/down.html");
+        } else {
+            # Down notice
+            open(FH, "> $vhost_dir/docs/.down.html.new")
+                or die "Failed to open $vhost_dir/docs/.down.html.new for writing: $!\n";
+            print FH <<END;
+        <html>
+        <head>
+        <title>$vhost - Down for Maintenance</title>
+        </head>
+        <body>
+        <p>Sorry, but $vhost is currently not available.  We're doing a spot of
+        maintenance.  Check back in a few minutes, and everything should be
+        restored to order.  Thanks for your patience!
+        <p> &mdash; the <a href="http://www.mysociety.org/">mySociety</a> developers
+        </body>
+        </html>
+END
+            close FH;
+            unlink("$vhost_dir/docs/down.html");
+            rename("$vhost_dir/docs/.down.html.new", "$vhost_dir/docs/down.html")
+                or die "failed to rename .down.html.new to down.html in $vhost_dir/docs: $!";
+            chown($user_uid, $user_gid, "$vhost_dir/docs/down.html");
+        }
+    }
+}
+
+# Update a config dir
+sub update_conf_dir {
+    my ($conf_dir, $public, $unchecked_schemas) = @_;
+    foreach my $glob (glob "$vhost_dir/$vcspath_install/$conf_dir/*-example") {
+       $glob =~ m#^.*/(.*?)-example$#;
+
+        my $name_part = $1;
+        my $conf_file = "$vhost_dir/$vcspath_install/$conf_dir/$name_part"; # destination file
+        my $old_umask = umask(0027);
+        my $name_base = $name_part;
+        $name_base =~ s/\.yml$//;
+
+        # find source template (.ugly) file
+        my $conf_ugly_part;
+        if ($cvs) {
+            $conf_ugly_part = "$conf_dir/$name_part"; # e.g. foi/config/general
+        } elsif ($git) {
+            $conf_ugly_part = "$vcspath/$conf_dir/$name_part"; # e.g. whatdotheyknow/config/general
+        } else {
+            die "Unknown version control system";
+        }
+        $conf_ugly_part =~ s#/#_#g;
+        my $conf_ugly_file = "$servers_dir/vhosts/$conf_ugly_part.ugly";
+        # update the conf/general (or whatever) template in private git repo
+        chdir_verbose(__LINE__, "$servers_dir/vhosts");
+        shell("git", "pull", "-q", "origin");
+        # update example we'll be comparing against, to make sure no missing entries.
+        # For public conf files, use the example in the main public checkout. For
+        # private, use the example in the vhost conf dir.
+        my $example_file;
+        if ($cvs) {
+            my $example_file_dir;
+            if ($public) {
+                $example_file_dir = "$mysociety_dir/$conf_dir";
+            } else {
+                $example_file_dir = "$vhost_dir/$vcspath_install/$conf_dir";
+            }
+            chdir_verbose(__LINE__, $example_file_dir);
+            if ($public  || $conf->{'private_cvs_user'} eq '') {
+                shell("cvs", "-Q", "update", "$name_part-example");
+            } else {
+                shell("su", "-", $conf->{'private_cvs_user'}, "-c cd \"$example_file_dir\" && cvs -Q update $name_part-example");
+            }
+            $example_file = "$example_file_dir/$name_part-example";
+        } elsif ($git) {
+            my $git_ref;
+            $example_file = mktemp("/tmp/deploy-vhost-$name_part-example-XXXXXXXX");
+            if ($public) {
+                chdir_verbose(__LINE__, "$vhost_dir/$vcspath_install");
+                $git_ref = $conf->{'git_ref'};
+            } else {
+                chdir_verbose(__LINE__, "$vhost_dir/" . $conf->{'private_git_repository'});
+                $git_ref = $conf->{'private_git_ref'};
+            }
+            shell("git show $git_ref:$conf_dir/$name_part-example >$example_file");
+        } else {
+            die "Unknown version control system";
+        }
+        # check destination file hasn't been separately modified
+        chdir_verbose(__LINE__, $mysociety_dir);
+        my $make_conf = 1;
+        if (-e $conf_file) {
+            # XXX detect errors
+            if (system("diff", "-u", "$conf_file.deployed", "$conf_file") != 0) {
+                print STDERR "Warning: $conf_file was changed directly since last update from\n";
+                print STDERR "template file $conf_ugly_file, so has not been updated.\n";
+                $make_conf = 0;
+            }
+        }
+        if ($make_conf) {
+            my $conf_file_tmp = $conf_file;
+            $conf_file_tmp =~ s/((\.yml)?)$/.tmp$1/;
+
+            # call mugly to generate from template
+            shell("$mysociety_bin/mugly", "-O", $conf_file_tmp, "-p", "$settings_file", "$conf_ugly_file");
+            if ($name_base eq 'general') {
+                # test contents of new configuration file before copying it over
+                chdir_verbose(__LINE__, $mysociety_bin);
+                shell("$mysociety_bin/compareconfig.pl", $conf_file_tmp, $example_file);
+            }
+            # copy into place
+            copy($conf_file_tmp, "$conf_file.deployed");
+            chown($user_uid, $user_gid, "$conf_file.deployed");
+            copy($conf_file_tmp, "$conf_file");
+            chown($user_uid, $user_gid, "$conf_file");
+            unlink($conf_file_tmp) or die "couldn't unlink $conf_file_tmp";
+
+            # if it's a logrotate file, symlink it to /etc/logrotate.d/
+            if ($name_base eq 'logrotate') {
+                shell("ln -snf $conf_file /etc/logrotate.d/$vhost");
+            }
+        } else {
+            if ($name_base eq 'general') {
+                # test contents of configuration file before copying it over
+                chdir_verbose(__LINE__, $mysociety_bin);
+                shell("$mysociety_bin/compareconfig.pl", "$conf_file", $example_file);
+            }
+        }
+        # clear up temporary example file in git case
+        if ($git) {
+            unlink($example_file);
+        }
+        # now we use this configuration
+        mySociety::Config::set_file($conf_file);
+        umask($old_umask);
+
+        # Check pgsql databases are up to date
+        foreach my $psql_conf_prefix (keys %{$conf->{'psql_schemas'}}) {
+            my $psql_schema = $conf->{'psql_schemas'}->{$psql_conf_prefix};
+            my $psql_name = mySociety::Config::get($psql_conf_prefix.'_DB_NAME', 0);
+
+            # It's OK for the configuration info for a DB to be absent from
+            # any given conf file, as long as it's in one of them
+            if ($psql_name) {
+
+                if (exists($unchecked_schemas->{$psql_conf_prefix})) {
+                    delete $unchecked_schemas->{$psql_conf_prefix};
+                }
+
+                my $psql_host = mySociety::Config::get($psql_conf_prefix.'_DB_HOST', 'localhost');
+                my $psql_port = mySociety::Config::get($psql_conf_prefix.'_DB_PORT', 5432);
+                my $psql_user = mySociety::Config::get($psql_conf_prefix.'_DB_USER');
+
+                if ($cvs) {
+                    chdir_verbose(__LINE__, $mysociety_dir);
+                    shell("cvs", "-Q", "update", "$psql_schema");
+                    chdir_verbose(__LINE__, $mysociety_bin);
+                    # It isn't safe to pass the password over the command line as that can be
+                    # seen by other processes, instead put it in in ~/.pgpass (see
+                    # mysociety/bin/generate-pgpass). And no, PGPASSWORD isn't safer, as on
+                    # some systems the environment can be seen in other processes.
+                    shell("./psql-schema-compare", $mysociety_dir.'/'.$psql_schema, $conf->{'user'}, $psql_name, $psql_user, $psql_host, $psql_port);
+                } elsif ($git) {
+                    my $tmp_psql_schema = mktemp("/tmp/deploy-vhost-psql-schema-XXXXXXXX");
+                    chdir_verbose(__LINE__, "$vhost_dir/$vcspath_install");
+                    my $git_ref = $conf->{'git_ref'};
+                    shell("git show $git_ref:$psql_schema >$tmp_psql_schema");
+                    chdir_verbose(__LINE__, $mysociety_bin);
+                    shell("./psql-schema-compare", $tmp_psql_schema, $conf->{'user'}, $psql_name, $psql_user, $psql_host, $psql_port);
+                    unlink $tmp_psql_schema;
+                } else {
+                    die "Unknown version control system";
+                }
+
+            }
+        }
+
+        # Check MySQL databases are up to date
+        foreach my $mysql_conf_prefix (keys %{$conf->{'mysql_schemas'}}) {
+            my $mysql_schema = $conf->{'mysql_schemas'}->{$mysql_conf_prefix};
+            my $mysql_name = mySociety::Config::get($mysql_conf_prefix.'_DB_NAME', 0);
+
+           # It's OK for the configuration info for a DB to be absent from
+           # any given conf file, as long as it's in one of them
+           if ($mysql_name) {
+                if (exists($unchecked_schemas->{$mysql_conf_prefix})) {
+                    delete $unchecked_schemas->{$mysql_conf_prefix};
+                }
+
+                my $mysql_host = mySociety::Config::get($mysql_conf_prefix.'_DB_HOST', 'localhost');
+                my $mysql_port = mySociety::Config::get($mysql_conf_prefix.'_DB_PORT', 3306);
+                my $mysql_user = mySociety::Config::get($mysql_conf_prefix.'_DB_USER');
+
+                my $schema_full_path;
+                if ($cvs) {
+                    chdir_verbose(__LINE__, $mysociety_dir);
+                    shell("cvs", "-Q", "update", "$mysql_schema");
+                    $schema_full_path = $mysociety_dir.'/'.$mysql_schema
+                } elsif ($git) {
+                    $schema_full_path = mktemp("/tmp/deploy-vhost-mysociety-schema.sql-XXXXXXXX");
+                    chdir_verbose(__LINE__, "$vhost_dir/$vcspath_install");
+                    my $git_ref = $conf->{'git_ref'};
+                    shell("git show $git_ref:$mysql_schema >$schema_full_path");
+                } else {
+                    die "Unknown version control system";
+                }
+                # It isn't safe to pass the password over the command line or in the
+                # environment as that can be seen by other processes.
+                chdir_verbose(__LINE__, $mysociety_bin);
+                shell("./mysql-schema-compare", $schema_full_path, $conf->{'user'}, $mysql_name, $mysql_user, $mysql_host, $mysql_port);
+                if ($git) {
+                    unlink($schema_full_path);
+                }
+            }
+        }
+    }
+}
+
+# Check that config files and database files have been updated
+sub update_config_and_schemas {
+    # Make a list of all the database schemas to be checked
+    my %unchecked_schemas = map {$_ => 1} keys %{$conf->{'psql_schemas'}}, keys %{$conf->{'mysql_schemas'}};
+
+    # Generate all conf files from conf/*-example template files e.g. conf/general
+    foreach my $conf_dir (@{$conf->{conf_dir}}) {
+        update_conf_dir($conf_dir, 1, \%unchecked_schemas);
+    }
+    foreach my $conf_dir(@{$conf->{private_conf_dir}}){
+        update_conf_dir($conf_dir, 0, \%unchecked_schemas);
+    }
+
+    # exit if there are any schemas not covered by a config
+    foreach my $unchecked_schema (keys %unchecked_schemas) {
+        die "$unchecked_schema not configured in conf/general file(s)";
+    }
+}
+
+sub run_tasks_from_config {
+    my (%exec_extras) = @_;
+    foreach my $exec_extra (@{$exec_extras{'user'}}) {
+        chdir_verbose(__LINE__, "$vhost_dir/$vcspath_install");
+        shell("su", $conf->{'user'}, "-c $exec_extra");
+    }
+    foreach my $exec_extra (@{$exec_extras{'root'}}) {
+        chdir_verbose(__LINE__, "$vhost_dir/$vcspath_install");
+        shell("$exec_extra");
+    }
+}
+
+sub update_site {
+    my $git_log = '';
+
+    if ($cvs) {
+        # Update from CVS
+        update_cvs($conf->{'cvs_user'}, $conf->{'cvs_dirs'});
+        if (exists($conf->{'private_cvs_dirs'})){
+            update_cvs($conf->{'private_cvs_user'}, $conf->{'private_cvs_dirs'});
+        }
+    } elsif ($git) {
+        # Update from git
+        my $git_repository;
+        if (exists($conf->{'git_repository'})) {
+            $git_repository =  $conf->{'git_repository'};
+            $git_log = update_git($conf->{'git_user'}, $vcspath_install, $conf->{'git_ref'});
+        }
+        # softlink any private dirs into the public directory structure
+        if (exists($conf->{'private_git_repository'})){
+            my $private_git_repository = $conf->{'private_git_repository'};
+            $git_log = update_git($conf->{'user'}, $vcspath_install, $conf->{'private_git_ref'});
+            unless ($timestamped_deploy) {
+                if (exists($conf->{'private_git_dirs'})){
+                    foreach my $private_dir (@{$conf->{'private_git_dirs'}}) {
+                        shell("ln -snf $vhost_dir/$private_git_repository/$private_dir $vhost_dir/$git_repository/$private_dir");
+                    }
+                }
+            }
+        }
+    } else {
+        die "Unknown version control system";
+    }
+    # Run any extra executables
+    if ($timestamped_deploy) {
+        if (exists($conf->{'exec_extras'})) {
+            run_tasks_from_config(%{$conf->{'exec_before_down'}});
+        }
+    } else {
+        if (exists($conf->{'exec_extras'})) {
+            run_tasks_from_config(%{$conf->{'exec_extras'}});
+        }
+    }
+
+    $git_log .= ", updating in $vhost_dir/$vcspath_install";
+
+    return $git_log;
+}
+
+sub make_dot_forward {
+    my ($email_user, $script, $suffix) = @_;
+    my $forward_file_name = defined($suffix) ? ".forward-$suffix" : ".forward";
+
+    shell("su", "-", $email_user, "-c echo \"|$vhost_dir/$vcspath/$script\" >~$email_user/$forward_file_name");
+}
+
+sub install_or_remove_crontab {
+    my $ok = 0;
+    if ($conf->{'crontab'}) {
+        if ($conf->{'crontab'} eq '1') {
+            $ok = 1;
+        } else {
+            if ($hostname eq $conf->{'crontab'}) {
+                $ok = 1;
+            }
+        }
+    }
+
+    if ($ok) {
+        if ($cvs) {
+            chdir_verbose(__LINE__, $mysociety_dir);
+            foreach my $conf_dir (@{$conf->{conf_dir}}) {
+                # if a crontab exists in the conf directory in source control, or has been created there
+                # in the update_conf_dir function, just install it
+                my $crontab = "$conf_dir/crontab";
+                if (-e $crontab) {
+                    copy($crontab, "$cron_name");
+                } else {
+                    shell("cvs", "-Q", "update", "$conf_dir/crontab.ugly");
+                    shell("$mysociety_bin/mugly", "-O", $cron_name, "-p", "$settings_file", "$mysociety_dir/$conf_dir/crontab.ugly");
+                }
+            }
+        } elsif ($git) {
+            my $setup_git_cron = sub {
+                my ( $conf_dir, $git_ref ) = @_;
+                # if a crontab exists in the conf directory in source control, or has been created there
+                # in the update_conf_dir function, just install it
+                my $crontab = "$conf_dir/crontab";
+                if (-e $crontab) {
+                    copy($crontab, "$cron_name");
+                } else {
+                    my $tmp_crontab_ugly = mktemp("/tmp/deploy-vhost-crontab.ugly-XXXXXXXX");
+                    chdir_verbose(__LINE__, "$vhost_dir/$vcspath_install");
+                    return unless -e "$conf_dir/crontab.ugly";
+                    shell("git show $git_ref:$conf_dir/crontab.ugly >$tmp_crontab_ugly");
+                    shell("$mysociety_bin/mugly", "-O", $cron_name, "-p", "$settings_file", "$tmp_crontab_ugly");
+                    unlink $tmp_crontab_ugly;
+                }
+            };
+
+            $setup_git_cron->( $_, $conf->{'git_ref'} )         for @{$conf->{conf_dir}};
+            $setup_git_cron->( $_, $conf->{'private_git_ref'} ) for @{$conf->{private_conf_dir}};
+        } else {
+            die "Unknown version control system";
+        }
+
+    } else {
+        unlink($cron_name);
+    }
+}
+
+sub start_site {
+    # Up notice
+    unlink("$vhost_dir/docs/down.html") or do {
+        # It doesn't matter if down.html has already been removed.
+        die "couldn't unlink $vhost_dir/docs/down.html: $!\n" unless $!{ENOENT};
+    };
+
+    # Start daemons
+    foreach my $daemon (keys %{$conf->{'daemons'}}) {
+        shell("/etc/init.d/$daemon", "start");
+    }
+
+    # Crontab
+    install_or_remove_crontab();
+
+    # Make .forward files
+    if ($conf->{'email'}) {
+        foreach my $email_user (keys %{$conf->{'email'}}) {
+            my $email_pipeto = $conf->{'email'}->{$email_user};
+            if (ref($email_pipeto) eq "HASH") {
+                while (my ($suffix, $script) = each(%$email_pipeto)) {
+                    if ($suffix eq '') {
+                        make_dot_forward($email_user, $script);
+                    } else {
+                        make_dot_forward($email_user, $script, $suffix);
+                    }
+                }
+            } else {
+                make_dot_forward($email_user, $email_pipeto);
+            }
+        }
+    }
+}
+
+# Remove crontabs, vhost config etc.
+sub remove_site {
+    # Remove daemons
+    foreach my $daemon (keys %{$conf->{'daemons'}}) {
+        unlink("/etc/init.d/$daemon");
+    }
+
+    # Remove crontab
+    unlink($cron_name);
+
+    # Remove email forwarding
+    if ($conf->{'email'}) {
+        foreach my $email_user (keys %{$conf->{'email'}}) {
+            unlink("/home/$email_user/.forward");
+        }
+    }
+
+    # Remove Apache virtual host config
+    unlink("/etc/apache2/virtualhosts.d/$vhost.conf");
+    apache_graceful();
+
+    # Remove nginx virtual host config
+    if ($conf->{'https'} eq 'nginx') {
+        unlink("/etc/nginx/virtualhosts.d/$vhost.conf");
+    }
+    nginx_graceful();
+
+    # Remove possibly symlinked logrotate file
+    unlink("/etc/logrotate.d/$vhost");
+
+    print "Config files removed, please tidy $vhost_dir yourself.\n";
+
+    if ($git) {
+        my $unpushed_command = "cd \"$vhost_dir/$conf->{git_repository}\" && git log --branches --not --remotes --simplify-by-decoration --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative";
+        my $unpushed = `$unpushed_command`;
+        print "\nThe following branches are unpushed:\n$unpushed\n" if $unpushed;
+    }
+
+}
+
+

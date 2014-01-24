@@ -1,0 +1,34 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+
+use lib "/data/mysociety/perllib";
+use mySociety::Config;
+
+use Getopt::Long;
+use File::Slurp;
+require 'DuplicityBackup.pl';
+
+my $backups_conf = "/etc/mysociety/backups/backups.conf";
+mySociety::Config::set_file($backups_conf);
+my $options = mySociety::Config::get_list();
+
+# passphrase stored on all servers but visible only to root.
+my $gpg_passphrase_file = $options->{GPG_PASSPHRASE_FILE}
+  || die "No config option 'GPG_PASSPHRASE_FILE' found in '$backups_conf'";
+my $gpg_passphrase = read_file($gpg_passphrase_file)
+  || die "Could not get gpg_passphrase from file '$gpg_passphrase_file'";
+
+my $source_url;
+
+GetOptions(
+    "source_url=s"       => \$source_url,
+);
+
+die "Usage: $0 --source_url ... \n" unless $source_url;
+
+$options->{'gpg_passphrase'}   = $gpg_passphrase;
+$options->{'source_url'}       = $source_url;
+
+duplicity_collection_status( $options, );

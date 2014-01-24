@@ -1,0 +1,238 @@
+#!/usr/bin/perl -w
+#
+# hassleblog:
+# Hassle a random mySociety person to write something on the www.mysociety.org
+# web log.
+#
+# This script should be run once per hour from cron.
+#
+# "In horror, I realized that I had created software that facilitates hatred
+#  between people! I was pretty depressed about this."
+#  -- Drew Olbrich, http://www.traipse.com/garry/index.html
+#
+# Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
+# Email: chris@mysociety.org; WWW: http://www.mysociety.org/
+#
+
+my $rcsid = ''; $rcsid .= '$Id: hassleblog,v 1.9 2008-10-15 17:09:43 adam Exp $';
+
+use strict;
+
+use Errno;
+use Getopt::Long;
+use Mail::Send;
+use Net::IRC;
+
+# Days on which we send hassle.
+my %days = map { $_ => 1 } qw(1 2 3 4 5);
+
+# Hours during which we send hassle (local time).
+my %hours = map { $_ => 1 } (10 .. 19);
+    # I'm not saying that we actually work those hours. I'm just saying that
+    # we might.... --chris
+
+# People we can hassle.
+my @people = (
+    # Name,             email address,           IRC nick,  days
+    ['Angie Ahl'	'angie@mysociety.org',	 'angie',   [qw(1 2 3 4 5)]],
+    ['Francis Irving',  'francis@mysociety.org', 'Francis', [qw(1 2 3 4 5)]],
+    ['Tom Steinberg',   'tom@mysociety.org',     'Steiny',  [qw(1 2 3 4 5)]],
+    ['Matthew Somerville',
+                        'matthew@mysociety.org', 'Matthew', [5]]
+);
+
+# Probability that we hassle anyone in any given hour. When p is small (any
+# sensible value) the mean number of hassles we will send per day is equal to
+# pN, where N is the number of hours in the day during which we can hassle. For
+# an average of one hassle per day, p = 1/9. Occurences per day are then
+# Poisson distributed:
+#
+#   num hassles occurence
+#   ----------- ---------
+#       0         37%
+#       1         37%
+#       2         18%
+#       3          6.1%
+#       4          1.5%
+#      >4          0.36%
+#
+my $probability = 1. / 9.;
+
+my $help = 0;
+my $verbose = 0;
+my $nowait = 0;
+my $nomail = 0;
+my $noirc = 0;
+my $force = 0;
+
+GetOptions(
+        help =>     \$help,
+        verbose =>  \$verbose,
+        nowait =>   \$nowait,
+        nomail =>   \$nomail,
+        noirc =>    \$noirc,
+        force =>    \$force
+    );
+
+sub debug ($@) {
+    my ($fmt, @args) = @_;
+    $verbose or return;
+    print STDERR sprintf($fmt, @args);
+}
+
+
+if ($help) {
+    print <<'EOF';
+hassleblog - hassle a random mySociety developer to write a web log entry
+
+Options:
+    --help      Display this message
+    --verbose   Show verbose progress messages
+    --nowait    Don't sleep before notifying the developer
+    --nomail    Don't send hassles by email
+    --noirc     Don't send hassles to the IRC channel
+    --force     Always send a notification, even if it's out-of-hours or the
+                random-number-generator doesn't decide we should do
+
+$Id: hassleblog,v 1.9 2008-10-15 17:09:43 adam Exp $
+Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
+Email: chris@mysociety.org; WWW: http://www.mysociety.org/
+EOF
+    exit(0);
+}
+
+my $t = time();
+my @l = localtime($t);
+debug("current time is %s\n", scalar(localtime($t)));
+
+# check whether this is a time when we're allowed to hassle anyone
+if (!exists($days{$l[6]}) || !exists($hours{$l[2]})) {
+    debug("not a suitable time of day for hassling\n");
+    exit(0) if (!$force);
+    debug("but forced to continue anyway...\n");
+}
+
+my $r = rand();
+if ($r > $probability) {
+    debug("r = %.3f, would not hassle anyone this time round\n", $r);
+    exit(0) if (!$force);
+    debug("but forced to continue anyway\n");
+}
+
+if (!$nowait) {
+    my $t = int(rand(3600));
+    debug('waiting for %d seconds...', $t);
+    sleep($t);
+    debug("done\n");
+}
+
+# Pick person to hassle.
+my $person;
+while (1) {
+    $person = $people[int(rand(@people))];
+    my $days = $person->[3];
+    last if (grep { $_ == $l[6] } @$days);
+}
+
+debug("decided to hassle %s <%s>\n", $person->[0], $person->[1]);
+
+# OK, we have somebody to hassle. Send them a hassling email.
+if (!$nomail) {
+    debug("writing mail... ");
+    my $m = new Mail::Send(
+                        Subject => "It's time for you to write something on the mySociety web log",
+                        To => "$person->[0] <$person->[1]>"     # XXX MIME
+                    ) or die "Mail::Send->new: $!";
+    my $f = $m->open() or die "Mail::Send->open: $!";
+    $f->print(<<EOF);
+
+*** IT COULD BE YOU ***
+    -- and, as it turned out, it was
+
+It's time to write a post on the mySociety web log, or the
+mySociety developers' web log, as appropriate. Please do so
+now. Write a hundred words or so, unless you're feeling
+inspired to greater things, and write about what you were
+doing immediately before this email interrupted you, unless
+you have something more interesting to remark on.
+
+If you really can't be arsed to write something, hassle
+someone else to do so.
+
+Remember: YOUR PUBLIC NEEDS YOU
+
+To write your post, visit
+    http://www.mysociety.org/wp-admin/post.php
+
+-- 
+$rcsid
+EOF
+    debug("done\n");
+}
+
+# Now do the IRC thing.
+if (!$noirc) {
+    # Rather than stick the IRC details in public CVS (sorry!), put them in a
+    # file in my home directory.
+    debug("getting IRC server details... ");
+    $ENV{HOME} ||= (getpwuid($<))[7];
+    if (!open(IRC, "$ENV{HOME}/.hassleblog-irc")) {
+        if ($!{ENOENT}) {
+            debug("none available\n");
+        } else {
+            die "~/.hassleblog-irc: $!";
+        }
+    } else {
+        defined(my $l = <IRC>) or die "~/.hassleblog-irc: $!";
+        close(IRC);
+        chomp($l);
+        my ($server, $port, $pw) = split(/\s+/, $l);
+        debug("will connect to %s:%d pw %s\n", $server, $port, $pw);
+
+        # Make sure we quit if it all goes pear-shaped.
+        alarm(60);
+        
+        my $irc = new Net::IRC();
+        my $conn = $irc->newconn(
+                Nick =>     'hassle',
+                Server =>   $server,
+                Port =>     $port,
+                Password => $pw,
+                Username => 'hassle',
+                Ircname =>  'mySociety blog hassling script'
+            ) or die "Net::IRC->newConn: $!";
+        my $counter = 0;
+
+        my $foad = 0;
+        $conn->add_global_handler(
+                '376',
+                sub ($) {
+                    my ($conn) = @_;
+                    debug("joining #ms... ");
+                    $conn->join('#ms') or die "Net::IRC::Connection->join: $!";
+                    debug("done\nsending message to %s... ", $person->[2]);
+                    $conn->privmsg('#ms', "$person->[2]: it's time for you to write a blog post on www.mysociety.org. Get to it!");
+                    $conn->privmsg('#ms', "$person->[2]: http://www.mysociety.org/wp-admin/post.php");
+                    debug("done\n");
+                    $foad = 1;
+                }
+            );
+        $conn->add_global_handler(
+                '433',
+                sub ($) {
+                    ++$counter;
+                    $conn->nick("hassle$counter");
+                }
+            );
+
+        while (!$foad) {
+            $irc->timeout(60);
+            # Suppress (spurious?) warning.
+            { $ = 0; $irc->do_one_loop(); }
+        }
+    }
+}
+
+debug("that's all, folks\n");
+
+exit(0);

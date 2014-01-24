@@ -1,0 +1,428 @@
+#!/usr/bin/perl -w
+#
+# mugly:
+# Macro preprocessor for configuration files.
+#
+# !!(*=             introduces a perl expression to be evaluated
+# !!(*              introduces perl code to be executed
+# *)!!              finishes perl code
+# any other text    passed straight through
+#
+# Semantics of !!(* CODE *)!!: the extent between one *)!! and the next !!(*
+# consists of exactly one perl statement. So you can do, for instance,
+#
+#   !!(*
+#   for (my $i = 0; $i < 10; ++$i) {
+#       $j = f($i);
+#       *)!!
+#       ... text ...
+#       !!(*
+#   }
+#   *)!!
+#
+# Semantics of !!(*= EXPR *)!!: exactly equivalent to !!(* print EXPR *)!!.
+#
+# Variable names beginning __mugly__, and any symbols in the package __mugly__,
+# are reserved.
+#
+# Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
+# Email: chris@mysociety.org; WWW: http://www.mysociety.org/
+#
+# $Id: mugly,v 1.9 2010-01-27 21:16:50 francis Exp $
+#
+
+use strict;
+
+package __mugly__;
+
+use Errno;
+use File::stat;
+use IO::Handle;
+use IO::File;
+use Pod::Usage;
+
+sub quit (;@);
+
+# process_perl_file FILE HANDLE
+# Process the given FILE, which is open on the passed HANDLE, as pure perl.
+# Returns true on success or false on failure.
+sub process_perl_file ($$) {
+    my ($name, $f) = @_;
+    my $code = join('', $f->getlines());
+    if ($f->error()) {
+        print STDERR "$name: $!\n";
+        return 0;
+    }
+
+    my @warnings;
+    {
+        local $SIG{__WARN__} = sub ($) { push(@warnings, @_); };
+        package main;
+        no strict;
+        eval $code;
+    }
+
+    if ($@) {
+        # Expect a string like "... at (eval ...) line ...".
+        my $msg = $@;
+        chomp($msg);
+        if ($msg =~ /^(.*) at \(eval \d+\) line (\d+)/) {
+            print STDERR "mugly: $name:$2: $1\n";
+            return 0;
+        } else {
+            print STDERR "mugly: $name: $msg\n";
+            return 0;
+        }
+    } else {
+        foreach my $msg (@warnings) {
+            chomp($msg);
+            if ($msg =~ /^(.*) at \(eval \d+\) line (\d+)/) {
+                print STDERR "mugly: $name:$2: (warning) $1\n";
+                return 0;
+            } else {
+                print STDERR "mugly: $name: (warning) $msg\n";
+            }
+        }
+    }
+
+    return 1;
+}
+
+use constant TEXT => 0;
+use constant CODE => 1;
+use constant EXPR => 2;
+my @statename = qw(text code expression);
+
+# process_file FILE HANDLE
+# Process the given FILE, which is open on the passed HANDLE, as a mugly macro
+# file. Returns true on success or false on failure.
+sub process_file ($$) {
+    my ($name, $f) = @_;
+
+    my @data;
+    my $state = TEXT;
+    my $code = 'sub ($) { my @__mugly_data__ = @{$_[0]}; do { 1; ';
+
+    my $n = 0;
+    while (defined(my $line = $f->getline())) {
+        # Each line of input text becomes one line of perl code, so that line
+        # numbers in errors in the output correspond exactly to line numbers in
+        # the input.
+        ++$n;
+        $code .= "\n" if ($n > 1);
+
+again:
+        if ($state == TEXT) {
+            # XXX make these call a __mugly__print__ function which tests for
+            # definedness of its argument -- IO::Handle::print reports an error
+            # as from within IO::Handle, which is useless.
+            if ($line =~ /(.*?)!!\(\*=(.*)/s) {
+                push(@data, $1);
+                $code .= "STDOUT->print(\$__mugly_data__[$#data]); STDOUT->print(";
+                $line = $2;
+                $state = EXPR;
+                goto again;
+            } elsif ($line =~ /(.*?)!!\(\*(.*)/s) {
+                push(@data, $1);
+                $code .= "STDOUT->print(\$__mugly_data__[$#data]); } while (0); ";
+                $line = $2;
+                $state = CODE;
+                goto again;
+            } else {
+                push(@data, $line);
+                $code .= "STDOUT->print(\$__mugly_data__[$#data]);";
+            }
+        } elsif ($state == CODE || $state == EXPR) {
+            if ($line =~ /(.*?)\*\)!!(.*)/s) {
+                $code .= $1;
+                if ($state == EXPR) {
+                    $code .= '); ';
+                } else {
+                    $code .= 'do { 1; ';
+                }
+                $line = $2;
+                $state = TEXT;
+                goto again;
+            } elsif ($line =~ /!!\(\*/) {
+                print STDERR "mugly: $name:$n: '!!(*' found inside $statename[$state] block\n";
+                return 0;
+            } else {
+                $code .= $line;
+            }
+        }
+    }
+    
+    if ($f->error()) {
+        print STDERR "mugly: $name:$n: $!\n";
+        return 0;
+    }
+
+    $code .= "} while (0); }\n";
+    
+    my @warnings;
+    {
+        local $SIG{__WARN__} = sub ($) { push(@warnings, @_); };
+        package main;
+        no strict;
+        if (my $F = eval $code) {
+            eval '&$F(\@data)';
+        }
+    }
+
+    if ($@) {
+        # Expect a string like "... at (eval ...) line ...".
+        my $msg = $@;
+        chomp($msg);
+        if ($msg =~ /^(.*) at \(eval \d+\) line (\d+)/) {
+            print STDERR "mugly: $name:$2: $1\n";
+            return 0;
+        } else {
+            print STDERR "mugly: $name: $msg\n";
+            return 0;
+        }
+    } else {
+        foreach my $msg (@warnings) {
+            chomp($msg);
+            if ($msg =~ /^(.*) at \(eval \d+\) line (\d+)/) {
+                print STDERR "mugly: $name:$2: (warning) $1\n";
+                return 0;
+            } else {
+                print STDERR "mugly: $name: (warning) $msg\n";
+                return 0;
+            }
+        }
+    }
+
+    return 1;
+}
+
+my ($outputfile, $tempoutputfile);
+
+sub quit (;@) {
+    print STDERR "mugly: ", @_, "\n" if (@_);
+    unlink($tempoutputfile) if ($tempoutputfile);
+    exit(1);
+}
+
+sub main () {
+    # We need to process a possible -O option.
+    my @args;
+
+    if (@ARGV  == 1 && $ARGV[0] eq '-h') {
+        pod2usage(-exitval => 0, -verbose => 2);
+        exit(0);
+    }
+    
+    while (my $a = shift(@ARGV)) {
+        if ($a eq '-O') {
+            if ($outputfile) {
+                quit("cannot repeat -O");
+            }
+            $a = shift(@ARGV);
+            if (!$a) {
+                quit("-O must be followed by a filename");
+                exit(1);
+            } else {
+                $outputfile = $a;
+            }
+        } else {
+            push(@args, $a);
+        }
+    }
+
+    if ($outputfile) {
+        quit("$outputfile: is a directory") if (-d $outputfile);
+        my $h;
+        my $mode = 0644;
+        my $st = stat($outputfile);
+        $mode = $st->mode() & 07777 if ($st);
+        umask(0000); # want to reproduce *exact* permissions of target
+        do {
+            $h = new IO::File($tempoutputfile = sprintf('%s.%x.%x', $outputfile, int(rand(0xffffffff)), int(rand(0xffffffff))), O_WRONLY | O_CREAT | O_EXCL, $mode);
+            quit("$tempoutputfile: $!") if (!$h && !$!{EEXIST});
+        } while (!$h);
+        close(STDOUT);
+        open(STDOUT, ">&" . $h->fileno()) or quit("$tempoutputfile: $!");
+        $h->close();
+    }
+
+    if (@args == 0) {
+        process_file("(standard input)", \*STDIN);
+    } else {
+        my $stdin = 0;
+        while (my $file = shift(@args)) {
+            my $as_perl = 0;
+            # -p introduces a file to process as pure perl
+            if ($file eq '-p') {
+                $file = shift(@args);
+                if (!$file) {
+                    quit("-p must be followed by a filename");
+                } else {
+                    $as_perl = 1;
+                }
+            }
+
+            my $f;
+            if ($file eq '-') {
+                quit("can't process standard input ('-') more than once") if ($stdin);
+                ++$stdin;
+                $file = '(standard input)';
+                $f = \*STDIN;
+            } else {
+                $f = new IO::File($file, O_RDONLY) || quit("$file: $!");
+            }
+            
+            if ($as_perl) {
+                process_perl_file($file, $f) || quit();
+            } else {
+                process_file($file, $f) || quit();
+            }
+            $f->close(); # XXX will close stdin, but we don't care
+        }
+    }
+
+    if ($outputfile) {
+        close(STDOUT);
+        quit("$outputfile: rename: $!") if (!rename($tempoutputfile, $outputfile));
+    }
+
+    exit(0);
+}
+
+package main;
+
+use constant DONOTEDIT => "Do not edit! This file is automatically generated.";
+__mugly__::main();
+
+__END__
+
+=head1 NAME
+
+mugly
+
+=head1 SYNOPSIS
+
+mugly -h | [-O OUTPUT] [[-p] FILE ...]
+
+=head1 DESCRIPTION
+
+An ugly, but general-purpose, macro preprocessor based upon the perl language.
+Mugly reads standard input, or one or more input FILES specified on the command
+line, and processes them to form output. Each such file may be written in pure
+perl, or in the mugly macro language, which allows text and perl to be mixed
+arbitrarily. Files are processed in the order they appear on the command-line.
+At most one FILE may be specified as "-" to indicate that mugly should read
+standard input; if no FILEs are given, then standard input is read anyway.
+
+=head1 OPTIONS
+
+=over 4
+
+=item -h
+
+Display this help message.
+
+=item -O OUTPUT
+
+Direct output to the named OUTPUT file, rather than to standard output. The
+OUTPUT file is replaced atomically by writing the results of the scripts to a
+new temporary file and renaming it over OUTPUT. This means that you must be
+able to create files in the directory in which OUTPUT lives.
+
+=item -p
+
+The following file is to be interpreted as pure perl, rather than as mugly
+macros.
+
+=back
+
+=head1 MUGLY SYNTAX
+
+Mugly macro files consist of literal text and mugly directives, which are
+enclosed in improbable punctuation so as not to clash with typical
+configuration file formats. Literal text is translated into perl print
+statements, and the perl-language contents of macro statements is interpolated
+appropriately into the generated code.  There are two types of mugly directive:
+
+=over 4
+
+=item !!(* STATEMENTS *)!!
+
+The STATEMENTS are interpolated directly into the intermediate perl code and
+executed. Anything sent to standard output with print etc. will be added to the
+final output. The extent between one *)!! and a following !!(* is guaranteed to
+be one perl statement, so that it is possible to use constructs such as,
+
+    !!(* for ($i = 0; $i < 4; ++$i) { *)!! ... !!(* } *)!!
+
+to repeat literal text.
+
+=item !!(*= EXPRESSION *)!!
+
+The EXPRESSION is interpolated into a print statement in the intermediate perl
+code. This is syntactic sugar for,
+
+    !!(* STDOUT->print(EXPRESSION) *)!!
+
+=back
+
+(whitespace immediately after the first "*" or "*=", and before the trailing
+"*", is ignored).
+
+Each mugly file is used to construct a single anonymous subroutine, while pure
+perl files are interpreted in the enclosing scope. You may define variables,
+functions etc. in pure perl files, and use them in mugly files.
+
+Variable names beginning __mugly__, and names in package __mugly__, are
+reserved and may not be used in macro or pure perl code. A constant,
+DONOTEDIT, is also defined to be equal to the string, "Do not edit! This file
+is automatically generated." If you are generating a file which supports
+comments, it is convenient to put,
+
+    # !!(*= DONOTEDIT *)!!
+
+or equivalent in some prominent place as a warning to the unwary systems
+administrator.
+
+=head1 EXAMPLE
+
+Generating Debian-style interfaces(5) files:
+
+=over 4
+
+=item a pure-perl definitions file, config.pl
+
+With contents like,
+
+    $external_ip_addr = "192.168.1.101";
+    $external_netmask = "255.255.255.0";
+    $default_gateway = "192.168.1.1";
+
+=item a template interfaces(5) file, interfaces.ugly
+
+This file contains something like,
+
+    # interfaces
+    # automatically-generated; do not edit
+    
+    # The loopback network interface
+    auto lo
+    iface lo inet loopback
+
+    !!(*
+    use NetAddr::IP; # for network/broadcast calculations
+    *)!!
+
+    # External interface
+    auto eth0
+    iface eth0 inet static
+        address !!(*= $external_ip_addr *)!!
+        netmask !!(*= $external_netmask *)!!
+        network !!(*= NetAddr::IP->new($external_ip_addr, $external_netmask)->network()->addr() *)!!
+        broadcast !!(*= NetAddr::IP->new($external_ip_addr, $external_netmask)->broadcast()->addr() *)!!
+        gateway !!(*= $default_gateway *)!!
+
+=back
+
+The real interfaces file can then be generated with a command like,
+    mugly -O /etc/network/interfaces -p config.pl interfaces.ugly

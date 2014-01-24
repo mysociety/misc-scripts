@@ -1,0 +1,62 @@
+#!/usr/bin/perl -w
+#
+# ssh-as-sudoer:
+# If running under sudo, invoke SSH as the user of this script; otherwise, if
+# the user is root, invoke ssh with the arguments "-l maint"; otherwise, invoke
+# ssh as usual.
+# 
+# Set CVS_RSH for root to point to this script, and use a CVSROOT with no
+# username specified. Then you will log in to CVS as the user name you logged
+# into the machine with originally, rather than as root.
+#
+# Details:
+#
+# - The script just calls SSH if you are a non-root user.
+#
+# - If you're root, and you used sudo to become root (e.g. with "sudo
+#   bash") such that SUDO_USER is set, then it logs in as that user.
+#
+# - If you're root, and you didn't use sudo (e.g. you're a cron job) it
+#   uses user "maint".
+#
+# Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
+# Email: chris@mysociety.org; WWW: http://www.mysociety.org/
+#
+
+my $rcsid = ''; $rcsid .= '$Id: ssh-as-sudoer,v 1.12 2006-06-06 14:54:28 chris Exp $';
+
+use strict;
+
+use Fcntl;
+use IO::File;
+use IO::Handle;
+use POSIX;
+use Storable qw(store_fd retrieve_fd);
+
+# If single argument is a file descriptor, we're being reinvoked under su and
+# should retrieve saved command-line arguments from the referenced file.
+if (@ARGV == 1 && $ARGV[0] =~ /^[1-9]\d*$/ && POSIX::fstat($ARGV[0])) {
+    my $f = new IO::File();
+    $f->fdopen($ARGV[0], "r") || die "dup: $!";
+    $f->seek(0, 0) || die "lseek: $!";
+    my $aa = retrieve_fd($f) || die "read: $!";
+    $f->close();
+    die "invalid format for retrieved arguments" if (ref($aa) ne 'ARRAY');
+    { exec('ssh', @$aa); }
+} elsif ($< != 0) {
+    { exec('ssh', @ARGV); }
+} elsif (!$ENV{SUDO_USER}) {
+    { exec('ssh', '-l', 'maint', @ARGV); }
+} else {
+    # Want to su to SUDO_USER and then invoke ssh. However, we want to avoid
+    # reparsing the parameters.
+    my $f = IO::File->new_tmpfile() || die "open: $!";
+
+    fcntl($f, F_SETFD, fcntl($f, F_GETFD, 0) & ~FD_CLOEXEC);
+    
+    store_fd(\@ARGV, $f) || die "write: $!";
+    $f->flush() || die "flush: $!";
+    
+    { exec("su", $ENV{SUDO_USER}, "-c", "$0 " . $f->fileno()); }
+}
+die "exec: $!";

@@ -1,0 +1,90 @@
+#!/usr/bin/perl -w
+#
+# exim_passwd_import_users:
+# Import /etc/passwd users into a password file for use by exim.
+#
+# Sadly this has to run as root (shadow passwords).
+#
+# Copyright (c) 2004 UK Citizens Online Democracy. All rights reserved.
+# Email: chris@mysociety.org; WWW: http://www.mysociety.org/
+# Copied and adapted from htpasswd_import_users by Ian Chard <ian@mysociety.org>
+#
+
+my $rcsid = ''; $rcsid .= '$Id: exim_passwd_import_users,v 1.1 2012-07-23 15:30:18 ian Exp $';
+
+use strict;
+
+use Errno;
+use File::Spec;
+use File::stat;
+use IO::File;
+use Data::Dumper;
+use Sys::Hostname;
+
+die "specify location of output file as the only argument." unless (@ARGV == 1);
+
+my $passwd_file = $ARGV[0];
+
+my $host = hostname;
+
+my ($exim4_login, $exim4_pass, $exim4_uid, $exim4_gid) = getpwnam('Debian-exim');
+
+=item create_file_to_replace FILE
+
+Create a file to replace the named FILE. Returns in list context a handle open
+on the new file, and its name.
+
+=cut
+sub create_file_to_replace ($) {
+    my ($name) = @_;
+
+    my $st = stat($name);
+    my ($v, $path, $file) = File::Spec->splitpath($name);
+
+    for (my $i = 0; $i < 10; ++$i) {
+        my $n = File::Spec->catpath($v, $path, sprintf('.%s.%08x.%08x', $file, int(rand(0xffffffff)), time()));
+        my $h = new IO::File($n, O_CREAT | O_EXCL | O_WRONLY, defined($st) ? $st->mode() : 0600);
+        last if (!$h and !$!{EEXIST});
+        chown(0, $exim4_gid, $n);
+	chmod(0640, $n);
+        return ($n, $h);
+    }
+    die $!;
+}
+
+# Create new password file
+my ($h, $passwd_newfile);
+eval {
+    ($passwd_newfile, $h) = create_file_to_replace($passwd_file);
+
+    # Find all users who are in admin- groups
+    my $users;
+    while (@_ = getgrent()) {
+        if ($_[0] =~ m/^admin-/) {
+            foreach my $user (split(/,?\s+/, $_[3])) {
+                $users->{$user} = 1;
+            }
+        }
+    }
+    endgrent();
+
+    # Write out password lines for those users
+    foreach my $user (keys %$users) {
+        my ($name, $passwd, $uid, $gid, $q, $c, $gcos) = getpwnam($user);
+        die "[$host]: no gcos for $user" if (!$gcos);
+        $gcos =~ s#,.+##;
+        next if $passwd eq '!';
+        $h->printf("%s:%s\n", $name, $passwd) or die "$!";
+    }
+
+    $h->close() or die "$!";
+};
+
+if ($@) {
+    unlink($passwd_newfile) if ($passwd_newfile);
+    die $@;
+} elsif (!rename($passwd_newfile, $passwd_file)) {
+    die $!;
+};
+
+exit(0);

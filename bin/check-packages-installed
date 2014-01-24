@@ -1,0 +1,52 @@
+#!/bin/bash
+#
+# bin/check-packages-installed
+# Given a file containaing a list of Debian packages, checks they are all
+# installed. Prints to STDERR those that aren't, and returns an appropriate
+# error code.
+#
+# The packages file can contain any syntax of a normal Debian dependency line,
+# such as version comparison operators, and | alternative operators.  The only
+# difference is that each entry is on a separate line, instead of them being
+# comma separated.
+#
+# Copyright (c) 2009 UK Citizens Online Democracy. All rights reserved.
+# Email: francis@mysociety.org; WWW: http://www.mysociety.org/
+#
+# $Id: check-packages-installed,v 1.8 2009-09-23 09:34:29 francis Exp $
+
+# Using sed as a rubbishy comment parser :) And to put the commas in, instead of newlines.
+FLATTENED_DEPENDENCIES=`cat $1 | sed "s/#.*$//g;" | tr "\n" "," | sed "s/\s+/ /g; s/,,/,/g;"`
+
+# dpkg-checkbuildeps works via a debian/control (in old versions of Debian, before it has -d)
+TEMP_DEB_PACKAGE_DIR=/tmp/mysociety-check-packages-installed-$RANDOM-$RANDOM-$RANDOM
+mkdir -p $TEMP_DEB_PACKAGE_DIR
+cd $TEMP_DEB_PACKAGE_DIR
+mkdir -p debian
+cat <<END > debian/control
+Source: mysociety-check-packages-installed
+Section: web
+Priority: optional
+Maintainer: Francis Irving <francis@mysociety.org>
+Build-Depends: $FLATTENED_DEPENDENCIES
+Standards-Version: 3.7.2
+
+Package: mysociety-check-packages-installed
+Architecture: any
+Description: Dummy mySociety dependencies package
+ This package never gets built.
+END
+
+# Check dependencies, using build dependencies checking tool
+# XXX if need be, instead of calling out to dpkg-checkbuilddeps, this whole
+# script could be a Perl script calling the Dpkg perl modules directly,
+# on lenny or later versions of Debian. But for now this works and is easy
+# enough.
+dpkg-checkbuilddeps
+RET=$?
+
+# Clean up
+rm -fr $TEMP_DEB_PACKAGE_DIR
+
+exit $RET
+

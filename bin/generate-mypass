@@ -1,0 +1,117 @@
+#!/usr/bin/perl -w
+#
+# generate-mypass:
+# Creates ~/.my.cnf files for users to whom it is convenient to give access to
+# databases. Overwrites any existing ~/.my.cnf file for the specified users.
+# Sets the root password to something good.
+#
+# Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
+# Email: francis@mysociety.org; WWW: http://www.mysociety.org/
+# 
+
+my $rcsid = ''; $rcsid .= '$Id: generate-mypass,v 1.30 2012-10-23 12:08:54 matthew Exp $';
+
+use strict;
+require 5.8.0;
+
+use FindBin;
+use lib "$FindBin::Bin/../perllib";
+use POSIX;
+use DBI;
+
+use mySociety::TempFiles;
+
+require "/data/servers/vhosts.pl";
+
+our ($vhosts, $sites, $databases);
+
+# Who can access what databases, on top of ones automatically generated from vhosts.pl
+# Only one database per user for MySQL
+
+my %perms = (
+    buffalo => {
+        matthew => 'twfy',
+        debbi => 'twfy',
+    },
+    majestic => {
+        root => 'root', # XXX As cacti doesn't have a vhost.
+    },
+);
+
+foreach (values %$vhosts) {
+    next unless $_->{databases};
+    my $user = $_->{user} || $sites->{$_->{site}}->{user};
+    my $hosts = $_->{servers}; # Want access from the servers the site is deployed on
+    foreach (@{$_->{databases}}) {
+        next unless $databases->{$_}{type} eq 'mysql';
+        push @$hosts, $databases->{$_}{host}; # And the server the database is on
+        foreach my $host (@$hosts) {
+            warn "$user already has DB $perms{$host}{$user}[0] on $host, so we can't set \$perms{$host}{$user} = $_" if $perms{$host}{$user} && $perms{$host}{$user}[0] ne $_;
+            if ($host eq $databases->{$_}{host}) {
+                $perms{$host}{$user} = [ $_, undef ];
+            } else {
+                $perms{$host}{$user} = [ $_, $databases->{$_}{host} ];
+            }
+            $perms{$host}{'root'} = 'root';
+        }
+    }
+}
+
+my $server = (uname())[1];
+my $database_permissions = $perms{$server};
+die "generate-mypass not configured for server $server" unless $database_permissions;
+
+foreach my $user (keys %$database_permissions) {
+    my @x = getpwnam($user) or die "$user: getpwnam: $!";
+    my ($user_login, $user_pass, $user_uid, $user_gid) = @x;
+    my $user_home = $x[7];
+
+    my ($tmpn, $tmph) = mySociety::TempFiles::create_file_to_replace("$user_home/.my.cnf") or die "open: $!";
+    $tmph->print("# DO NOT EDIT - edit and rerun generate-mypass instead\n");
+
+    my $database = $database_permissions->{$user};
+    my $host;
+    if (ref $database) {
+        $host = $database->[1] . '.int.ukcod.org.uk' if $database->[1];
+        $database = $database->[0];
+    }
+    my $user = $database;
+    if ($database eq "root") {
+        $database = "mysql";
+    }
+    my $password = `$FindBin::Bin/pgpw $user`;
+    chomp $password;
+    my $text = <<END;
+[client]
+user = $user
+password = $password
+; database = $database ; this upsets lots of the MySQL commands e.g. mysqladmin, mysqldump
+END
+    $text .= "host = $host\n" if $host;
+    $tmph->print($text) || throw Oops("$tmpn: write: $!"); 
+    $tmph->close();
+
+    chmod 0400, $tmpn;
+    chown($user_uid, $user_gid, $tmpn);
+
+    my $dest = "$user_home/.my.cnf";
+    rename($tmpn, $dest);
+}
+
+# Connect as root to db, and set root password. Debian defaults to not having one.
+my $password = `$FindBin::Bin/pgpw root`;
+chomp $password;
+my $db = DBI->connect("dbi:mysql:database=mysql;host=localhost", "root", $password, 
+    { RaiseError => 0, AutoCommit => 1 });
+if (!$db) {
+    print "Ignore the warning above - happens first time run on a new machine, before mysql root password is set";
+    # Default debian root user has no password
+    $db = DBI->connect("dbi:mysql:database=mysql;host=localhost", "root", "",
+        { RaiseError => 0, AutoCommit => 1 });
+}
+if (!$db) {
+    die "failed to connect as root to db"
+}
+$db->do("update user set Password = PASSWORD(?) where User = 'root'", {}, $password);
+$db->do("flush privileges");
+

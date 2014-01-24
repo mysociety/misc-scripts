@@ -1,0 +1,84 @@
+#!/bin/sh
+#
+# cvs-mirror:
+# Update a mirror of a CVS repository
+#
+# Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
+# Email: chris@mysociety.org; WWW: http://www.mysociety.org/
+#
+# $Id: cvs-mirror,v 1.11 2011-08-12 09:01:20 matthew Exp $
+#
+
+if [ x$1 = x-h -o x$1 = x--help ] ; then
+    cat <<EOF
+cvs-mirror - copy a CVS repository to another host
+
+This locks the repository and invokes rsync.
+
+EOF
+    exit 0
+fi
+
+die () {
+    echo "cvs-mirror:" "$@" 1>&2
+    exit 1
+}
+
+# Want to clear up our locks on exit.
+locks=""
+lockname="#cvs.rfl.cvs-mirror.$$"
+trap 'for d in $locks ; do [ -d "$d" ] && rmdir "$d" ; find "$repos" -type d -name "$lockname" -print0 | xargs -0 rmdir ; done' EXIT
+
+lock_repos () {
+    repos=$1
+    i=0
+    # http://ximbiot.com/cvs/manual/cvs-1.11.21/cvs_2.html#SEC17
+    while [ $i -lt 60 ] ; do
+        if mkdir "$repos/#cvs.lock" 2> /dev/null ; then
+            locks="$repos/#cvs.lock $locks"
+
+            # We have the master lock, so we should now grab locks on every
+            # other part of the repository.
+            success=1
+            suffix="cvs-mirror.$$"
+            find "$repos" -type d ! -name Attic ! -name CVS ! -name '#cvs.lock' \
+                    ! -name "#cvs.[rw]fl*" -print \
+                | while read leaf ; do
+                if ! mkdir "$leaf/$lockname" 2> /dev/null ; then
+                    success=0
+                    break
+                fi
+                locks="$leaf/$lockname $locks"
+            done
+            
+            # We win.
+            if [ x$success = x1 ] ; then
+                rmdir "$repos/#cvs.lock"
+                return 0
+            fi
+
+            # Remove the locks.
+            find "$repos" -type d -name "$lockname" -print0 | xargs -0 rmdir
+        fi
+        i=$(($i + 1))
+        sleep 1
+    done
+    return 1
+}
+
+location=$1
+[ x$location = x ] && die "first argument must be location of CVS repository"
+[ ! -e $location ] && die "$location: No such file or directory"
+[ ! -d $location ] && die "$location: Not a directory"
+[ ! -d $location/CVSROOT ] && die "$location: not a CVS repository (no CVSROOT)"
+
+host=$2
+[ x$host = x ] && die "second argument must be host to mirror to"
+
+[ x$3 != x ] && die "give exactly two arguments"
+
+lock_repos $location || die "$location: could not lock repository"
+
+rsync --delete -ra --exclude '#cvs.lock' $location/. $host:$location/.
+
+exit 0

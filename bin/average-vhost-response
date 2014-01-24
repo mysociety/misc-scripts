@@ -1,0 +1,26 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+use List::Util qw(sum);
+
+my $vhost = shift;
+die "Supply a vhost" unless $vhost;
+
+my $path = shift;
+die "Supply a path (perhaps with trailing space included)" unless $path;
+
+my %times;
+open(GREP, "zgrep 'GET $path' /data/vhost/$vhost/logs/access_log.*|") or die $!;
+while (<GREP>) {
+    /access_log\.(.*?)(?:\.gz)? :.* [ ](\d+)us[ ] /x;
+    $times{$1}{num}++;
+    $times{$1}{sum} += $2;
+}
+close GREP;
+
+foreach my $date (sort keys %times) {
+    my $num = $times{$date}{num};
+    my $avg = $times{$date}{sum} / $num;
+    printf "%s : %.0fus (from %d requests)\n", $date, $avg, $num;
+}

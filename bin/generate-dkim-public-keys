@@ -1,0 +1,39 @@
+#!/usr/bin/perl
+#
+# Generate a file that can be included in a DNS zone
+# that contains our DKIM public keys
+#
+
+use File::Temp qw/tempfile/;
+use File::Basename;
+
+my $pubkeyfile='/var/named/dkim/dkim-public-keys';
+my $privkeyfile='/etc/exim4/dkim/mysociety.key';
+my $selector=`cat /etc/exim4/dkim/selector`;
+
+chomp $selector;
+die "can't read $privkeyfile" if(! -r $privkeyfile);
+
+my ($fh, $tmpfile)=tempfile("dkimXXXXXX", DIR => dirname($pubkeyfile)) or die "can't create tempfile: $!";
+
+print $fh "; DKIM policy record\n";
+print $fh "_domainkey  IN  TXT  \"o=~;r=postmaster\@mysociety.org\"\n";
+print $fh "; DKIM public keys\n\n";
+
+my $pubkey;
+
+open OPENSSL, "openssl rsa -in $privkeyfile -pubout 2>/dev/null |" or die "can't run openssl for $privkeyfile";
+while(<OPENSSL>) {
+    chomp;
+    next if /^-----(BEGIN|END) PUBLIC KEY-----$/;
+    $pubkey.=$_;
+}
+close OPENSSL;
+
+$pubkey=~s/;/\\;/g;
+
+print $fh "$selector._domainkey  IN  TXT  \"v=DKIM1;t=s;n=core;p=$pubkey\"\n";
+
+close $fh;
+rename $tmpfile, $pubkeyfile or die "couldn't write $pubkey: $!";
+chmod 0644, $pubkeyfile;

@@ -1,0 +1,680 @@
+#!/usr/bin/perl -w
+#
+# usersync:
+# Synchronises users and groups between a remote machine and the local machine.
+#
+# If there are conflicts in correspondence between name and uid, gives an
+# error. 
+#
+# If there are conflicts in other values, such as login shell or full name, it
+# uses the value from the remote machine. This is assuming a model where
+# basically you sync account in a stream, originating in one central server.
+#
+# For passwords, it uses the when field, so the last changed should win.
+#
+# Licensed under the Affero General Public License.
+#
+# Copyright (c) 2004 Chris Lightfoot. All rights reserved.
+# Email: chris@ex-parrot.com; WWW: http://www.ex-parrot.com/~chris/
+#
+
+my $rcsid = ''; $rcsid .= '$Id: usersync,v 1.8 2013-03-08 13:44:53 ian Exp $';
+my $VERSION = "0.1";
+
+use strict;
+
+use Sys::Hostname;
+
+# UserSync::Error
+# Trivial package to provide an error class specific to this program.
+package UserSync::Error;
+
+@UserSync::Error::ISA = qw(Error::Simple);
+
+# UserSync::UserDB
+# Lock, read and replace /etc/passwd, /etc/group and /etc/shadow.
+package UserSync::UserDB;
+
+use IO::File;
+use Errno;
+use Error qw(:try);
+use File::stat;
+
+sub lock_file ($);
+sub lock_file ($) {
+    my $file = shift;
+    main::debug("trying to lock $file...");
+    my $f = new IO::File("$file.lock", O_WRONLY | O_CREAT | O_EXCL);
+    if (!$f) {
+        if (!$!{EEXIST}) {
+            throw UserSync::Error("Unable to lock ${file}: $!");
+        } else {
+            # Is the lockfile stale?
+            if (($f = new IO::File("$file.lock", O_RDONLY))) {
+                my $oldpid = $f->getline();
+                $f->close();
+                if ($oldpid) {
+                    chomp($oldpid);
+                    if (!kill(0, $oldpid)) {
+                        main::debug("lock file exists but is stale (PID $oldpid)");
+                        unlink("$file.lock");
+                            # XXX there's a race condition here, obviously.
+                        return lock_file($file);
+                    }
+                }
+            }
+            throw UserSync::Error("${file}: already locked; aborting");
+        }
+    } elsif (!($f->print("$$\n"))) {
+        throw UserSync::Error("${file}: unable to write PID to lockfile: $!");
+    } else {
+        main::debug("succeeded in locking $file");
+        return 1;
+    }
+}
+
+sub unlock_file ($) {
+    my $file = shift;
+    unlink("$file.lock");
+}
+
+sub new ($) {
+    my ($class) = @_;
+    my $self = { };
+    my %locked;
+    try {
+        foreach my $f (qw(passwd shadow group)) {
+            lock_file("/etc/$f");
+            $locked{$f} = 1;
+        }
+    } otherwise {
+        my $E = shift;
+        foreach my $f (qw(passwd shadow group)) {
+            unlock_file("/etc/$f") if ($locked{$f});
+        }
+        $E->throw();
+    };
+
+    return bless($self, $class);
+}
+
+sub DESTROY ($) {
+    my ($self) = @_;
+    foreach my $f (qw(passwd shadow group)) {
+        unlock_file("/etc/$f");
+    }
+}
+
+# get_contents_of THING
+# Return the contents of THING, which should be "passwd", "group" or "shadow".
+sub get_contents_of ($$) {
+    my ($self, $what) = @_;
+    my $f;
+    my $content = '';
+
+    die "bad THING" unless ($what =~ m#^(passwd|group|shadow)$#);
+    
+    try {
+        $f = new IO::File("/etc/$what", O_RDONLY) or throw UserSync::Error("/etc/$what: $!");
+        while (my $line = $f->getline()) {
+            $content .= $line;
+        }
+        throw UserSync::Error("/etc/$what: $!") if ($f->error());
+    } finally {
+        $f->close() if ($f);
+    };
+
+    return $content;
+}
+
+# replace_contents_of THING DATA
+# Replace the contents of THING, which should be "passwd", "group" or "shadow",
+# with DATA.
+sub replace_contents_of ($$$) {
+    my ($self, $what, $content) = @_;
+    my $f;
+
+    die "bad THING" unless ($what =~ m#^(passwd|group|shadow)$#);
+    throw UserSync::Error("new contents for $what don't look valid") if ($content !~ /:/ or $content !~ /\n/s);
+    throw UserSync::Error("new contents for $what are much smaller than existing contents; ignoring") if (length($content) < 0.9 * stat("/etc/$what")->size());
+
+    try {
+        $f = new IO::File("/etc/$what.usersync.new", O_WRONLY | O_CREAT | O_EXCL, $what eq 'shadow' ? 0640 : 0644) or throw UserSync::Error("replace /etc/$what: open: $!");
+        $f->print($content) or throw UserSync::Error("replace /etc/$what: write: $!");
+        $f->close() or throw UserSync::Error("replace /etc/$what: close: $!");
+        $f = undef;
+        rename("/etc/$what.usersync.new", "/etc/$what") or throw UserSync::Error("replace /etc/$what: rename: $!");
+    } finally {
+        $f->close() if ($f);
+        unlink("/etc/$what.usersync.new");
+    };
+}
+
+package main;
+
+use Getopt::Long;
+use IO::Handle;
+use IO::Socket;
+use POSIX;
+use Error qw(:try);
+
+sub usage ($) { 
+    my $f = shift;
+    $f->print(<<EOF);
+usersync: synchronise user accounts and passwords between hosts
+
+Synopsis: usersync [OPTIONS] HOST
+
+Synchronise the local password, shadow password and group files between this
+machine and HOST. Assumes Linux password file format (do NOT user with
+FreeBSD machines).
+
+Options:
+  --help        Display this message
+
+  --minuid MIN  Synchronise information only for users having UIDs of MIN or
+                greater. Default: 1000.
+
+  --rsh PROGRAM, --ssh PROGRAM
+                Set the PROGRAM to be used to connect to the remote HOST.
+                Default: ssh.
+
+  --usersync-path PROGRAM
+                Path to the usersync PROGRAM on the remote HOST. Default: its
+                location on this host.
+
+  --verbose     Print lots of exciting debugging information to standard error.
+
+  --slave       Internal use only.
+
+Copyright (c) 2004 Chris Lightfoot. All Rights Reserved.
+usersync version $VERSION; $rcsid
+EOF
+}
+
+my $procname = 'usersync(master)';
+my $verbose = 0;
+sub debug (@) {
+    STDERR->print("$procname: ", @_, "\n") if ($verbose);
+}
+
+#
+# Wire protocol:
+#
+# Exchange packets identified by a single letter, with some optional parameters.
+# Parameters are always sent as netstrings (nnn:.....).
+#
+sub netstring ($) {
+    return sprintf('%d:%s', length($_[0]), $_[0]);
+}
+
+sub read_netstring ($) {
+    my ($f) = @_;
+    my $len = 0;
+    while (defined(my $c = $f->getc())) {
+        last if ($c eq ':');
+        throw UserSync::Error("protocol error: character \"$c\" in netstring length") if ($c =~ /[^\d]/);
+        $len = ($len * 10) + ord($c) - ord('0');
+    }
+    throw UserSync::Error("transport error: $!") if ($f->error());
+    my $str = '';
+    while (length($str) < $len) {
+        my $n = $f->read($str, $len - length($str), length($str));
+        if (!defined($n)) {
+            throw UserSync::Error("transport error: $!");
+        } elsif ($n == 0) {
+            throw UserSync::Error("protocol error: EOF in netstring");
+        }
+    }
+    return $str;
+}
+
+sub read_packet_char ($$) {
+    my ($f, $allowed) = @_;
+    my %a = map { $_ => 1 } split(//, $allowed);
+    my $c = $f->getc();
+    if (!defined($c)) {
+        if ($f->error()) {
+            throw UserSync::Error("transport error: $!");
+        } else {
+            throw UserSync::Error("protocol error: EOF at start of packet");
+        }
+    } elsif ($c eq 'E') {
+        throw UserSync::Error("command error: " . read_netstring($f));
+    } elsif (!exists($a{$c})) {
+        throw UserSync::Error("protocol error: pad packet-type octet \"$c\"");
+    } else {
+        return $c;
+    }
+}
+
+# synchronise_passwd MINUID LOCAL REMOTE
+# Return synchronised versions of the LOCAL and REMOTE password files, altering
+# only records with UID >= MINUID. Return in list context the new LOCAL and
+# REMOTE data.
+sub synchronise_passwd ($$$) {
+    my ($minuid, $local, $remote) = @_;
+    my ($newlocal, $newremote) = '';
+
+    my (%ll, %rl, %ln, %rn);
+
+    # Require a one-to-one mapping between UIDs and logins on both ends.
+    foreach my $line (split(/\n/, $local)) {
+        chomp $line;
+        my ($login, $passwd, $uid, $gid, $gecos, $dir, $shell) = split(/:/, $line)
+            or throw UserSync::Error("bad line '$line' in local /etc/passwd");
+        if ($uid < $minuid) {
+            $newlocal .= "$line\n";
+        } else {
+            throw UserSync::Error("duplicate local login \"$login\" (UIDs $ll{$login}->[1], $uid)")
+                if (exists($ll{$login}));
+            throw UserSync::Error("cannot synchronise local UID $uid, which has multiple logins")
+                if (exists($ln{$uid}));
+            $ln{$uid} = $ll{$login} = [$login, $passwd, $uid, $gid, $gecos, $dir, $shell];
+        }
+    }
+
+    foreach my $line (split(/\n/, $remote)) {
+        chomp $line;
+        my ($login, $passwd, $uid, $gid, $gecos, $dir, $shell) = split(/:/, $line)
+            or throw UserSync::Error("bad line '$line' in remote /etc/passwd");
+        if ($uid < $minuid) {
+            $newremote .= "$line\n";
+        } else {
+            throw UserSync::Error("duplicate remote login \"$login\" (UIDs $rl{$login}->[1], $uid)")
+                if (exists($rl{$login}));
+            throw UserSync::Error("cannot synchronise remote UID $uid, which has multiple logins")
+                if (exists($rn{$uid}));
+            $rn{$uid} = $rl{$login} = [$login, $passwd, $uid, $gid, $gecos, $dir, $shell];
+        }
+    }
+
+    # Ensure that UIDs are unique between the two sides.
+    foreach (sort keys %ln) {
+        if (exists($rn{$_})) {
+            throw UserSync::Error("local UID $_ has login \"$ln{$_}->[0]\", but remote UID $_ has login \"$rn{$_}->[0]\"")
+                if ($rn{$_}->[0] ne $ln{$_}->[0]);
+        } else {
+            $rn{$_} = $ln{$_};
+            debug("UID $_, login $rn{$_}->[0] will be created on remote machine");
+        }
+    }
+
+    foreach (sort keys %rn) {
+        if (!exists($ln{$_})) {
+            $ln{$_} = $rn{$_};
+            debug("UID $_, login $rn{$_}->[0] will be created on local machine");
+        }
+    }
+
+    # Reconstruct remainder of two password files.
+    foreach (sort keys %ln) {
+        # take remote version for other fields (even if they differ)
+        $newlocal  .= sprintf("%s:%s:%d:%d:%s:%s:%s\n", @{$rn{$_}});
+        $newremote .= sprintf("%s:%s:%d:%d:%s:%s:%s\n", @{$rn{$_}});
+    }
+
+    return ($newlocal, $newremote);
+}
+
+# synchronise_group MINUID LOCAL REMOTE
+# Return synchronised versions of the LOCAL and REMOTE group files, altering
+# only records with GID >= MINUID. Return in list context the new LOCAL and
+# REMOTE data.
+sub synchronise_group ($$$) {
+    my ($minuid, $local, $remote) = @_;
+    my ($newlocal, $newremote) = '';
+
+    my (%ll, %ln, %rl, %rn);
+
+    foreach my $line (split(/\n/, $local)) {
+        chomp $line;
+        my ($name, $passwd, $gid, $members) = split(/:/, $line)
+            or throw UserSync::Error("bad line '$line' in local /etc/group");
+        if ($gid < $minuid) {
+            $newlocal .= "$line\n";
+        } else {
+            throw UserSync::Error("duplicate local group \"$name\" (GIDs $ll{$name}->[2], $gid)")
+                if (exists($ll{$name}));
+            throw UserSync::Error("cannot synchronise local GID $gid, which has multiple names")
+                if (exists($ln{$gid}));
+            $ln{$gid} = $ll{$name} = [$name, $passwd, $gid, $members];
+        }
+    }
+
+    foreach my $line (split(/\n/, $remote)) {
+        chomp $line;
+        my ($name, $passwd, $gid, $members) = split(/:/, $line)
+            or throw UserSync::Error("bad line '$line' in remote /etc/group");
+        if ($gid < $minuid) {
+            $newremote .= "$line\n";
+        } else {
+            throw UserSync::Error("duplicate remote group \"$name\" (GIDs $rl{$name}->[2], $gid)")
+                if (exists($rl{$name}));
+            throw UserSync::Error("cannot synchronise remote GID $gid, which has multiple names")
+                if (exists($rn{$gid}));
+            $rn{$gid} = $rl{$name} = [$name, $passwd, $gid, $members];
+        }
+    }
+
+
+    foreach (sort keys %ln) {
+        if (exists($rn{$_})) {
+            throw UserSync::Error("local GID $_ has name \"$ln{$_}->[0]\", but remote GID $_ has name \"$rn{$_}->[0]\"")
+                if ($ln{$_}->[0] ne $rn{$_}->[0]);
+        } else {
+            $rn{$_} = $ln{$_};
+            debug("GID $_, name $ln{$_}->[0] will be created on remote machine");
+        }
+    }
+
+    foreach (sort keys %rn) {
+        if (!exists($ln{$_})) {
+            $ln{$_} = $rn{$_};
+            debug("GID $_, name $rn{$_}->[0] will be created on local machine");
+        }
+    }
+
+    # Reconstruct remainder of two group files.
+    foreach (sort keys %ln) {
+        # take remote version for other fields (even if they differ)
+        $newlocal  .= sprintf("%s:%s:%d:%s\n", @{$rn{$_}});
+        $newremote .= sprintf("%s:%s:%d:%s\n", @{$rn{$_}});
+    }
+
+    return ($newlocal, $newremote);
+}
+
+# synchronise_shadow MINUID LOCAL REMOTE UIDMAP
+# Return synchronised versions of the LOCAL and REMOTE shadow files, altering
+# only records with GID >= MINUID. Return in list context the new LOCAL and
+# REMOTE data.
+sub synchronise_shadow ($$$$) {
+    my ($minuid, $local, $remote, $uidmap) = @_;
+    my ($newlocal, $newremote) = '';
+
+    my (%ll, %ln, %rl, %rn);
+
+    foreach my $line (split(/\n/, $local)) {
+        chomp $line;
+        my ($login, $passwd, $when, $remainder) = ($line =~ m#^([^:]+):([^:]+):(\d+):(.+)$#)
+            or throw UserSync::Error("bad line '$line' in local /etc/shadow");
+        my $uid = $uidmap->{$login};
+        if (!defined($uid) or $uid < $minuid) {
+            $newlocal .= "$line\n";
+        } else {
+            next if (exists($ll{$login}));
+            $ln{$uid} = $ll{$login} = [$login, $passwd, $when, $remainder];
+        }
+    }
+
+    foreach my $line (split(/\n/, $remote)) {
+        chomp $line;
+        my ($login, $passwd, $when, $remainder) = ($line =~ m#^([^:]+):([^:]+):(\d+):(.+)$#)
+            or throw UserSync::Error("bad line '$line' in remote /etc/shadow");
+        my $uid = $uidmap->{$login};
+        if (!defined($uid) or $uid < $minuid) {
+            $newremote .= "$line\n";
+        } else {
+            next if (exists($rl{$login}));
+            $rn{$uid} = $rl{$login} = [$login, $passwd, $when, $remainder];
+        }
+    }
+
+    foreach (sort keys %rn) {
+        if (!exists($ln{$_})) {
+            $ln{$_} = $rn{$_};
+            debug("copying $rn{$_}->[0] shadow entry to local machine");
+        } elsif ($ln{$_}->[1] ne $rn{$_}->[1]) {
+            debug("password for login $rn{$_}->[0] differs");
+            if ($ln{$_}->[2] > $rn{$_}->[2]) {
+                $rn{$_}->[1] = $ln{$_}->[1];
+                $rn{$_}->[2] = $ln{$_}->[2];
+                debug("copying password for $rn{$_}->[0] to remote machine");
+            } else {
+                $ln{$_}->[1] = $rn{$_}->[1];
+                $ln{$_}->[2] = $rn{$_}->[2];
+                debug("copying password for $rn{$_}->[0] to local machine");
+            }
+        }
+    }
+
+    foreach (sort keys %ln) {
+        if (!exists($rn{$_})) {
+            $rn{$_} = $ln{$_};
+            debug("copying $rn{$_}->[0] shadow entry to remote machine");
+        }
+    }
+
+    # Reconstruct remainder of two shadow files.
+    foreach (sort keys %ln) {
+        # assume other fields are the same; they should be.
+        $newlocal  .= sprintf("%s:%s:%d:%s\n", @{$ln{$_}});
+        $newremote .= sprintf("%s:%s:%d:%s\n", @{$ln{$_}});
+    }
+
+    return ($newlocal, $newremote);
+}
+
+# do_master MINUID RSHPATH USERSYNCPATH HOST
+# Perform the master side of the protocol.
+sub do_master ($$$$) {
+    my ($minuid, $rsh_path, $usersync_path, $host) = @_;
+
+    debug("master: minuid = $minuid, rsh_path = $rsh_path, usersync_path = $usersync_path, host = $host");
+
+    my ($s, $r) = IO::Socket->socketpair(AF_UNIX, SOCK_STREAM, 0) or throw UserSync::Error("socketpair: $!");
+    my $U = new UserSync::UserDB();
+        
+    # Try to launch the remote end.
+    my $child = undef;
+    if (0 == ($child = fork())) {
+        $s->close();
+        STDIN->close();
+        STDOUT->close();
+        dup($r->fileno());
+        dup($r->fileno());
+        my @cmd = ($rsh_path, $host, $usersync_path, '--slave');
+        push(@cmd, '--verbose') if ($verbose);
+        # Execute this via /bin/sh -c, so that the rsh program can include
+        # options. (Note that this isn't what, say, rsync does, but in this
+        # case it doesn't matter because we don't need to pass shell-unsafe
+        # arguments.)
+        if (!(exec(join ' ', @cmd))) {
+            STDOUT->print("E", netstring("$rsh_path $host $usersync_path: $!"));
+            exit(1);
+        }
+    } elsif (!defined($child)) {
+        throw UserSync::Error("fork: $!");
+    } else {
+        $r->close();
+    }
+    
+    try {
+        # Obtain local and remote copies of the three files.
+        my %local;
+        my %remote;
+        my $p;
+        my $same = 1;
+
+        foreach (qw(passwd group shadow)) {
+            $local{$_} = $U->get_contents_of($_);
+            debug("read ", length($local{$_}), " byte local $_ file");
+            
+            $s->print("G", netstring($_));
+            read_packet_char($s, 'D');
+            $remote{$_} = read_netstring($s);
+            debug("read ", length($remote{$_}), " byte remote $_ file");
+
+            if ($local{$_} ne $remote{$_}) {
+                debug("remote $_ file differs from local one");
+                $same = 0;
+            } else {
+                debug("remote $_ file is the same as local one");
+            }
+        }
+
+        if ($same) {
+            debug("all files are the same; finishing now");
+            $s->print('Q');
+            exit(0);
+        }
+        
+        # 
+        # Process the files.
+        # 
+        # If a user or group exists on one host but not another, we create it
+        # on the second host. If a user's password differs from one host to
+        # another, then we see which one changed more recently, and copy that
+        # to the other.  (Note that this has at best a resolution of one day,
+        # which is bad.) If the same UID or GID is associated with different
+        # users on the two hosts, we abort with an informative error message.
+        # We only synchronise users and groups having ID <= $minuid.
+        #
+        my ($newlocal, $newremote) = synchronise_passwd($minuid, $local{passwd}, $remote{passwd});
+
+        if ($newlocal ne $local{passwd}) {
+            $U->replace_contents_of('passwd', $newlocal);
+            debug("replaced local /etc/passwd");
+        } else {
+            debug("no changes to local /etc/passwd");
+        }
+        if ($newremote ne $remote{passwd}) {
+            $s->print("P", netstring('passwd'), netstring($newremote));
+            read_packet_char($s, 'Y');
+            debug("replaced remote /etc/passwd");
+        } else {
+            debug("no changes to remote /etc/passwd");
+        }
+
+        my %uidmap = ( );
+        foreach my $line (split(/\n/, $newlocal . $newremote)) {
+            chomp $line;
+            my ($login, $pw, $uid) = split(/:/, $line);
+            $uidmap{$login} = $uid if ($uid >= $minuid);
+        }
+
+        ($newlocal, $newremote) = synchronise_group($minuid, $local{group}, $remote{group});
+
+        if ($newlocal ne $local{group}) {
+            $U->replace_contents_of('group', $newlocal);
+            debug("replaced local /etc/group");
+        } else {
+            debug("no changes to local /etc/group");
+        }
+        if ($newremote ne $remote{group}) {
+            $s->print("P", netstring('group'), netstring($newremote));
+            read_packet_char($s, 'Y');
+            debug("replaced remote /etc/group");
+        } else {
+            debug("no changes to remote /etc/group");
+        }
+
+        ($newlocal, $newremote) = synchronise_shadow($minuid, $local{shadow}, $remote{shadow}, \%uidmap);
+
+        if ($newlocal ne $local{shadow}) {
+            $U->replace_contents_of('shadow', $newlocal);
+            debug("replaced local /etc/shadow");
+        } else {
+            debug("no changes to local /etc/shadow");
+        }
+        if ($newremote ne $remote{shadow}) {
+            $s->print("P", netstring('shadow'), netstring($newremote));
+            read_packet_char($s, 'Y');
+            debug("replaced remote /etc/shadow");
+        } else {
+            debug("no changes to remote /etc/shadow");
+        }
+       
+        $s->print('Q');
+    } catch UserSync::Error with {
+        my $E = shift;
+#        STDERR->print("$procname: ", $E->text(), "\n");
+        $s->print('Q');
+        $s->close();
+        $E->throw();
+    } finally {
+        wait;
+    };
+}
+
+# do_slave
+# Perform the slave side of the protocol.
+sub do_slave () {
+    STDOUT->autoflush(1);
+    $procname = 'usersync(slave)';
+
+    try {
+        my $U = new UserSync::UserDB();
+    
+        while (my $cmd = read_packet_char(\*STDIN, 'GPQ')) {
+            if ($cmd eq 'G') {
+                my $what = read_netstring(\*STDIN);
+                STDOUT->print("D", netstring($U->get_contents_of($what)));
+            } elsif ($cmd eq 'P') {
+                my $what = read_netstring(\*STDIN);
+                my $with = read_netstring(\*STDIN);
+                $U->replace_contents_of($what, $with);
+                STDOUT->print("Y");
+            } elsif ($cmd eq 'Q') {
+                exit(0);
+            }
+        }
+
+    } catch UserSync::Error with {
+        my $E = shift;
+        STDOUT->print("E", netstring($E->text()));
+        exit(1);
+    };
+    
+    exit(0);
+}
+
+try {
+
+    my $help = 0;
+    my $rsh_path = 'ssh';
+    my $usersync_path = $0;
+    my $slave = 0;
+    my $minuid = 1000;
+    my $host;
+
+    {
+        local $SIG{__WARN__} = sub ($) {
+            my $e = shift;
+            chomp $e;
+            throw UserSync::Error("$e; try --help for help");
+        };
+        GetOptions(
+            'help|h' =>          \$help,
+            'slave' =>           \$slave,
+            'minuid=i' =>        \$minuid,
+            'usersync-path=s' => \$usersync_path,
+            'rsh|ssh=s' =>       \$rsh_path,
+            'verbose'   =>       \$verbose
+        );
+
+        if ($help) {
+            usage(\*STDOUT);
+            exit(0);
+        }
+    }
+
+    if ($slave) {
+        do_slave();
+    } else {
+        throw UserSync::Error("single argument is name of remote host; try --help for help") if (@ARGV != 1);
+        $host = shift(@ARGV);
+        throw UserSync::Error("not running on same host as target") if($host eq hostname());
+        do_master($minuid, $rsh_path, $usersync_path, $host);
+    }
+
+    debug("completed successfully");
+
+} catch UserSync::Error with {
+    my $E = shift;
+    STDERR->printf("$procname: %s\n", $E->text());
+    exit(1);
+};
+
+exit(0);

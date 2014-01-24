@@ -1,0 +1,60 @@
+#!/bin/bash
+#
+# newuser-id-displayer:
+#   script to pull last few UIDs for feeding to adduser
+#
+# Copyright (c) 2010 UK Citizens Online Democracy. All rights reserved.
+# Email: <adam@mysociety.org> * WWW: http://www.mysociety.org
+#
+# $Id: newuser-id-displayer,v 1.1 2010-12-24 14:29:30 adam Exp $
+#
+
+set -e
+
+type="${1}"
+OUTFILE=/tmp/awk-lowhigh-${type}.${RANDOM}
+CMDSUF=" {print \$3, \$1 }' /etc/passwd | sort -n | tail -n 3"
+
+case ${type} in
+    active|login|developer)
+        echo ""
+        echo "    For limited (chroot, scp only, &c) accounts, use >1501"
+        lowest=1000
+        highest=1999
+    ;;
+    disabled|inactive)
+        lowest=2001
+        highest=2999
+    ;;
+    service)
+        lowest=3001
+        highest=3999
+    ;;
+    mysociety|ms|mysoc|vhost)
+        echo ""
+        echo "    increment a new site to the next '5' (if 5010 exists,"
+        echo "    extend to 5015, with harness/staging/ &c in the block of five)"
+        lowest=4001
+        highest=6999
+        ;;
+    client|commercial)
+        lowest=7001
+        highest=7999
+        ;;
+    petitions|pet)
+        lowest=8001
+        highest=8999
+        ;;
+    *)
+        echo "provide one from {active (login|developer) | disabled (inactive) | service | mysociety (ms|mysoc|vhost) | client (commercial) | petitions (pet)} as an arguement"
+        exit 1
+        ;;
+
+esac
+
+CMDPRE="awk -F: '\$3 > ${lowest} && \$3 < ${highest}"
+
+echo "${CMDPRE}${CMDSUF}" > ${OUTFILE}
+chmod 755 ${OUTFILE}
+${OUTFILE}
+rm ${OUTFILE}

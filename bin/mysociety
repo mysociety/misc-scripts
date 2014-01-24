@@ -1,0 +1,339 @@
+#!/bin/bash
+# Shorter interface to deploy scripts on servers.
+# Bash script because it uses temporary named pipes <(cmd)
+
+# set -x  # debugging
+
+SCRIPT_LOCATION=$(dirname $(readlink -f $0))
+SCRIPT_COMMAND=$(basename $(readlink -f $0))
+
+source $SCRIPT_LOCATION/../shlib/deployfns
+
+if [ x$1 = x ] ; then 
+    die "specify a command (try --help for help)"
+fi
+
+show_help () {
+	cat <<END
+Usage: mysociety [-u] COMMAND [OPTIONS]
+
+COMMAND is one of:
+    config
+        Deploy new config for current server from /data/servers/archetypes/...
+    vhost [--server server] VHOST
+        Deploy latest version of VHOST, e.g. www.pledgebank.com, optionally on [server]
+    vhost stop/update/start [--server server] VHOST
+        Stop/update/start VHOST, e.g. www.pledgebank.com
+    vhost remove VHOST
+        Remove crontab, Apache config, email forwards etc. for VHOST
+    test VHOST
+        Deploy, then run test script on VHOST, e.g. testharness.pet.mysociety.org
+        It will try VHOST.test.mysociety.org if no "." is present.
+    devhost [stop/update/start/remove] SITE
+        When run with sudo, same as mysociety vhost <username>.SITE.dev.mysociety.org
+
+    dns --all
+        Update the DNS configuration on all hosts in the nameserver archetype
+    email
+        Update the exim virtual mail configuration on the current host
+
+    update
+        cvs update /data/mysociety
+    commit
+        git commit and git push /data/servers
+    diff
+        diff /data/servers and /data/mysociety
+
+    base COMMAND
+        Run a command on all machines (which are in the same base class as this one)
+    archetype/arch <archetype>
+        Run a command on all machine in the given archetype
+    base -l
+    archetype/arch <archetype> -l
+        List machines in the given archetype
+    debug
+    	Show debugging information for mysociety command
+
+Extra parameters are passed through to underlying deploy-... script.
+
+Set MYSOCIETY_DEBUG=1 to enable extra debugging (currently this just shows "shell"
+commands that the mySociety Perl scripts call).
+
+The "-u" parameter indicates that this instance is running on a
+user-mode linux virtual machine.  The effect of this is to prevent
+the config and vhost from attempting to update anything from the
+private git repository.
+
+END
+	exit
+}
+
+if [ $1 = "--help" ] ; then
+    show_help
+fi
+
+function in_archetype {
+    ARCHETYPE=$1
+    # Obtain list of servers in archetype
+    SERVERS=`echo $ARCHETYPE | cat - /data/servers/serverclass | \
+        sed 's/#.*//' | sed 's/^[A-Z].*//' | awk '
+        BEGIN { ORS=" " } {
+            if (NR == 1) classname = $1; 
+            else if ($2 == classname) print $1
+        }'`
+}
+
+# Obtain hostname, or a generic name if on an EC2 instance
+if [ -f /etc/mysociety/ec2 ] ; then
+    HOST='EC2'
+else
+    HOST=`hostname`
+fi
+if [ x$HOST = x ] ; then
+    die "can't establish hostname"
+fi
+
+BASE="base"
+ARCHETYPES_DIR="archetypes"
+
+# Obtain archetype
+cd /data/servers
+if [ ! -e /data/servers/serverclass ] ; then
+    die "/data/servers/serverclass: No such file or directory"
+fi
+ARCHETYPES=`echo $HOST | cat - /data/servers/serverclass | \
+            sed 's/#.*//' | awk '
+            BEGIN { ORS=" " } {
+                if (NR == 1) hostname = $1; 
+                else if ($1 == hostname) print $2
+            }'`
+
+COMMAND=$1
+# This should always shift now, as we're checking for empty $1 at the top
+shift || die "specify a command (try --help for help)"
+
+set -e
+
+case $COMMAND in
+    config)
+        # if a puppet agent is running, force it to fetch new configs
+        # (and don't use the old configuration system)
+        if [ -x '/etc/init.d/puppet' ] ; then
+            set +e
+            /etc/init.d/puppet status > /dev/null 2>&1
+            if [ "$?" = 0 ]; then
+                if [ -r '/var/run/puppet/agent.pid' ] ; then
+                    kill -USR1 "`cat /var/run/puppet/agent.pid`"
+                    echo "Signalled puppet to fetch new manifests"
+                else
+                    die "puppet agent running, but pid file can't be read"
+                fi
+                exit
+            fi
+            set -e
+        fi
+
+        # don't try to configure if this host isn't known to us
+        if [ "x$ARCHETYPES" = "x" ] ; then
+            die "don't know archetypes for this host ($HOST), add to /data/servers/serverclass"
+        fi
+
+        # update and make the settings file
+        SETTINGS_FILE=/etc/mysociety/config-settings.pl
+        cd /data/servers/machines
+        cp /data/servers/machines/$HOST.pl $SETTINGS_FILE
+        cat >>$SETTINGS_FILE <<END
+
+            sub pgpw {
+                \$_ = shift;
+                \$_ = \`/data/mysociety/bin/pgpw \$_\`;
+                s/\\s+\$//;
+                return \$_;
+            }
+
+            sub in_archetype {
+                my \$test_against = shift;
+                my \$archetypes = "$ARCHETYPES";
+                my @archetypes = split(/ /, \$archetypes);
+                return grep(/^\$test_against$/, @archetypes);
+            }
+            
+END
+
+        # first, check existing configurations (so you see all errors from an archetype)
+        if [ "$1" != "--no-check-existing" ] # XXX should check all parameters
+        then
+            FAILED=no
+            # see if any file will be used twice, from different archetypes
+            ALLFILES=`tempfile`
+            for ARCHETYPE in $ARCHETYPES
+            do
+                cd /data/servers/$ARCHETYPES_DIR/$ARCHETYPE
+                find . -type f | grep -v CVS | sed "s/.ugly//g" >> $ALLFILES
+            done
+            cat $ALLFILES | sort | uniq -c | sort -n | egrep -v "^      1 " > $ALLFILES.sort || echo -n
+            if [ -s $ALLFILES.sort ]
+            then
+                echo -n "these files appear in more than one archetype out of '"
+                echo -n $ARCHETYPES
+                echo "': "
+                cat $ALLFILES.sort
+                rm -f $ALLFILES $ALLFILES.sort
+                exit
+            fi
+            rm -f $ALLFILES $ALLFILES.sort
+            # test for local changes
+            for ARCHETYPE in $ARCHETYPES
+            do
+                /data/mysociety/bin/deploy-configuration --check-existing --save-file=/var/lib/deploy-configuration-$ARCHETYPE.tar /data/servers/$ARCHETYPES_DIR/$ARCHETYPE $SETTINGS_FILE "$@" || FAILED=yes
+            done
+            # if failed, exit
+            if [ "$FAILED" = "yes" ]
+            then
+                echo "check failed for at least one archetype, not installing files"
+                exit
+            fi
+        fi
+        # now, install everything
+        for ARCHETYPE in $ARCHETYPES
+        do
+            /data/mysociety/bin/deploy-configuration --save-file=/var/lib/deploy-configuration-$ARCHETYPE.tar /data/servers/$ARCHETYPES_DIR/$ARCHETYPE $SETTINGS_FILE "$@"
+        done
+        if [[ ! "$@" =~ "--dry-run" ]]; then
+            /data/mysociety/bin/deploy-logger "Deployed configuration for archetypes \"$ARCHETYPES\" with settings \"$HOST.pl\""
+        fi
+        # check all packages installed
+        for PACKAGE_FILE in `find /etc/mysociety/packages.d/ ! -name "*~" ! -name "*.swp" -type f`
+        do
+            if ! $SCRIPT_LOCATION/check-packages-installed $PACKAGE_FILE
+            then
+                echo "While checking archetype package dependencies in $PACKAGE_FILE"
+                exit 1
+            fi
+        done
+        ;;
+        
+    vhost)
+        COMMAND=deploy
+        VHOST=$1
+        shift || die "specify a command or a virtual host"
+        if [ "$VHOST" == "stop" -o "$VHOST" == "update" -o "$VHOST" == "start" -o "$VHOST" == "remove" ]
+        then
+            COMMAND=$VHOST
+            VHOST=$1
+            shift || die "specify a virtual host"
+        fi
+        if [ "$VHOST" == "--server" ]
+        then
+            SERVER=$1
+            shift || die "specify a server"
+            VHOST=$1
+            shift || die "specify a vhost"
+            if [ "$COMMAND" == "deploy" ]; then COMMAND=""; fi
+            for s in $SERVER; do
+                ssh -t "$s" sudo mysociety vhost "$COMMAND" "$VHOST"
+            done
+            exit
+        fi
+        # deploy vhost
+        /data/mysociety/bin/deploy-vhost $VHOST $COMMAND "$@"
+        ;;
+
+    devhost)
+        COMMAND=
+        SITE=$1
+        shift || die "specify a command or a virtual host"
+        if [ "$SITE" == "stop" -o "$SITE" == "update" -o "$SITE" == "start" -o "$SITE" == "remove" ]
+        then
+            COMMAND=$SITE
+            SITE=$1
+            shift || die "specify a virtual host"
+        fi
+        exec /data/mysociety/bin/mysociety vhost $COMMAND $SUDO_USER.$SITE.dev.mysociety.org "$@"
+        ;;
+
+    test) 
+        VHOST=$1
+        shift || die "specify a virtual host"
+        if [[ $VHOST != *.* ]]; then
+            VHOST=$VHOST.test.mysociety.org
+        fi
+        # update code (which also does apachectl graceful, so killing
+        # any FastCGI processes holding the database open, so the test script
+        # can drop and reload the database)
+        /data/mysociety/bin/deploy-vhost $VHOST deploy "$@"
+        # sleep for a few seconds to allow the Apache processes mentioned above to die
+        sleep 10
+        # launch test script
+        VERBOSE=1 /data/mysociety/bin/test-site $VHOST
+        ;;
+
+    dns)
+        if [ "$1" = "--all" ] ; then
+            /data/mysociety/bin/deploy-logger "Deploying DNS on all servers"
+            exec /data/mysociety/bin/mysociety archetype nameserver mysociety dns --quiet
+        else
+            exec /data/mysociety/bin/deploy-dns "$@"
+        fi
+        ;;
+
+    email)
+        if [ "$1" = "--all" ] ; then
+            /data/mysociety/bin/deploy-logger "Deploying email on all servers"
+            exec /data/mysociety/bin/mysociety archetype email mysociety email --quiet
+        else
+            exec /data/mysociety/bin/deploy-email "$@"
+        fi
+        ;;
+
+    update)
+        cd /data/mysociety
+        cvs -Q update -dP
+        cd /data/mysociety/utils
+        make --quiet
+        ;;
+
+    commit)
+        cd /data/servers
+        git commit -q --allow-empty-message
+	git push -q origin master
+        ;;
+
+    diff)
+        cd /data/servers
+        git diff -u
+        cd /data/mysociety
+        cvs -Q diff -u
+        ;;
+
+    base)
+        exec /data/mysociety/bin/mysociety archetype $BASE "$@"
+        ;;
+
+    archetype | arch)
+        ARCHETYPE=$1
+        shift || die "specify an archetype (try --help for help)"
+        in_archetype $ARCHETYPE
+        if [ "$1" = '-l' ] ; then
+            echo $SERVERS
+        else
+            for X in $SERVERS
+            do
+                echo " -- on $X..."
+                ssh $X "$@" || echo " -- ...failed"
+            done
+        fi
+        ;;
+
+    debug)
+        echo "HOST: $HOST"
+        echo "ARCHETYPES: $ARCHETYPES"
+        echo "ARCHETYPES_DIR: $ARCHETYPES_DIR"
+        echo "BASE: $BASE"
+        ;;
+
+    *)
+	show_help
+        ;;
+esac
+

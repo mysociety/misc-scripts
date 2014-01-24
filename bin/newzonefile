@@ -1,0 +1,133 @@
+#!/usr/bin/perl -w
+#
+# newzonefile:
+# Create a new template zonefile.
+#
+# Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
+# Email: chris@mysociety.org; WWW: http://www.mysociety.org/
+#
+
+my $rcsid = ''; $rcsid .= '$Id: newzonefile,v 1.18 2013-03-07 10:23:33 ian Exp $';
+
+use strict;
+
+use IO::File;
+use POSIX qw();
+use Regexp::Common qw(dns);
+
+my @nameservers = qw(
+        ns0.ukcod.org.uk.
+        ns1.ukcod.org.uk.
+        ns2.ukcod.org.uk.
+        ns1.dns-engine.com.
+        ns2.dns-engine.com.
+        ns3.dns-engine.com.
+        ns4.dns-engine.com.
+        ns5.dns-engine.com.
+    );
+
+if (@ARGV == 0) {
+    print STDERR "newzonefile: try --help for usage\n";
+    exit(1);
+}
+
+if ($ARGV[0] =~ /^(--?help|-h)$/) {
+    print <<EOF;
+Usage: newzonefile DOMAIN [ALIAS ...]
+
+Create a new template zonefile for DOMAIN, and save it in a file with the same
+name; also create .symlink files linking any specified ALIASes to it.
+
+$rcsid
+EOF
+    exit(0);
+}
+
+if (!chdir("/data/servers/dns")) {
+    print STDERR "newzonefile: /data/servers/dns: $!\n";
+    exit(1);
+}
+
+my ($domain, @aliases) = @ARGV;
+my @bad = grep { $_ !~ /^$RE{dns}{domain}$/ } ($domain, @aliases);
+foreach (@bad) {
+    print STDERR "newzonefile: $_: invalid domain name\n";
+}
+exit(1) if (@bad);
+
+my $serial = POSIX::strftime('%Y%m%d01', localtime(time()));
+
+my $f = new IO::File($domain, O_WRONLY | O_CREAT | O_EXCL, 0644);
+if (!$f) {
+    print STDERR "newzonefile: $domain: $!\n";
+    exit(1);
+}
+
+my $descr = scalar(@aliases) ? $domain : "$domain; also " . join(', ', @aliases);
+
+my $kw = '$'; $kw .= 'Id:'; $kw .= '$';
+
+$f->print(<<EOF);
+\$TTL 1H;
+
+;
+; $domain:
+; DNS records for $descr.
+;
+; $kw
+;
+
+@               SOA     ns0.ukcod.org.uk.   hostmaster.ukcod.org.uk. (
+                $serial             ; Serial
+                10800               ; Refresh
+                3600                ; Retry
+                604800              ; Expire
+                86400               ; Minimum TTL
+                )
+
+; Name servers
+EOF
+
+foreach (@nameservers) {
+    $f->print(<<EOF);
+                NS                   $_
+EOF
+}
+
+$f->print(<<EOF);
+
+; Mail records for the domain itself
+                MX      10          mx0.ukcod.org.uk.
+                MX      10          mx1.ukcod.org.uk.
+
+; Address of $domain itself.
+                IN      A           89.238.145.xx       ; change me (see intranet)
+
+localhost       IN      A           127.0.0.1
+
+; Physical web servers for this domain.
+web             IN      A           89.238.145.xx       ; changeme (see intranet)
+
+www             CNAME               web
+
+; Add further web servers etc. below this point.
+
+EOF
+
+$f->close();
+my @gitfiles = ($domain);
+
+foreach (@aliases) {
+    my $f = new IO::File("$_.symlink", O_WRONLY | O_CREAT | O_EXCL, 0644);
+    if ($f) {
+        $f->print("To: $domain\n");
+        $f->close();
+        push(@gitfiles, $_);
+    } else {
+        print STDERR "newzonefile: $_: $!\n";
+    }
+}
+
+system("git", "add", @gitfiles);
+system("git", "commit", "-m", "Created new zone file for $descr", @gitfiles);
+system("git", "push", "origin", "master");
