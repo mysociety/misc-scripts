@@ -1,0 +1,33 @@
+#!/usr/bin/perl -w
+#
+# onetest:
+# Run one monitoring test directly, and display its output.
+#
+# Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
+# Email: chris@mysociety.org; WWW: http://www.mysociety.org/
+#
+
+my $rcsid = ''; $rcsid .= '$Id: onetest,v 1.6 2010-09-10 18:44:27 francis Exp $';
+
+use strict;
+
+use FindBin;
+use lib "$FindBin::Bin/../../perllib";
+use lib "$FindBin::Bin/../perllib/tests";
+
+use mySociety::Config;
+BEGIN {
+    my $config_file = shift;
+    die "Specify config file as first parameter" if !$config_file;
+    mySociety::Config::set_file($config_file);
+}
+
+my $name = shift;
+die "Please specify test, e.g. Web, as second parameter" if !$name;
+
+eval "use $name";
+die "failed to import $name: $@" if ($@);
+my $fn = eval "\\&${name}::test";
+STDOUT->autoflush(1);
+&$fn();
+
