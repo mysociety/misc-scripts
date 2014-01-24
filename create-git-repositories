@@ -21,7 +21,7 @@ def subdirectory_to_extract(d):
 
 #directories = [ "perllib", "phplib", "pylib", "shlib", "jslib", "rblib", "cpplib"] 
 #directories = [ "survey" ] 
-directories = [ "cop", "piwik", "hostedby", "na", "placeopedia", "yhh", "ideasbank", "cvswww", "track", "boxes", "gia", "ivfyb", "panopticon", "glocaliser", "rt", "mscouk", "meinedata", "utils" ]
+directories = [ "na2005", "gny", "news" ]
 directory_map = {}
 for d in directories:
     directory_map[d] = d
