@@ -3,8 +3,7 @@
 
 mkdir /data
 cd /data
-export CVSROOT=cvs.mysociety.org:/usr/local/cvs
-cvs co mysociety
+git clone ssh://git.mysociety.org/data/git/public/misc-scripts.git mysociety
 git clone ssh://git.mysociety.org/data/git/private/mysociety-state.git state
 git clone ssh://git.mysociety.org/data/git/private/mysociety-servers.git servers
 chmod o-rwx servers

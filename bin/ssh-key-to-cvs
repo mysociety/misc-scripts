@@ -1,7 +1,7 @@
 #!/bin/bash
 # 
 # If run on CVS_SERVER, sets up public key access to BACKUP_CVS_SERVER.
-# If run elsewhere, sets up public key access to cvs.mysociety.org
+# If run elsewhere, sets up public key access to git.mysociety.org
 
 set -x
 
@@ -13,7 +13,7 @@ then
     ssh-keygen -t dsa
 fi
 
-cat ~/.ssh/id_dsa.pub | ssh cvs.mysociety.org "mkdir -p ~/.ssh; cat >>~/.ssh/authorized_keys"
+cat ~/.ssh/id_dsa.pub | ssh git.mysociety.org "mkdir -p ~/.ssh; cat >>~/.ssh/authorized_keys"
 
 if [ `hostname` = $CVS_SERVER ]
 then

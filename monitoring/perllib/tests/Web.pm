@@ -47,8 +47,6 @@ my @pages = qw(
         #http://mapumental.channel4.com/tilecache.fcgi/1.0.0/housing/11/1013/663.png
 
         https://secure.mysociety.org/
-        https://secure.mysociety.org/cvstrac/
-        https://secure.mysociety.org/track/webbug.png
     
         http://www.fixmytransport.com/
         http://www.fixmytransport.com/campaigns/provide-non-stepped-access-to-chepst

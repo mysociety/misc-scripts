@@ -37,8 +37,6 @@ COMMAND is one of:
     email
         Update the exim virtual mail configuration on the current host
 
-    update
-        cvs update /data/mysociety
     commit
         git commit and git push /data/servers
     diff
@@ -286,24 +284,17 @@ END
         fi
         ;;
 
-    update)
-        cd /data/mysociety
-        cvs -Q update -dP
-        cd /data/mysociety/utils
-        make --quiet
-        ;;
-
     commit)
         cd /data/servers
         git commit -q --allow-empty-message
-	git push -q origin master
+        git push -q origin master
         ;;
 
     diff)
         cd /data/servers
         git diff -u
         cd /data/mysociety
-        cvs -Q diff -u
+        git diff -u
         ;;
 
     base)

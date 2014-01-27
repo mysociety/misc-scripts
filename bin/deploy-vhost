@@ -4,10 +4,7 @@
 # Deploy a virtual host.
 #
 # Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
-# Email: francis@mysociety.org; WWW: http://www.mysociety.org/
-#
-
-my $rcsid = ''; $rcsid .= '$Id: deploy-vhost,v 1.201 2014-01-23 10:51:37 mark Exp $';
+# WWW: http://www.mysociety.org/
 
 package main;
 
@@ -108,17 +105,8 @@ foreach my $key ( keys %$site_conf ) { $conf->{$key} = $site_conf->{$key}; }
 foreach my $key ( keys %$vhost_conf ) { $conf->{$key} = $vhost_conf->{$key}; }
 die "must specify 'servers' in vhost config" if (!exists($conf->{servers}));
 die "must specify 'staging' in vhost config" if (!exists($conf->{staging}));
-die "must specify one of 'cvs_dirs' or 'git_repository' or 'private_git_repository' in vhost config" if (!exists($conf->{cvs_dirs}) && !exists($conf->{git_repository}) && !exists($conf->{private_git_repository}));
-die "must specify 'cvs_dirs' or 'git_repository' (not both) in vhost config" if (exists($conf->{cvs_dirs}) && exists($conf->{git_repository}) );
+die "must specify one of 'git_repository' or 'private_git_repository' in vhost config" unless exists($conf->{git_repository}) || exists($conf->{private_git_repository});
 my $vcspath;
-my $cvs = 0;
-my $git = 0;
-if (exists($conf->{cvs_dirs})) {
-    die "must specify 'cvs_user' in vhost config" if (!exists($conf->{cvs_user}));
-    die "must not specify 'git_user' in vhost config if you have 'cvs_dirs'" if (exists($conf->{git_user}));
-    $vcspath = "mysociety";
-    $cvs = 1;
-}
 
 # Check if we should be deploying to a timestamped directory which is
 # then symlinked into place.
@@ -135,7 +123,6 @@ if ($timestamped_deploy) {
 
 if (exists($conf->{git_repository})) {
     die "must specify 'git_user' in vhost config" if (!exists($conf->{git_user}));
-    die "must not specify 'cvs_user' in vhost config if you have 'git_repository'" if (exists($conf->{cvs_user}));
     die "can't have blank 'git_user', use 'anon' for anonymous" if ($conf->{git_user} eq '');
     if (exists($conf->{'git_ref_server_mapping'})) {
         die "git_ref_server_mapping defined, but no mapping for $hostname"
@@ -145,7 +132,6 @@ if (exists($conf->{git_repository})) {
         $conf->{'git_ref'} = 'origin/master';
     }
     $vcspath = $conf->{git_repository};
-    $git = 1;
 }
 
 if (exists($conf->{private_git_repository})) {
@@ -157,7 +143,6 @@ if (exists($conf->{private_git_repository})) {
         $conf->{'private_git_ref'} = 'origin/master' if (!exists($conf->{'private_git_ref'}));
     }
     $vcspath = $conf->{private_git_repository} if (!$vcspath);
-    $git = 1;
 }
 
 # Verify that this server is listed for this vhost
@@ -192,10 +177,6 @@ $conf->{'ipv4addr'} = '' if (!exists($conf->{'ipv4addr'}));
 $conf->{'ipv6addr'} = '' if (!exists($conf->{'ipv6addr'}));
 
 if ($timestamped_deploy) {
-    if ($cvs) {
-        die "The 'timestamped_deploy' option can only be used with git-based sites";
-    }
-
     # With timestamped_deploy, we use different options to specify hooks
     # that are run on deploy.
 
@@ -245,49 +226,23 @@ chown($user_uid, $user_gid, "$vhost_dir/logs");
 make_symlink("$vcspath/".$conf->{'web_dir'}, "$vhost_dir/docs");
 shell("chown", "-h", "$user_uid:$user_gid", "$vhost_dir/docs"); # perl's chown doesn't do symlinks
 
-if ($cvs) {
-    # Initial checkout, for CVS directories which don't exist
-    my $cvsroot;
-    if ($conf->{'cvs_user'} eq "") {
-        $cvsroot = "cvs.mysociety.org:/usr/local/cvs";
-    } elsif ($conf->{'cvs_user'} eq 'anon') {
-        $cvsroot = ':pserver:anonymous@cvs.mysociety.org:/repos';
-        # for some reason, CVS gives a warning if there is no .cvspass file during 
-        # anoncvs client use, so we make an empty file
-        if (! -e "$user_home_dir/.cvspass") {
-            system("su $conf->{'user'} -c \"touch ~$conf->{'user'}/.cvspass\"");
-        }
-        # note that anoncvs is now freshly updated automatically by anoncvs-wrapper
-    } else {
-        $cvsroot = $conf->{'cvs_user'} . "\@cvs.mysociety.org:/usr/local/cvs";
-    }
-    make_cvs_dirs($cvsroot, $conf->{'cvs_user'}, $conf->{'cvs_dirs'});
-    if (exists($conf->{'private_cvs_dirs'})){
-        die "must specify 'private_cvs_user' in vhost config" if (!exists($conf->{'private_cvs_user'}));
-        my $privatecvsroot = $conf->{'private_cvs_user'} . "\@cvs.mysociety.org:/usr/local/privatecvs";
-        make_cvs_dirs($privatecvsroot, $conf->{'private_cvs_user'}, $conf->{'private_cvs_dirs'});
-    }
-} elsif ($git) {
-    # Initial clone, for git repository that don't exist
-    my $git_url_base;
-    if (exists($conf->{'git_repository'})){
-        if (!exists($conf->{'git_url_base'})) {
-            if ($conf->{'git_user'} eq 'anon') {
-                $git_url_base = "git://git.mysociety.org/"
-            } else {
-                $git_url_base = "ssh://" . $conf->{'git_user'} . "\@git.mysociety.org/data/git/public/";
-            }
+# Initial clone, for git repository that don't exist
+my $git_url_base;
+if (exists($conf->{'git_repository'})){
+    if (!exists($conf->{'git_url_base'})) {
+        if ($conf->{'git_user'} eq 'anon') {
+            $git_url_base = "git://git.mysociety.org/"
         } else {
-            $git_url_base = $conf->{'git_url_base'};
+            $git_url_base = "ssh://" . $conf->{'git_user'} . "\@git.mysociety.org/data/git/public/";
         }
-        make_git_repository($git_url_base, $conf->{'git_user'}, $conf->{'git_repository'}, $conf->{'git_ref'}, $vcspath_install);
+    } else {
+        $git_url_base = $conf->{'git_url_base'};
     }
-    if (exists($conf->{'private_git_repository'})){
-        $git_url_base = "ssh://" . $conf->{'user'} . "\@git.mysociety.org/data/git/private/";
-        make_git_repository($git_url_base, $conf->{'user'}, $conf->{'private_git_repository'}, $conf->{'private_git_ref'}, $vcspath_install);
-    }
-} else {
-    die "Unknown version control system";
+    make_git_repository($git_url_base, $conf->{'git_user'}, $conf->{'git_repository'}, $conf->{'git_ref'}, $vcspath_install);
+}
+if (exists($conf->{'private_git_repository'})){
+    $git_url_base = "ssh://" . $conf->{'user'} . "\@git.mysociety.org/data/git/private/";
+    make_git_repository($git_url_base, $conf->{'user'}, $conf->{'private_git_repository'}, $conf->{'private_git_ref'}, $vcspath_install);
 }
 
 # Make public directories
@@ -330,8 +285,6 @@ sub write_settings_file {
 \$vhost = '$vhost';
 \$vhost_dir = '$vhost_dir';
 \$vcspath = '$vcspath';
-\$cvs = '$cvs';
-\$git = '$git';
 \$site = '$site';
 \$staging = '$conf->{'staging'}';
 \$vhost_first = '$vhost_first';
@@ -402,34 +355,20 @@ foreach my $daemon (keys %{$conf->{'daemons'}}) {
     my $daemon_mugly_file = $conf->{'daemons'}->{$daemon};
     my $daemon_mugly;
 
-    if ($cvs) {
-        # XXX assume daemon is configured from first conf_dir.
-        my $daemon_mugly_path = $mysociety_dir . '/' . $conf->{conf_dir}->[0] . '/';
-        chdir_verbose(__LINE__, $daemon_mugly_path);
+    $daemon_mugly = mktemp("/tmp/daemon-mugly-file-XXXXXXXX");
+    chdir_verbose(__LINE__, "$vhost_dir/$vcspath_install");
 
-        # XXX This update is a bit of a hack in CVS, to let us get the future version
-        # from the global CVS directory before deploying it. Under git we don't
-        # do that, instead we use "git show" to get the future version directly.
-        shell("cvs", "-Q", "update", "$daemon_mugly_file");
-        $daemon_mugly = $daemon_mugly_path . $daemon_mugly_file;
-    } elsif ($git) {
-        $daemon_mugly = mktemp("/tmp/daemon-mugly-file-XXXXXXXX");
-        chdir_verbose(__LINE__, "$vhost_dir/$vcspath_install");
-
-        my $git_ref;
-        my $conf_dir;
-        if ( $conf->{git_ref} ) {
-            $git_ref = $conf->{git_ref};
-            $conf_dir = $conf->{conf_dir}->[0]
-        } elsif ( $conf->{private_git_ref} ) {
-            $git_ref = $conf->{private_git_ref};
-            $conf_dir = $conf->{private_conf_dir}->[0]
-        }
-
-        shell("git show $git_ref:" . $conf_dir . "/$daemon_mugly_file >$daemon_mugly");
-    } else {
-        die "Unknown version control system";
+    my $git_ref;
+    my $conf_dir;
+    if ( $conf->{git_ref} ) {
+        $git_ref = $conf->{git_ref};
+        $conf_dir = $conf->{conf_dir}->[0]
+    } elsif ( $conf->{private_git_ref} ) {
+        $git_ref = $conf->{private_git_ref};
+        $conf_dir = $conf->{private_conf_dir}->[0]
     }
+
+    shell("git show $git_ref:" . $conf_dir . "/$daemon_mugly_file >$daemon_mugly");
 
     my ($fh, $filename) = tempfile();
     open(FH, ">$filename") or die "failed to open $filename for write";
@@ -440,9 +379,7 @@ foreach my $daemon (keys %{$conf->{'daemons'}}) {
     chmod 0755, "/etc/init.d/$daemon";
     system("update-rc.d $daemon defaults | grep -v \"System startup links for .* already exist\"");
 
-    if ($git) {
-        unlink($daemon_mugly);
-    }
+    unlink($daemon_mugly);
 }
 
 # Create apache configuration stanza
@@ -590,42 +527,6 @@ sub graceful {
     }
 }
 
-sub make_cvs_dirs {
-   my ($cvs_root, $cvs_user, $cvs_dirs) = @_;
-   foreach my $cvs_dir (@{$cvs_dirs}) {
-       my $d = "$vhost_dir/mysociety/$cvs_dir/CVS";
-       if (! -d $d) {
-           if ($cvs_user eq "") { 
-               shell("cd \"$vhost_dir\" && cvs -Q -d \"$cvs_root\" co mysociety/$cvs_dir".
-                    " && chown -R ".$conf->{'user'}.":".$conf->{'user'}." mysociety");
-           } else {
-               shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir\" && cvs -Q -d \"$cvs_root\" co mysociety/$cvs_dir");
-           }
-       } else {
-           my $current_root = read_file("$d/Root");
-           $current_root =~ s/\s*$//;
-           die "CVSROOT in $d is \n\t$current_root\nwhen config says\n\t$cvs_root\n" if ($current_root ne $cvs_root);
-           if ($cvs_user eq 'anon') {
-               chdir_verbose(__LINE__, "$vhost_dir/mysociety/$cvs_dir");
-               # XXX detect errors.  
-               system("cvs -Q diff -u") == 0 || die "Files checked out with anonymous CVS have been modified in $vhost_dir/mysociety/$cvs_dir";
-           }
-       }
-   }
-}
-
-sub update_cvs {
-    my ($cvs_user, $cvs_dirs) = @_;
-    foreach my $cvs_dir (@{$cvs_dirs}) {
-        die "unexpectedly missing cvs directory in update stage" if (! -d "$vhost_dir/mysociety/$cvs_dir/CVS");
-        if ($cvs_user eq "") {
-            shell("cd \"$vhost_dir/mysociety/$cvs_dir\" && cvs -Q update -dP && chown -R ".$conf->{'user'}.":".$conf->{'user'}." ../");
-        } else {
-            shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir/mysociety/$cvs_dir\" && cvs -Q update -dP");
-        }
-    }
-}
-
 sub make_git_repository {
    my ($git_url_base, $git_user, $git_repository, $git_ref, $vcspath_to_use) = @_;
    my $d = "$vhost_dir/$vcspath_to_use/.git";
@@ -740,36 +641,25 @@ if ($action eq "stop") {
 
 sub check_package_file {
     my ($conf_dir, $public) = @_;
-    if ($cvs) {
-            chdir_verbose(__LINE__, "$mysociety_dir/$conf_dir");
-            shell("cvs", "-Q", "update", "packages");
-            if (-e "packages") {
-                shell("/data/mysociety/bin/check-packages-installed", "packages")
-            }
-        } elsif ($git) {
-            my $tmp_packages = mktemp("/tmp/deploy-vhost-packages-XXXXXXXX");
-            my $git_ref;
-            chdir_verbose(__LINE__, "$vhost_dir/$vcspath_install");
-            if ($public) {
-                $git_ref = $conf->{'git_ref'};
-            } else {
-                $git_ref = $conf->{'private_git_ref'};
-            }
-            if (-e "$conf_dir/packages") {
-                my $tree = `git ls-tree $git_ref $conf_dir/packages`;
-                if ($tree =~ /^120000/) {
-                    $tree = `git show $git_ref:$conf_dir/packages`;
-                    shell("git show $git_ref:$conf_dir/$tree >$tmp_packages");
-                } else {
-                    shell("git show $git_ref:$conf_dir/packages >$tmp_packages");
-                }
-                shell("/data/mysociety/bin/check-packages-installed", "$tmp_packages");
-                unlink $tmp_packages;
-            }
-       } else {
-           die "Unknown version control system";
-       }
-
+    my $tmp_packages = mktemp("/tmp/deploy-vhost-packages-XXXXXXXX");
+    my $git_ref;
+    chdir_verbose(__LINE__, "$vhost_dir/$vcspath_install");
+    if ($public) {
+        $git_ref = $conf->{'git_ref'};
+    } else {
+        $git_ref = $conf->{'private_git_ref'};
+    }
+    if (-e "$conf_dir/packages") {
+        my $tree = `git ls-tree $git_ref $conf_dir/packages`;
+        if ($tree =~ /^120000/) {
+            $tree = `git show $git_ref:$conf_dir/packages`;
+            shell("git show $git_ref:$conf_dir/$tree >$tmp_packages");
+        } else {
+            shell("git show $git_ref:$conf_dir/packages >$tmp_packages");
+        }
+        shell("/data/mysociety/bin/check-packages-installed", "$tmp_packages");
+        unlink $tmp_packages;
+    }
 }
 
 sub check_packages {
@@ -854,13 +744,7 @@ sub update_conf_dir {
 
         # find source template (.ugly) file
         my $conf_ugly_part;
-        if ($cvs) {
-            $conf_ugly_part = "$conf_dir/$name_part"; # e.g. foi/config/general
-        } elsif ($git) {
-            $conf_ugly_part = "$vcspath/$conf_dir/$name_part"; # e.g. whatdotheyknow/config/general
-        } else {
-            die "Unknown version control system";
-        }
+        $conf_ugly_part = "$vcspath/$conf_dir/$name_part"; # e.g. whatdotheyknow/config/general
         $conf_ugly_part =~ s#/#_#g;
         my $conf_ugly_file = "$servers_dir/vhosts/$conf_ugly_part.ugly";
         # update the conf/general (or whatever) template in private git repo
@@ -870,34 +754,16 @@ sub update_conf_dir {
         # For public conf files, use the example in the main public checkout. For
         # private, use the example in the vhost conf dir.
         my $example_file;
-        if ($cvs) {
-            my $example_file_dir;
-            if ($public) {
-                $example_file_dir = "$mysociety_dir/$conf_dir";
-            } else {
-                $example_file_dir = "$vhost_dir/$vcspath_install/$conf_dir";
-            }
-            chdir_verbose(__LINE__, $example_file_dir);
-            if ($public  || $conf->{'private_cvs_user'} eq '') {
-                shell("cvs", "-Q", "update", "$name_part-example");
-            } else {
-                shell("su", "-", $conf->{'private_cvs_user'}, "-c cd \"$example_file_dir\" && cvs -Q update $name_part-example");
-            }
-            $example_file = "$example_file_dir/$name_part-example";
-        } elsif ($git) {
-            my $git_ref;
-            $example_file = mktemp("/tmp/deploy-vhost-$name_part-example-XXXXXXXX");
-            if ($public) {
-                chdir_verbose(__LINE__, "$vhost_dir/$vcspath_install");
-                $git_ref = $conf->{'git_ref'};
-            } else {
-                chdir_verbose(__LINE__, "$vhost_dir/" . $conf->{'private_git_repository'});
-                $git_ref = $conf->{'private_git_ref'};
-            }
-            shell("git show $git_ref:$conf_dir/$name_part-example >$example_file");
+        my $git_ref;
+        $example_file = mktemp("/tmp/deploy-vhost-$name_part-example-XXXXXXXX");
+        if ($public) {
+            chdir_verbose(__LINE__, "$vhost_dir/$vcspath_install");
+            $git_ref = $conf->{'git_ref'};
         } else {
-            die "Unknown version control system";
+            chdir_verbose(__LINE__, "$vhost_dir/" . $conf->{'private_git_repository'});
+            $git_ref = $conf->{'private_git_ref'};
         }
+        shell("git show $git_ref:$conf_dir/$name_part-example >$example_file");
         # check destination file hasn't been separately modified
         chdir_verbose(__LINE__, $mysociety_dir);
         my $make_conf = 1;
@@ -939,9 +805,7 @@ sub update_conf_dir {
             }
         }
         # clear up temporary example file in git case
-        if ($git) {
-            unlink($example_file);
-        }
+        unlink($example_file);
         # now we use this configuration
         mySociety::Config::set_file($conf_file);
         umask($old_umask);
@@ -963,26 +827,13 @@ sub update_conf_dir {
                 my $psql_port = mySociety::Config::get($psql_conf_prefix.'_DB_PORT', 5432);
                 my $psql_user = mySociety::Config::get($psql_conf_prefix.'_DB_USER');
 
-                if ($cvs) {
-                    chdir_verbose(__LINE__, $mysociety_dir);
-                    shell("cvs", "-Q", "update", "$psql_schema");
-                    chdir_verbose(__LINE__, $mysociety_bin);
-                    # It isn't safe to pass the password over the command line as that can be
-                    # seen by other processes, instead put it in in ~/.pgpass (see
-                    # mysociety/bin/generate-pgpass). And no, PGPASSWORD isn't safer, as on
-                    # some systems the environment can be seen in other processes.
-                    shell("./psql-schema-compare", $mysociety_dir.'/'.$psql_schema, $conf->{'user'}, $psql_name, $psql_user, $psql_host, $psql_port);
-                } elsif ($git) {
-                    my $tmp_psql_schema = mktemp("/tmp/deploy-vhost-psql-schema-XXXXXXXX");
-                    chdir_verbose(__LINE__, "$vhost_dir/$vcspath_install");
-                    my $git_ref = $conf->{'git_ref'};
-                    shell("git show $git_ref:$psql_schema >$tmp_psql_schema");
-                    chdir_verbose(__LINE__, $mysociety_bin);
-                    shell("./psql-schema-compare", $tmp_psql_schema, $conf->{'user'}, $psql_name, $psql_user, $psql_host, $psql_port);
-                    unlink $tmp_psql_schema;
-                } else {
-                    die "Unknown version control system";
-                }
+                my $tmp_psql_schema = mktemp("/tmp/deploy-vhost-psql-schema-XXXXXXXX");
+                chdir_verbose(__LINE__, "$vhost_dir/$vcspath_install");
+                my $git_ref = $conf->{'git_ref'};
+                shell("git show $git_ref:$psql_schema >$tmp_psql_schema");
+                chdir_verbose(__LINE__, $mysociety_bin);
+                shell("./psql-schema-compare", $tmp_psql_schema, $conf->{'user'}, $psql_name, $psql_user, $psql_host, $psql_port);
+                unlink $tmp_psql_schema;
 
             }
         }
@@ -1004,25 +855,16 @@ sub update_conf_dir {
                 my $mysql_user = mySociety::Config::get($mysql_conf_prefix.'_DB_USER');
 
                 my $schema_full_path;
-                if ($cvs) {
-                    chdir_verbose(__LINE__, $mysociety_dir);
-                    shell("cvs", "-Q", "update", "$mysql_schema");
-                    $schema_full_path = $mysociety_dir.'/'.$mysql_schema
-                } elsif ($git) {
-                    $schema_full_path = mktemp("/tmp/deploy-vhost-mysociety-schema.sql-XXXXXXXX");
-                    chdir_verbose(__LINE__, "$vhost_dir/$vcspath_install");
-                    my $git_ref = $conf->{'git_ref'};
-                    shell("git show $git_ref:$mysql_schema >$schema_full_path");
-                } else {
-                    die "Unknown version control system";
-                }
+                $schema_full_path = mktemp("/tmp/deploy-vhost-mysociety-schema.sql-XXXXXXXX");
+                chdir_verbose(__LINE__, "$vhost_dir/$vcspath_install");
+                my $git_ref = $conf->{'git_ref'};
+                shell("git show $git_ref:$mysql_schema >$schema_full_path");
+
                 # It isn't safe to pass the password over the command line or in the
                 # environment as that can be seen by other processes.
                 chdir_verbose(__LINE__, $mysociety_bin);
                 shell("./mysql-schema-compare", $schema_full_path, $conf->{'user'}, $mysql_name, $mysql_user, $mysql_host, $mysql_port);
-                if ($git) {
-                    unlink($schema_full_path);
-                }
+                unlink($schema_full_path);
             }
         }
     }
@@ -1062,34 +904,25 @@ sub run_tasks_from_config {
 sub update_site {
     my $git_log = '';
 
-    if ($cvs) {
-        # Update from CVS
-        update_cvs($conf->{'cvs_user'}, $conf->{'cvs_dirs'});
-        if (exists($conf->{'private_cvs_dirs'})){
-            update_cvs($conf->{'private_cvs_user'}, $conf->{'private_cvs_dirs'});
-        }
-    } elsif ($git) {
-        # Update from git
-        my $git_repository;
-        if (exists($conf->{'git_repository'})) {
-            $git_repository =  $conf->{'git_repository'};
-            $git_log = update_git($conf->{'git_user'}, $vcspath_install, $conf->{'git_ref'});
-        }
-        # softlink any private dirs into the public directory structure
-        if (exists($conf->{'private_git_repository'})){
-            my $private_git_repository = $conf->{'private_git_repository'};
-            $git_log = update_git($conf->{'user'}, $vcspath_install, $conf->{'private_git_ref'});
-            unless ($timestamped_deploy) {
-                if (exists($conf->{'private_git_dirs'})){
-                    foreach my $private_dir (@{$conf->{'private_git_dirs'}}) {
-                        shell("ln -snf $vhost_dir/$private_git_repository/$private_dir $vhost_dir/$git_repository/$private_dir");
-                    }
+    # Update from git
+    my $git_repository;
+    if (exists($conf->{'git_repository'})) {
+        $git_repository =  $conf->{'git_repository'};
+        $git_log = update_git($conf->{'git_user'}, $vcspath_install, $conf->{'git_ref'});
+    }
+    # softlink any private dirs into the public directory structure
+    if (exists($conf->{'private_git_repository'})){
+        my $private_git_repository = $conf->{'private_git_repository'};
+        $git_log = update_git($conf->{'user'}, $vcspath_install, $conf->{'private_git_ref'});
+        unless ($timestamped_deploy) {
+            if (exists($conf->{'private_git_dirs'})){
+                foreach my $private_dir (@{$conf->{'private_git_dirs'}}) {
+                    shell("ln -snf $vhost_dir/$private_git_repository/$private_dir $vhost_dir/$git_repository/$private_dir");
                 }
             }
         }
-    } else {
-        die "Unknown version control system";
     }
+
     # Run any extra executables
     if ($timestamped_deploy) {
         if (exists($conf->{'exec_extras'})) {
@@ -1126,42 +959,25 @@ sub install_or_remove_crontab {
     }
 
     if ($ok) {
-        if ($cvs) {
-            chdir_verbose(__LINE__, $mysociety_dir);
-            foreach my $conf_dir (@{$conf->{conf_dir}}) {
-                # if a crontab exists in the conf directory in source control, or has been created there
-                # in the update_conf_dir function, just install it
-                my $crontab = "$conf_dir/crontab";
-                if (-e $crontab) {
-                    copy($crontab, "$cron_name");
-                } else {
-                    shell("cvs", "-Q", "update", "$conf_dir/crontab.ugly");
-                    shell("$mysociety_bin/mugly", "-O", $cron_name, "-p", "$settings_file", "$mysociety_dir/$conf_dir/crontab.ugly");
-                }
+        my $setup_git_cron = sub {
+            my ( $conf_dir, $git_ref ) = @_;
+            # if a crontab exists in the conf directory in source control, or has been created there
+            # in the update_conf_dir function, just install it
+            my $crontab = "$conf_dir/crontab";
+            if (-e $crontab) {
+                copy($crontab, "$cron_name");
+            } else {
+                my $tmp_crontab_ugly = mktemp("/tmp/deploy-vhost-crontab.ugly-XXXXXXXX");
+                chdir_verbose(__LINE__, "$vhost_dir/$vcspath_install");
+                return unless -e "$conf_dir/crontab.ugly";
+                shell("git show $git_ref:$conf_dir/crontab.ugly >$tmp_crontab_ugly");
+                shell("$mysociety_bin/mugly", "-O", $cron_name, "-p", "$settings_file", "$tmp_crontab_ugly");
+                unlink $tmp_crontab_ugly;
             }
-        } elsif ($git) {
-            my $setup_git_cron = sub {
-                my ( $conf_dir, $git_ref ) = @_;
-                # if a crontab exists in the conf directory in source control, or has been created there
-                # in the update_conf_dir function, just install it
-                my $crontab = "$conf_dir/crontab";
-                if (-e $crontab) {
-                    copy($crontab, "$cron_name");
-                } else {
-                    my $tmp_crontab_ugly = mktemp("/tmp/deploy-vhost-crontab.ugly-XXXXXXXX");
-                    chdir_verbose(__LINE__, "$vhost_dir/$vcspath_install");
-                    return unless -e "$conf_dir/crontab.ugly";
-                    shell("git show $git_ref:$conf_dir/crontab.ugly >$tmp_crontab_ugly");
-                    shell("$mysociety_bin/mugly", "-O", $cron_name, "-p", "$settings_file", "$tmp_crontab_ugly");
-                    unlink $tmp_crontab_ugly;
-                }
-            };
+        };
 
-            $setup_git_cron->( $_, $conf->{'git_ref'} )         for @{$conf->{conf_dir}};
-            $setup_git_cron->( $_, $conf->{'private_git_ref'} ) for @{$conf->{private_conf_dir}};
-        } else {
-            die "Unknown version control system";
-        }
+        $setup_git_cron->( $_, $conf->{'git_ref'} )         for @{$conf->{conf_dir}};
+        $setup_git_cron->( $_, $conf->{'private_git_ref'} ) for @{$conf->{private_conf_dir}};
 
     } else {
         unlink($cron_name);
@@ -1234,12 +1050,8 @@ sub remove_site {
 
     print "Config files removed, please tidy $vhost_dir yourself.\n";
 
-    if ($git) {
-        my $unpushed_command = "cd \"$vhost_dir/$conf->{git_repository}\" && git log --branches --not --remotes --simplify-by-decoration --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative";
-        my $unpushed = `$unpushed_command`;
-        print "\nThe following branches are unpushed:\n$unpushed\n" if $unpushed;
-    }
+    my $unpushed_command = "cd \"$vhost_dir/$conf->{git_repository}\" && git log --branches --not --remotes --simplify-by-decoration --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative";
+    my $unpushed = `$unpushed_command`;
+    print "\nThe following branches are unpushed:\n$unpushed\n" if $unpushed;
 
 }
-
-
