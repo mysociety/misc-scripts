@@ -62,7 +62,12 @@ test -z "$UNTRACKED_FILES" || die "Error: There are untracked (and unignored fil
 BRANCH=$(git branch -r --contains HEAD)
 if [ -z "$BRANCH" ]
 then
-    die "Error: Changes have been made in the deployed repository (in `pwd`) that are not in the blessed repository"
+    echo "Error: Switching to a new commit in `pwd`"
+    echo "would risk losing the following commits that haven't been pushed to a remote:"
+    echo
+    git log HEAD --not --remotes --oneline
+    echo
+    die "You should resolve this manually."
 fi
 
 # Go through each submodule, from:
