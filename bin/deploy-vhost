@@ -99,6 +99,10 @@ $flush = 1 if @ARGV > 2 && $ARGV[2] eq '--flush';
 my $hostname = `hostname`;
 chomp($hostname);
 
+my $debian_version = `lsb_release -rs`;
+chomp($debian_version);
+my ($debian_version_major, $debian_version_minor) = split /\./, $debian_version;
+
 # Merge vhost and site configs together
 my $conf;
 foreach my $key ( keys %$site_conf ) { $conf->{$key} = $site_conf->{$key}; }
@@ -793,9 +797,16 @@ sub update_conf_dir {
             chown($user_uid, $user_gid, "$conf_file");
             unlink($conf_file_tmp) or die "couldn't unlink $conf_file_tmp";
 
-            # if it's a logrotate file, symlink it to /etc/logrotate.d/
+            # if we're on wheezy or later, we have to run logrotate as the vhost user.
+            # if not, we can just symlink it to /etc/logrotate.d/
             if ($name_base eq 'logrotate') {
-                shell("ln -snf $conf_file /etc/logrotate.d/$vhost");
+                if ($debian_version_major >= 7) {
+                    open CRON, ">".$cron_name."-logrotate";
+                    print CRON "5 0 * * * $user /usr/sbin/logrotate -s $vhost_dir/$vcspath_install/$conf_dir/logrotate.state $conf_file\n";
+                    close CRON;
+                } else {
+                    shell("ln -snf $conf_file /etc/logrotate.d/$vhost");
+                }
             }
         } else {
             if ($name_base eq 'general') {
@@ -1045,8 +1056,13 @@ sub remove_site {
     }
     nginx_graceful();
 
-    # Remove possibly symlinked logrotate file
-    unlink("/etc/logrotate.d/$vhost");
+    if ($debian_version_major >= 7) {
+        # Remove vhost user's logrotate cron job
+        unlink("/etc/cron.d/".$cron_name."-logrotate");
+    } else {
+        # Remove possibly symlinked logrotate file
+        unlink("/etc/logrotate.d/$vhost");
+    }
 
     print "Config files removed, please tidy $vhost_dir yourself.\n";
 
