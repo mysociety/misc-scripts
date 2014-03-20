@@ -797,16 +797,10 @@ sub update_conf_dir {
             chown($user_uid, $user_gid, "$conf_file");
             unlink($conf_file_tmp) or die "couldn't unlink $conf_file_tmp";
 
-            # if we're on wheezy or later, we have to run logrotate as the vhost user.
-            # if not, we can just symlink it to /etc/logrotate.d/
-            if ($name_base eq 'logrotate') {
-                if ($debian_version_major >= 7) {
-                    open CRON, ">".$cron_name."-logrotate";
-                    print CRON "5 0 * * * $user /usr/sbin/logrotate -s $vhost_dir/$vcspath_install/$conf_dir/logrotate.state $conf_file\n";
-                    close CRON;
-                } else {
-                    shell("ln -snf $conf_file /etc/logrotate.d/$vhost");
-                }
+            # For squeeze and earlier, we can just symlink the logrotate file;
+            # for later versions, see below.
+            if ($name_base eq 'logrotate' && $debian_version_major <= 6) {
+                shell("ln -snf $conf_file /etc/logrotate.d/$vhost");
             }
         } else {
             if ($name_base eq 'general') {
@@ -878,6 +872,31 @@ sub update_conf_dir {
                 unlink($schema_full_path);
             }
         }
+    }
+
+    # For wheezy or later, make sure we have a logrotate file; if we don't, use the default one.
+    # Then add a cron job to call it with a vhost-specific state file.
+    # (for squeeze and earlier, this is all handled by our /etc/logrotate.d/apache2)
+    if ($debian_version_major >= 7) {
+        my $conf_file = "$vhost_dir/$vcspath_install/$conf_dir/logrotate";
+        my $conf_file_tmp = $conf_file . ".tmp";
+        if (! -f $conf_file) {
+            shell("$mysociety_bin/mugly", "-O", $conf_file_tmp, "-p", "$settings_file", "$servers_dir/vhosts/default_logrotate.ugly");
+            copy($conf_file_tmp, "$conf_file.deployed");
+            chown($user_uid, $user_gid, "$conf_file.deployed");
+            copy($conf_file_tmp, "$conf_file");
+            chown($user_uid, $user_gid, "$conf_file");
+            unlink($conf_file_tmp) or die "couldn't unlink $conf_file_tmp";
+        }
+
+        open CRON, ">".$cron_name."-logrotate";
+        print CRON "MAILTO=root\n";
+        print CRON "5 0 * * * $user /usr/sbin/logrotate -s $vhost_dir/$vcspath_install/$conf_dir/logrotate.state $conf_file\n";
+        close CRON;
+
+        # Make sure any symlink created by an earlier version of this script, or pre-OS-upgrade,
+        # is removed.
+        unlink("/etc/logrotate.d/$vhost");
     }
 }
 
