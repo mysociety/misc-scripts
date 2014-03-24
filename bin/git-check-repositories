@@ -239,7 +239,9 @@ function get_expected_private_owner {
         [ "$REPOSITORY_NAME" = 'mysociety-servers' ] ||
         [ "$REPOSITORY_NAME" = 'mysociety-state' ] ||
         [ "$REPOSITORY_NAME" = 'repdata' ] ||
-        [ "$REPOSITORY_NAME" = 'seesomething' ]
+        [ "$REPOSITORY_NAME" = 'seesomething' ] ||
+        [ "$REPOSITORY_NAME" = 'britishmuseum' ] ||
+        [ "$REPOSITORY_NAME" = 'car-cost-tool' ]
    then
        EXPECTED_OWNER="privatecvs"
    else
