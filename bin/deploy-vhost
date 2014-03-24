@@ -874,28 +874,28 @@ sub update_conf_dir {
         }
     }
 
-    # For wheezy or later, make sure we have a logrotate file; if we don't, use the default one.
-    # Then add a cron job to call it with a vhost-specific state file.
+    # For wheezy or later, make sure custom logrotate files are called using
+    # a cron job with a vhost-specific state file.
     # (for squeeze and earlier, this is all handled by our /etc/logrotate.d/apache2)
     if ($debian_version_major >= 7) {
         my $conf_file = "$vhost_dir/$vcspath_install/$conf_dir/logrotate";
-        if (! -f $conf_file) {
-            $conf_file = "$vhost_dir/logrotate";
-            my $conf_file_tmp = $conf_file . ".tmp";
-            shell("$mysociety_bin/mugly", "-O", $conf_file_tmp, "-p", "$settings_file", "$servers_dir/vhosts/default_logrotate.ugly");
-            copy($conf_file_tmp, "$conf_file");
-            chown($user_uid, $user_gid, "$conf_file");
-            unlink($conf_file_tmp) or die "couldn't unlink $conf_file_tmp";
+        if (-f $conf_file) {
+            open CRON, ">".$cron_name."-logrotate";
+            print CRON "MAILTO=root\n";
+            print CRON "5 0 * * * $user /usr/sbin/logrotate -s $vhost_dir/logrotate.state $conf_file\n";
+            close CRON;
+
+            # Make sure any symlink created by an earlier version of this script, or pre-OS-upgrade,
+            # is removed.
+            unlink("/etc/logrotate.d/$vhost");
+        } else {
+            # Make sure any cron job created by an earlier version of this script is removed.
+            unlink($cron_name."-logrotate");
         }
 
-        open CRON, ">".$cron_name."-logrotate";
-        print CRON "MAILTO=root\n";
-        print CRON "5 0 * * * $user /usr/sbin/logrotate -s $vhost_dir/logrotate.state $conf_file\n";
-        close CRON;
-
-        # Make sure any symlink created by an earlier version of this script, or pre-OS-upgrade,
-        # is removed.
-        unlink("/etc/logrotate.d/$vhost");
+        # Now generate /etc/logrotate.d/apache2 to take care of vhosts without
+        # their own logrotate config files.
+        system("/data/mysociety/bin/generate-apache2-logrotate");
     }
 }
 

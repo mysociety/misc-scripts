@@ -1,0 +1,104 @@
+#!/usr/bin/perl
+#
+# Generate /etc/logrotate.d/apache2-vhosts.
+#
+# New versions of logrotate require the config files to be owned by the
+# running user.  This won't work for vhosts with their own logrotate files.
+# deploy-vhost will generate individual cron jobs for these vhosts,
+# and this script generates a config file to rotate logs of all the others.
+#
+# Unfortunately we can't just do '/data/vhost/*/logs/*', as there's no way
+# of excluding vhosts from the glob.
+#
+
+
+use strict;
+use warnings;
+
+use File::Basename;
+use File::Temp qw(tempfile mktemp);
+use File::Copy;
+
+our ($vhosts, $sites);
+require "/data/servers/vhosts.pl";
+
+
+my $APACHE_LOGROTATE = "/etc/logrotate.d/apache2-vhosts";
+
+# Don't run this on squeeze systems.
+my $debian_codename = `lsb_release -cs`;
+chop $debian_codename;
+die "mustn't run on squeeze" if($debian_codename eq 'squeeze');
+
+# If the file we generate isn't owned by root, logrotate will fail noisily.
+die "must run as root" if($< != 0);
+
+my $tmp_logrotate = mktemp("/tmp/generate-apache2-logrotate-XXXXXXXX");
+open TMP, ">$tmp_logrotate" or die "can't write to $tmp_logrotate: $!";
+
+foreach (glob "/data/vhost/*") {
+    my $vhost = basename($_);
+
+    next if(! -d $_);
+    next if($vhost eq 'debian.mysociety.org' || $vhost eq 'default.ukcod.org.uk');
+
+    # Work out where the vhost's config dir is so we can look
+    # for a logrotate file.
+    my $vhost_conf = $vhosts->{$vhost};
+    my $site = $vhost_conf->{'site'};
+    my $site_conf = $sites->{$site};
+    my $conf;
+    foreach my $key ( keys %$site_conf ) { $conf->{$key} = $site_conf->{$key}; }
+    foreach my $key ( keys %$vhost_conf ) { $conf->{$key} = $vhost_conf->{$key}; }
+
+    my $vcspath = (exists($conf->{private_git_repository}))? $conf->{private_git_repository} : $conf->{git_repository};
+    my $conf_dir = (exists($conf->{private_conf_dir}))? $conf->{private_conf_dir} : $conf->{conf_dir};
+
+    # Skip this vhost if it has its own logrotate file.
+    next if(-f "$_/$vcspath/$conf_dir/logrotate");
+
+    print TMP <<END;
+#######
+# $vhost
+#######
+
+/data/vhost/$vhost/logs/*access_log /data/vhost/$vhost/logs/*error_log {
+    daily
+    rotate 28
+    compress
+    delaycompress
+    create 640 root staff
+    dateext
+    dateformat .%Y-%m-%d
+    missingok
+    sharedscripts
+    postrotate
+        /etc/init.d/apache2 reload > /dev/null
+        /data/mysociety/bin/set-apache-log-permissions
+    endscript
+}
+
+# JSON logs don't need to be kept as they just duplicate the data from the main logs.
+
+/data/vhost/$vhost/logs/access_json_log {
+    daily
+    rotate 1
+    create 640 root staff
+    dateext
+    dateformat .%Y-%m-%d
+    missingok
+    sharedscripts
+    postrotate
+        /etc/init.d/apache2 reload > /dev/null
+        /data/mysociety/bin/set-apache-log-permissions
+    endscript
+}
+
+
+END
+}
+
+close TMP;
+
+copy($tmp_logrotate, $APACHE_LOGROTATE) or die "can't overwrite $APACHE_LOGROTATE: $!";
+unlink($tmp_logrotate) or warn "can't unlink $tmp_logrotate: $!";
