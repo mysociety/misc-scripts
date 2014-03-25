@@ -702,7 +702,13 @@ sub stop_site {
     #}
 
     if (-d "$vhost_dir/docs") {
-        if(-s "$vhost_dir/docs/down.current.html") {
+        if(-s "$servers_dir/vhosts/downs/${vhost}.html") {
+            # Have to copy rather than symlink because $servers_dir probably isn't readable
+            # by the vhost user.
+            unlink("$vhost_dir/docs/down.html");
+            copy("$servers_dir/vhosts/downs/${vhost}.html", "$vhost_dir/docs/down.html")
+                or warn "can't copy $servers_dir/vhosts/downs/${vhost}.html to $vhost_dir/docs/down.html: $!";
+        } elsif(-s "$vhost_dir/docs/down.current.html") {
             unlink("$vhost_dir/docs/down.html");
             symlink("$vhost_dir/docs/down.current.html", "$vhost_dir/docs/down.html");
         } elsif (-s "$vhost_dir/docs/down.default.html") {
