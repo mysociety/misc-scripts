@@ -18,12 +18,14 @@ use warnings;
 use File::Basename;
 use File::Temp qw(tempfile mktemp);
 use File::Copy;
+use Sys::Hostname;
 
 our ($vhosts, $sites);
 require "/data/servers/vhosts.pl";
 
 
-my $APACHE_LOGROTATE = "/etc/logrotate.d/apache2-vhosts";
+#my $APACHE_LOGROTATE = "/etc/logrotate.d/apache2-vhosts";
+my $APACHE_LOGROTATE = "woo";
 
 # Don't run this on squeeze systems.
 my $debian_codename = `lsb_release -cs`;
@@ -36,10 +38,14 @@ die "must run as root" if($< != 0);
 my $tmp_logrotate = mktemp("/tmp/generate-apache2-logrotate-XXXXXXXX");
 open TMP, ">$tmp_logrotate" or die "can't write to $tmp_logrotate: $!";
 
-foreach (glob "/data/vhost/*") {
-    my $vhost = basename($_);
+my $hostname = hostname();
+$hostname =~ s/\..*$//;
 
-    next if(! -d $_);
+foreach my $vhost (keys %$vhosts) {
+    next if(!grep /^$hostname$/, @{$vhosts->{$vhost}{'servers'}});
+
+    my $vhost_dir = "/data/vhost/$vhost";
+    next if(! -d $vhost_dir);
     next if($vhost eq 'debian.mysociety.org' || $vhost eq 'default.ukcod.org.uk');
 
     # Work out where the vhost's config dir is so we can look
@@ -55,7 +61,7 @@ foreach (glob "/data/vhost/*") {
     my $conf_dir = (exists($conf->{private_conf_dir}))? $conf->{private_conf_dir} : $conf->{conf_dir};
 
     # Skip this vhost if it has its own logrotate file.
-    next if(-f "$_/$vcspath/$conf_dir/logrotate");
+    next if(-f "$vhost_dir/$vcspath/$conf_dir/logrotate");
 
     print TMP <<END;
 #######
