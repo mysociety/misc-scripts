@@ -24,8 +24,7 @@ our ($vhosts, $sites);
 require "/data/servers/vhosts.pl";
 
 
-#my $APACHE_LOGROTATE = "/etc/logrotate.d/apache2-vhosts";
-my $APACHE_LOGROTATE = "woo";
+my $APACHE_LOGROTATE = "/etc/logrotate.d/apache2-vhosts";
 
 # Don't run this on squeeze systems.
 my $debian_codename = `lsb_release -cs`;
