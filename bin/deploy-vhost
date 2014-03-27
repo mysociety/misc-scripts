@@ -394,6 +394,9 @@ if ($conf->{'https'} eq 'nginx') {
     shell("$mysociety_bin/mugly", "-O", "/etc/nginx/virtualhosts.d/$vhost.conf", "-p", "$settings_file", "$servers_dir/vhosts/single-vhost-nginx-https-proxy.conf.ugly");
 }
 
+# Update NRPE's sudo and config files so that it can call monitoring scripts as the vhost user
+system("/data/mysociety/bin/update-vhost-monitoring");
+
 # Work out name of crontab
 my $cron_name = "vhost-$vhost";
 $cron_name =~ s/\./-/g;
