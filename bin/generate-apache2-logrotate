@@ -60,6 +60,7 @@ foreach my $vhost (keys %$vhosts) {
     my $conf_dir = (exists($conf->{private_conf_dir}))? $conf->{private_conf_dir} : $conf->{conf_dir};
 
     # Skip this vhost if it has its own logrotate file.
+    next if(!$conf_dir);
     next if(-f "$vhost_dir/$vcspath/$conf_dir/logrotate");
 
     print TMP <<END;
