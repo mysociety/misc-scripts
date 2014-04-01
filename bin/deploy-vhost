@@ -579,7 +579,7 @@ sub update_git {
 
     my $vcspath = $git_repository;
     if ($timestamped_deploy) {
-        $vcspath_to_use = $vcspath_install;
+        $vcspath = $vcspath_install;
     }
 
     die "unexpectedly missing .git directory in update stage" if (! -d "$vhost_dir/$vcspath/.git");
