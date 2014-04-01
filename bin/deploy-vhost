@@ -242,11 +242,11 @@ if (exists($conf->{'git_repository'})){
     } else {
         $git_url_base = $conf->{'git_url_base'};
     }
-    make_git_repository($git_url_base, $conf->{'git_user'}, $conf->{'git_repository'}, $conf->{'git_ref'}, $vcspath_install);
+    make_git_repository($git_url_base, $conf->{'git_user'}, $conf->{'git_repository'}, $conf->{'git_ref'});
 }
 if (exists($conf->{'private_git_repository'})){
     $git_url_base = "ssh://" . $conf->{'user'} . "\@git.mysociety.org/data/git/private/";
-    make_git_repository($git_url_base, $conf->{'user'}, $conf->{'private_git_repository'}, $conf->{'private_git_ref'}, $vcspath_install);
+    make_git_repository($git_url_base, $conf->{'user'}, $conf->{'private_git_repository'}, $conf->{'private_git_ref'});
 }
 
 # Make public directories
@@ -535,7 +535,13 @@ sub graceful {
 }
 
 sub make_git_repository {
-   my ($git_url_base, $git_user, $git_repository, $git_ref, $vcspath_to_use) = @_;
+   my ($git_url_base, $git_user, $git_repository, $git_ref) = @_;
+
+   my $vcspath_to_use = $git_repository;
+   if ($timestamped_deploy) {
+       $vcspath_to_use = $vcspath_install;
+   }
+
    my $d = "$vhost_dir/$vcspath_to_use/.git";
    my $git_url = "$git_url_base$git_repository.git";
    if (! -d $d) {
@@ -569,7 +575,13 @@ sub make_git_repository {
 }
 
 sub update_git {
-    my ($git_user, $vcspath, $git_ref) = @_;
+    my ($git_user, $git_repository, $git_ref) = @_;
+
+    my $vcspath = $git_repository;
+    if ($timestamped_deploy) {
+        $vcspath_to_use = $vcspath_install;
+    }
+
     die "unexpectedly missing .git directory in update stage" if (! -d "$vhost_dir/$vcspath/.git");
     my $update_command = "git fetch origin && git checkout $git_ref && git submodule update --init";
     if ($git_user eq 'root') {
@@ -952,12 +964,12 @@ sub update_site {
     my $git_repository;
     if (exists($conf->{'git_repository'})) {
         $git_repository =  $conf->{'git_repository'};
-        $git_log = update_git($conf->{'git_user'}, $vcspath_install, $conf->{'git_ref'});
+        $git_log = update_git($conf->{'git_user'}, $git_repository, $conf->{'git_ref'});
     }
     # softlink any private dirs into the public directory structure
     if (exists($conf->{'private_git_repository'})){
         my $private_git_repository = $conf->{'private_git_repository'};
-        $git_log = update_git($conf->{'user'}, $vcspath_install, $conf->{'private_git_ref'});
+        $git_log = update_git($conf->{'user'}, $private_git_repository, $conf->{'private_git_ref'});
         unless ($timestamped_deploy) {
             if (exists($conf->{'private_git_dirs'})){
                 foreach my $private_dir (@{$conf->{'private_git_dirs'}}) {
