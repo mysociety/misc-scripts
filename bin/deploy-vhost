@@ -95,6 +95,8 @@ die "Specify 'deploy', 'stop', 'update', 'start' or 'remove' as second parameter
 
 my $flush = 0;
 $flush = 1 if @ARGV > 2 && $ARGV[2] eq '--flush';
+my $force = 0;
+$force = 1 if @ARGV > 2 && $ARGV[2] eq '--force';
 
 my $hostname = `hostname`;
 chomp($hostname);
@@ -567,7 +569,7 @@ sub make_git_repository {
        } else {
            shell("su", "-", $conf->{'user'}, "-c $fetch_command"); 
        }
-       if ($git_user eq 'anon') {
+       if ($git_user eq 'anon' && !$force) {
            shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir/$vcspath_to_use\" && $mysociety_bin/git-safe-to-checkout . $git_ref")
        }
    }
