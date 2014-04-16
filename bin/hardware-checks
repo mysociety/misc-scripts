@@ -4,8 +4,6 @@
 # to be run as a cron job, dumping useful output somewhere that can be read by
 # Nagios checks.
 #
-# $Id: hardware-checks,v 1.6 2012-09-17 11:03:34 ian Exp $
-#
 
 use strict;
 use warnings;
@@ -47,10 +45,17 @@ foreach my $i (split /, /, $hardware_tests) {
     } elsif($i eq 'hpacu') {
         die "can't execute hpacucli" if(! -e "/opt/compaq/hpacucli/bld/hpacucli");
 
-        system "/opt/compaq/hpacucli/bld/hpacucli ctrl slot=3 show status > $OUTPUT_FILE";
-        system "/opt/compaq/hpacucli/bld/hpacucli ctrl slot=3 array all show status >> $OUTPUT_FILE";
-        system "/opt/compaq/hpacucli/bld/hpacucli ctrl slot=3 physicaldrive all show status >> $OUTPUT_FILE";
-        system "/opt/compaq/hpacucli/bld/hpacucli ctrl slot=3 enclosure all show status >> $OUTPUT_FILE";
+        my $slot;
+        if(hostname() eq 'vesta') {
+            $slot=3;
+        elsif(hostname() eq 'firefly') {
+            $slot=0;
+        }
+
+        system "/opt/compaq/hpacucli/bld/hpacucli ctrl slot=$slot show status > $OUTPUT_FILE";
+        system "/opt/compaq/hpacucli/bld/hpacucli ctrl slot=$slot array all show status >> $OUTPUT_FILE";
+        system "/opt/compaq/hpacucli/bld/hpacucli ctrl slot=$slot physicaldrive all show status >> $OUTPUT_FILE";
+        system "/opt/compaq/hpacucli/bld/hpacucli ctrl slot=$slot enclosure all show status >> $OUTPUT_FILE";
 	} else {
 		warn "unknown hardware test $i";
 	}
