@@ -48,7 +48,7 @@ foreach my $i (split /, /, $hardware_tests) {
         my $slot;
         if(hostname() eq 'vesta') {
             $slot=3;
-        elsif(hostname() eq 'firefly') {
+        } elsif(hostname() eq 'firefly') {
             $slot=0;
         }
 
