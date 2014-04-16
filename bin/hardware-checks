@@ -44,6 +44,13 @@ foreach my $i (split /, /, $hardware_tests) {
 		die "can't execute cciss_vol_status" if(! -e "/usr/sbin/cciss_vol_status");
 
 		system "/usr/sbin/cciss_vol_status /dev/cciss/c*d0 > $OUTPUT_FILE";
+    } elsif($i eq 'hpacu') {
+        die "can't execute hpacucli" if(! -e "/opt/compaq/hpacucli/bld/hpacucli");
+
+        system "/opt/compaq/hpacucli/bld/hpacucli ctrl slot=3 show status > $OUTPUT_FILE";
+        system "/opt/compaq/hpacucli/bld/hpacucli ctrl slot=3 array all show status >> $OUTPUT_FILE";
+        system "/opt/compaq/hpacucli/bld/hpacucli ctrl slot=3 physicaldrive all show status >> $OUTPUT_FILE";
+        system "/opt/compaq/hpacucli/bld/hpacucli ctrl slot=3 enclosure all show status >> $OUTPUT_FILE";
 	} else {
 		warn "unknown hardware test $i";
 	}
