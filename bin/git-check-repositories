@@ -241,7 +241,8 @@ function get_expected_private_owner {
         [ "$REPOSITORY_NAME" = 'repdata' ] ||
         [ "$REPOSITORY_NAME" = 'seesomething' ] ||
         [ "$REPOSITORY_NAME" = 'britishmuseum' ] ||
-        [ "$REPOSITORY_NAME" = 'car-cost-tool' ]
+        [ "$REPOSITORY_NAME" = 'car-cost-tool' ] ||
+        [ "$REPOSITORY_NAME" = 'fca-investment-tool' ]
    then
        EXPECTED_OWNER="privatecvs"
    else
