@@ -114,7 +114,7 @@ set -e
 
 case $COMMAND in
     config)
-        # if a puppet agent is running, force it to fetch new configs
+        # if a puppet agent is (or should be) running, force it to fetch new configs
         # (and don't use the old configuration system)
         if [ -x '/etc/init.d/puppet' ] ; then
             set +e
@@ -127,6 +127,10 @@ case $COMMAND in
                     die "puppet agent running, but pid file can't be read"
                 fi
                 exit
+            else
+                if [ $(lsb_release -sc) = 'wheezy' ] ; then
+                    die "puppet agent expected but not running"
+                fi
             fi
             set -e
         fi
