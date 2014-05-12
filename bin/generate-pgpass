@@ -63,6 +63,9 @@ my %extra_perms = (
     'victory' => {
        'louise' => [ 'foi-demo' ],
     },
+    'firefly' => {
+	'mark' => [ 'mark-za-hansard-tmp' ],
+    },
 );
 
 # begin with the overrides from above ...
