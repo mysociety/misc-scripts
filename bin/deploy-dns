@@ -125,7 +125,7 @@ sub test_zonefile ($$) {
         my $oldserial = $rrset->[0]->serial();
         verbose("  old serial = $oldserial; new serial = $newserial\n");
         return "new serial number, '$newserial' (in $file), is not larger than old serial number, '$oldserial' (in $oldfile), but the files differ"
-            unless $newserial gt $oldserial || $no_check_existing;
+            unless int($newserial) > int($oldserial) || $no_check_existing;
     } elsif (!defined($rrset)) {
         print STDERR "deploy-dns: WARNING: current $file is syntactically invalid\n";
     } elsif (!@$rrset) {
