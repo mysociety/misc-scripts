@@ -88,16 +88,32 @@ http.verify_mode = OpenSSL::SSL::VERIFY_PEER
 # http.ca_path = '/etc/ssl/certs'
 http.ca_file = '/etc/ssl/certs/DigiCert_High_Assurance_EV_Root_CA.pem'
 
-response = http.get('/orgs/mysociety/repos?per_page=100',
-                    'User-Agent' => 'mySociety.org/1.0',
-                    'Authorization' => "bearer #{token}")
+all_repositories = []
 
-if response.code != '200'
-  STDERR.puts "The GitHub API call failed with status #{response.code}: #{response.body}"
-  exit(1)
+api_url = '/orgs/mysociety/repos?per_page=100'
+
+loop do
+
+  response = http.get(api_url,
+                      'User-Agent' => 'mySociety.org/1.0',
+                      'Authorization' => "bearer #{token}")
+
+  if response.code != '200'
+    STDERR.puts "The GitHub API call failed with status #{response.code}: #{response.body}"
+    exit(1)
+  end
+
+  all_repositories += JSON.parse(response.body)
+
+  break unless response.key? 'Link'
+
+  if response['Link'] =~ /rel="next",\s<(.*?)>;/
+    api_url = $1
+  else
+    break
+  end
+
 end
-
-all_repositories = JSON.parse(response.body)
 
 matching = all_repositories.select { |r| r['name'] == repository_name }
 
