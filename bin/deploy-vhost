@@ -469,7 +469,7 @@ END
 
 sub db_conf {
     my ($params, $database, $one_db_conf) = @_;
-    if ($params->{type} ne 'mysql' && $params->{type} ne 'psql'){
+    if ($params->{type} ne 'mysql' && $params->{type} ne 'psql' && $params->{type} ne 'mongo'){
         die "unknown database type '$params->{type}'";
     }
     
