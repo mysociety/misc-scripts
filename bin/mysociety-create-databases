@@ -158,7 +158,7 @@ foreach my $database (keys %{$databases}) {
             $dbh->do("grant all on `$database`.* to `$database` identified by '$password'");
         }
     } elsif ($params->{type} eq 'mongo') {
-        # Do nothing, it's installed just as a package currently
+        # Databases are created automatically in mongodb
     } else {
         die "unknown database type '$params->{type}'";
     }
