@@ -647,6 +647,12 @@ if ($action eq "stop") {
     start_site();
     deploy_logger("Deployed vhost $vhost ($deploy_log_message)")
         unless $vhost =~ /testharness/;
+    if (scalar @{$conf->{'servers'}} > 1) {
+        my @other_hosts = @{$conf->{'servers'}};
+        my @this_host_index = my @index=grep { $other_hosts[$_] eq $hostname } 0..$#other_hosts;
+        splice (@other_hosts, $this_host_index[0], 1);
+        print "Note: $vhost is also on " . join (', ', @other_hosts) . "\n";
+    }
     if ($flush) {
         use mySociety::Memcached;
         mySociety::Memcached::flush_all();
