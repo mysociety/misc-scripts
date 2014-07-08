@@ -228,7 +228,11 @@ make_dir("/data/vhost");
 make_dir("$vhost_dir");
 chown($user_uid, $user_gid, "$vhost_dir");
 make_dir("$vhost_dir/logs");
-chown($user_uid, $user_gid, "$vhost_dir/logs");
+chown(0, 0, "$vhost_dir/logs");
+chmod 0750, "$vhost_dir/logs";
+make_dir("$vhost_dir/applogs");
+chown($user_uid, $user_gid, "$vhost_dir/applogs");
+chmod 0750, "$vhost_dir/applogs";
 make_symlink("$vcspath/".$conf->{'web_dir'}, "$vhost_dir/docs");
 shell("chown", "-h", "$user_uid:$user_gid", "$vhost_dir/docs"); # perl's chown doesn't do symlinks
 
