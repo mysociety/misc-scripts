@@ -936,10 +936,6 @@ sub update_conf_dir {
             # Make sure any cron job created by an earlier version of this script is removed.
             unlink($cron_name."-logrotate");
         }
-
-        # Now generate /etc/logrotate.d/apache2 to take care of vhosts without
-        # their own logrotate config files.
-        system("/data/mysociety/bin/generate-apache2-logrotate");
     }
 }
 
