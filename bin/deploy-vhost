@@ -229,10 +229,7 @@ make_dir("$vhost_dir");
 chown($user_uid, $user_gid, "$vhost_dir");
 make_dir("$vhost_dir/logs");
 chown(0, scalar(getgrnam('staff')), "$vhost_dir/logs");
-# Commented out restrictive permissions until all apps are modified
-# not to try and access this dir
-#chmod 0750, "$vhost_dir/logs";
-chmod 0755, "$vhost_dir/logs";
+chmod 0750, "$vhost_dir/logs";
 make_dir("$vhost_dir/applogs");
 chown($user_uid, $user_gid, "$vhost_dir/applogs");
 chmod 0750, "$vhost_dir/applogs";
