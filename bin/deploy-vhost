@@ -229,7 +229,13 @@ make_dir("$vhost_dir");
 chown($user_uid, $user_gid, "$vhost_dir");
 make_dir("$vhost_dir/logs");
 chown(0, scalar(getgrnam('staff')), "$vhost_dir/logs");
-chmod 0750, "$vhost_dir/logs";
+if($conf->{staging} == 1) {
+    # Allow logs to be read on staging hosts so that tests can run
+    chmod 0755, "$vhost_dir/logs";
+} else {
+    # Protect logs on production hosts
+    chmod 0750, "$vhost_dir/logs";
+}
 make_dir("$vhost_dir/applogs");
 chown($user_uid, $user_gid, "$vhost_dir/applogs");
 chmod 0750, "$vhost_dir/applogs";
