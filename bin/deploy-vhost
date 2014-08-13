@@ -181,6 +181,7 @@ $conf->{'fastcgi'} = 1 if (!exists($conf->{'fastcgi'}));
 $conf->{'balancer'} = '' if (!exists($conf->{'balancer'}));
 $conf->{'ipv4addr'} = '' if (!exists($conf->{'ipv4addr'}));
 $conf->{'ipv6addr'} = '' if (!exists($conf->{'ipv6addr'}));
+$conf->{'request_timeout'} = '' if (!exists($conf->{'request_timeout'}));
 
 if ($timestamped_deploy) {
     # With timestamped_deploy, we use different options to specify hooks
@@ -314,6 +315,7 @@ sub write_settings_file {
 \$ipv4addr = '$conf->{'ipv4addr'}';
 \$ipv6addr = '$conf->{'ipv6addr'}';
 \$fastcgi = '$conf->{'fastcgi'}';
+\$request_timeout = '$conf->{'request_timeout'}';
 \$randomly = '/data/mysociety/bin/randomly -p 0.5'; # for crontab
 \$database_configs = <<DONE_DATABASE_CONFIGS;
 $database_configs
