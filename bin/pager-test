@@ -1,0 +1,17 @@
+#!/bin/bash
+#
+# Send a test page so an on-call person can be confident that everything's working.
+#
+
+NAGIOS_SERVERS='ocelot panther'
+NAGIOS_CHECK='Pager test'
+NAGIOS_CMD_FILE='/var/lib/nagios3/rw/nagios.cmd'
+
+
+for i in $NAGIOS_SERVERS
+do
+    echo -n "Sending test page from $i... "
+    cmd="[`date +%s`] PROCESS_SERVICE_CHECK_RESULT;$i;$NAGIOS_CHECK;1;Test page from $i"
+    ssh $i "echo '$cmd' > $NAGIOS_CMD_FILE"
+    echo "done."
+done
