@@ -67,16 +67,20 @@ if (exists($conf->{git_repository})) {
     die "unknown version control system";
 }
 
+system("chown -R $conf->{user} $vhost_dir/logs");
+
 # Launch test script, and check for errors
 my $test_script_path = $vhost_dir."/$vcspath/".dirname($conf->{test_script});
 my $test_script_name = basename($conf->{test_script});
 shell("su", "-", $conf->{'user'}, "-c cd \"$test_script_path\" && ".
     "./$test_script_name --verbose=$verbose");
 if ($?) {
+    system("chown -R root $vhost_dir/logs");
     die "Failed test, " . $conf->{test_script} . " returned $?";
 }
 
 # Log success of test
+system("chown -R root $vhost_dir/logs");
 shell("/data/mysociety/bin/deploy-logger", "Tested vhost $vhost successfully");
 
 
