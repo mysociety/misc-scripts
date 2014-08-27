@@ -1,0 +1,97 @@
+#!/bin/sh
+
+set -e
+
+GIT_IP=`dig +short git.mysociety.org`
+LOCAL_IP=`hostname -i`
+
+if [ $GIT_IP != $LOCAL_IP ]; then
+  echo "You can only run this on leopard\n"
+  exit 1
+fi
+
+package=`basename $0`
+
+help() {
+    echo "$package - create a new git repository under /data/git"
+    echo " "
+    echo "$package [options] name"
+    echo " "
+    echo "options:"
+    echo "  --public        Public repository"
+    echo "  --private       Private repository"
+    echo "  --group GROUP   Group name if private (defaults to privatecvs)"
+}
+
+while [ $# -gt 0 ]; do
+    case "$1" in
+        -h|--help)
+            help
+            exit 0
+            ;;
+        --public)
+            PUBPRIV=public
+            shift
+            ;;
+        --private)
+            PUBPRIV=private
+            shift
+            ;;
+        -g|--group)
+            shift
+            if test $# -gt 0; then
+                GROUP=$1
+            else
+                echo "No group name specified"
+                exit 1
+            fi
+            shift
+            ;;
+        *)
+            NAME=$1
+            shift
+            ;;
+    esac
+done
+
+if [ x$NAME = x -o x$PUBPRIV = x ]; then
+  echo "You must give a repository name, and --public or --private\n"
+  help
+  exit 1
+fi
+
+if [ $PUBPRIV = private -a x$GROUP = x ]; then
+  GROUP=privatecvs
+elif [ $PUBPRIV = public ]; then
+  GROUP=publiccvs
+fi
+
+NAME=${NAME%.git}
+NAME=$NAME.git
+
+if [ -e /data/git/$PUBPRIV/$NAME ]; then
+  echo "That repository name already exists"
+  exit 1
+fi
+
+cd /data/git/$PUBPRIV
+sudo mkdir $NAME
+cd $NAME
+sudo git init --quiet --bare --shared=group
+cd ..
+sudo chgrp -R $GROUP $NAME
+if [ $PUBPRIV = private ]; then
+  sudo chmod -R o-xr $NAME
+fi
+cd $NAME/hooks/
+ln -s /data/mysociety/bin/git-post-receive-hook post-receive
+cd ..
+git config hooks.emailprefix ""
+git config hooks.mailinglist cvs-$PUBPRIV@lists.mysociety.org
+git config hooks.showrev "git show -C %s; echo"
+git config receive.denynonfastforwards false
+if [ $PUBPRIV = public ]; then
+  touch git-daemon-export-ok
+fi
+
+echo "New repository created at /data/git/$PUBPRIV/$NAME"
