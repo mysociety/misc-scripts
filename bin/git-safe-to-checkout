@@ -54,7 +54,7 @@ git diff --cached --exit-code || die "Error: Staged changes exist in the index i
 
 # Check for any untracked files in the working tree:
 UNTRACKED_FILES=$(git ls-files --others --directory --no-empty-directory --exclude-standard)
-test -z "$UNTRACKED_FILES" || die "Error: There are untracked (and unignored files) in the repository:\n$UNTRACKED_FILES"
+test -z "$UNTRACKED_FILES" || die "Error: There are untracked (and unignored) files in the repository:\n$UNTRACKED_FILES"
 
 # Check that the current ref is contained in one of the remote tracking 
 # branches after "git fetch origin" i.e. that any changes to the
