@@ -14,7 +14,12 @@ my $OUTPUT_DIR='/var/hwchecks';
 umask 0027;
 
 our $hardware_tests;
-do "/data/servers/machines/".hostname.".pl" or die "can't read ".hostname.".pl: $!";
+
+if(-e "/usr/bin/facter") {
+    $hardware_tests=`/usr/bin/facter -p hardware_checks`
+} else {
+    do "/data/servers/machines/".hostname.".pl" or die "can't read ".hostname.".pl: $!";
+}
 
 foreach my $i (split /, /, $hardware_tests) {
 	my $OUTPUT_FILE="$OUTPUT_DIR/$i";
