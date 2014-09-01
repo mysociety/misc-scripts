@@ -16,7 +16,8 @@ umask 0027;
 our $hardware_tests;
 
 if(-e "/usr/bin/facter") {
-    $hardware_tests=`/usr/bin/facter -p hardware_checks`
+    $hardware_tests=`/usr/bin/facter -p hardware_checks`;
+    chop $hardware_tests;
 } else {
     do "/data/servers/machines/".hostname.".pl" or die "can't read ".hostname.".pl: $!";
 }
