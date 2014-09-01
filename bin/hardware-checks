@@ -56,6 +56,10 @@ foreach my $i (split /, /, $hardware_tests) {
         system "/opt/compaq/hpacucli/bld/hpacucli ctrl slot=$slot array all show status >> $OUTPUT_FILE";
         system "/opt/compaq/hpacucli/bld/hpacucli ctrl slot=$slot physicaldrive all show status >> $OUTPUT_FILE";
         system "/opt/compaq/hpacucli/bld/hpacucli ctrl slot=$slot enclosure all show status >> $OUTPUT_FILE";
+    } elsif($i eq 'ipmi_psu') {
+        die "can't execute ipmi-sensors" if(! -e "/usr/sbin/ipmi-sensors");
+
+        system "/usr/sbin/ipmi-sensors --group='Power Supply' -q > $OUTPUT_FILE";
 	} else {
 		warn "unknown hardware test $i";
 	}
