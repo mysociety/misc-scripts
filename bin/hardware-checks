@@ -21,7 +21,7 @@ if(-e "/usr/bin/facter") {
     do "/data/servers/machines/".hostname.".pl" or die "can't read ".hostname.".pl: $!";
 }
 
-foreach my $i (split /, /, $hardware_tests) {
+foreach my $i (split /[, ]/, $hardware_tests) {
 	my $OUTPUT_FILE="$OUTPUT_DIR/$i";
 
 	if($i eq 'tw') {
