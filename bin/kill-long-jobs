@@ -1,0 +1,36 @@
+#!/usr/bin/perl
+#
+# Kill specific processes that have been running for too long.
+# Written for WDTK as a temporary fix for runaway pdftohtml jobs.
+#
+
+use strict;
+use warnings;
+
+
+my $usage = "usage: $0 <command> <max age in seconds>\n";
+
+
+if (scalar @ARGV != 2) {
+    print $usage;
+    exit 1;
+}
+
+# If we're root then look at all processes, otherwise just our own.
+my $ps_command = "/bin/ps -u $< -o pid,etimes,comm h";
+if ($< == 0) {
+    $ps_command = "/bin/ps -o pid,etimes,comm h";
+}
+
+open PS, "$ps_command|" or die "can't run $ps_command: $!";
+while (<PS>)
+{
+    chop;
+    my ($pid, $elapsed, $cmd) = split /\s+/;
+
+    if ($cmd eq $ARGV[0] && $elapsed > $ARGV[1]) {
+        print "pid $pid ($cmd) older than $ARGV[1], killing it\n";
+        kill 15, $pid;
+    }
+}
+close PS;
