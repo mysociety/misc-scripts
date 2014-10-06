@@ -4,7 +4,7 @@
 #
 
 NAGIOS_SERVERS='ocelot panther'
-NAGIOS_CHECK='Pager test'
+NAGIOS_CHECK='Pager'
 NAGIOS_CMD_FILE='/var/lib/nagios3/rw/nagios.cmd'
 
 
