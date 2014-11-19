@@ -59,8 +59,8 @@ test -z "$UNTRACKED_FILES" || die "Error: There are untracked (and unignored) fi
 # Check that the current ref is contained in one of the remote tracking 
 # branches after "git fetch origin" i.e. that any changes to the
 # deployed repository have been pushed back to the blessed repository.
-BRANCH=$(git branch -r --contains HEAD)
-if [ -z "$BRANCH" ]
+BRANCHES=$(git branch -r --contains HEAD)
+if [ -z "$BRANCHES" ]
 then
     echo "Error: Switching to a new commit in `pwd`"
     echo "would risk losing the following commits that haven't been pushed to a remote:"
