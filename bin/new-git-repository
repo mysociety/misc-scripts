@@ -87,7 +87,7 @@ cd $NAME/hooks/
 ln -s /data/mysociety/bin/git-post-receive-hook post-receive
 cd ..
 git config hooks.emailprefix ""
-git config hooks.mailinglist cvs-$PUBPRIV@lists.mysociety.org
+git config hooks.mailinglist git-$PUBPRIV@mysociety.org
 git config hooks.showrev "git show -C %s; echo"
 git config receive.denynonfastforwards false
 if [ $PUBPRIV = public ]; then
