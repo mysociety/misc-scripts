@@ -12,6 +12,7 @@ use strict;
 require 5.8.0;
 
 use FindBin;
+use lib "$FindBin::Bin/../lib";
 use lib "$FindBin::Bin/../perllib";
 my $mysociety_bin = $FindBin::Bin;
 my $servers_dir = "$FindBin::Bin/../../servers";
@@ -20,6 +21,8 @@ my $mysociety_dir = "$FindBin::Bin/../../mysociety";
 
 use mySociety::SystemMisc qw(shell);
 use mySociety::Config;
+
+use mySociety::Deploy;
 
 use Cwd;
 use Errno;
@@ -106,7 +109,10 @@ chomp($debian_version);
 my ($debian_version_major, $debian_version_minor) = split /\./, $debian_version;
 
 # Merge vhost and site configs together
-my $conf;
+my $conf = {
+    vhost => $vhost,
+    vhost_dir => $vhost_dir,
+};
 foreach my $key ( keys %$site_conf ) { $conf->{$key} = $site_conf->{$key}; }
 foreach my $key ( keys %$vhost_conf ) { $conf->{$key} = $vhost_conf->{$key}; }
 die "must specify 'servers' in vhost config" if (!exists($conf->{servers}));
@@ -150,20 +156,13 @@ if (exists($conf->{private_git_repository})) {
     }
     $vcspath = $conf->{private_git_repository} if (!$vcspath);
 }
+$conf->{vcspath} = $vcspath;
 
 # Verify that this server is listed for this vhost
 die "'$hostname' is not a vhost for '$vhost'" if (!grep { m/^$hostname$/ } @{$conf->{'servers'}}) && $action ne 'remove';
 
 # Deal with redirecting the vhost itself
-my $server_name = $vhost;
-my $aliases = $conf->{'aliases'};
-my %redirects = map { $_ => 1 } @{ $conf->{'redirects'} };
-if ($redirects{$vhost}) {
-    # We want to redirect the name used for the vhost.
-    die "Redirect for '$vhost' requires alias to be present" unless @$aliases;
-    die "Alias '$aliases->[0]' must not match vhost '$vhost'" if $aliases->[0] eq $vhost;
-    $server_name = shift @$aliases;
-}
+$conf->{server_name} = mySociety::Deploy::server_name($conf);
 
 # Look up some values
 my ($user_login, $user_pass, $user_uid, $user_gid, 
@@ -173,7 +172,9 @@ my ($user_login, $user_pass, $user_uid, $user_gid,
 die "Unknown user '".$conf->{'user'}."'" if !$user_uid;
 die "Unknown group for user '".$conf->{'user'}."'" if !$user_gid;
 my $user = $conf->{'user'};
-my $group = getgrgid($user_gid);
+$conf->{user_uid} = $user_uid;
+$conf->{user_gid} = $user_gid;
+$conf->{group} = getgrgid($user_gid);
 $conf->{'wildcard_vhost'} = 0 if (!exists($conf->{'wildcard_vhost'}));
 $conf->{'https'} = 0 if (!exists($conf->{'https'}));
 $conf->{'https_only'} = 0 if(!exists($conf->{'https_only'}));
@@ -274,11 +275,13 @@ if ($conf->{redirects_only}) {
 }
 
 # Make database config settings
-my $database_configs = "";
-my $external_database_configs = "";
-my $database_configs_yml = "";
-my $external_database_configs_yml = "";
-my $rails_database_config = "";
+$conf->{database_configs} = {
+    default => '',
+    external => '',
+    yaml => '',
+    external_yaml => '',
+    rails => '',
+};
 if (defined $conf->{'databases'}) {
     foreach my $database (@{$conf->{'databases'}}) {
         my $params = $databases->{$database};
@@ -287,91 +290,10 @@ if (defined $conf->{'databases'}) {
 }
 
 # Create a settings file:
-sub write_settings_file {
-    my ($settings_file, $settings_file_namepart) = @_;
-
-    $vhost =~ m/^([^.]+)\.(.*)$/;
-    my $vhost_first = $1;
-    my $vhost_rest = $2;
-
-    my $global_settings_file = "/etc/mysociety/config-settings.pl";
-    my $global_settings = read_file($global_settings_file) or die "failed to read /etc/mysociety/config-settings.pl, which is made by deploy-configuration";
-    my $old_umask = umask(0077);
-    open(FH, "> $settings_file") or die "failed to open $settings_file for write";
-    print FH <<END;
-#
-# $settings_file_namepart
-#
-
-\$site = '$site';
-\$vhost = '$vhost';
-\$vhost_dir = '$vhost_dir';
-\$vcspath = '$vcspath';
-\$site = '$site';
-\$staging = '$conf->{'staging'}';
-\$vhost_first = '$vhost_first';
-\$vhost_rest = '$vhost_rest';
-\$user = '$user';
-\$group = '$group';
-\$wildcard_vhost = '$conf->{'wildcard_vhost'}';
-\$https = '$conf->{'https'}';
-\$https_only = '$conf->{'https_only'}';
-\$balancer = '$conf->{'balancer'}';
-\$ipv4addr = '$conf->{'ipv4addr'}';
-\$ipv6addr = '$conf->{'ipv6addr'}';
-\$fastcgi = '$conf->{'fastcgi'}';
-\$request_timeout = '$conf->{'request_timeout'}';
-\$randomly = '/data/mysociety/bin/randomly -p 0.5'; # for crontab
-\$database_configs = <<DONE_DATABASE_CONFIGS;
-$database_configs
-DONE_DATABASE_CONFIGS
-\$database_configs_yml = <<DONE_DATABASE_CONFIGS_YML;
-$database_configs_yml
-DONE_DATABASE_CONFIGS_YML
-\$rails_database_config = <<DONE_RAILS_DATABASE_CONFIG;
-$rails_database_config
-DONE_RAILS_DATABASE_CONFIG
-\$external_database_configs = <<DONE_EXTERNAL_DATABASE_CONFIGS;
-$external_database_configs
-DONE_EXTERNAL_DATABASE_CONFIGS
-\$external_database_configs_yml = <<DONE_EXTERNAL_DATABASE_CONFIGS_YML;
-$external_database_configs_yml
-DONE_EXTERNAL_DATABASE_CONFIGS_YML
-END
-
-    print FH Dumper($conf->{conf_dir});
-    print FH "\$conf_dirs = \$VAR1;\n";
-    print FH Dumper($conf->{private_conf_dir});
-    print FH "\$private_conf_dirs = \$VAR1;\n";
-    print FH "\$admin_dir = '$conf->{'admin_dir'}';\n" if $conf->{'admin_dir'};
-    print FH "\$admin_group = '$conf->{'admin_group'}';\n" if $conf->{'admin_group'};
-    print FH "\$admin_uri = '$conf->{'admin_uri'}';\n" if $conf->{'admin_uri'};
-    print FH "\$internal_access_only = '$conf->{'internal_access_only'}';\n" if $conf->{'internal_access_only'};
-    print FH Dumper($conf->{'public_dirs'});
-    print FH "\$public_dirs = \$VAR1;\n";
-    print FH "\$server_name = '$server_name';\n";
-    print FH Dumper($conf->{'redirects'});
-    print FH "\$redirects = \$VAR1;\n";
-    print FH Dumper($aliases);
-    print FH "\$aliases = \$VAR1;\n";
-    print FH <<END;
-
-# ---------------------------------------------------------
-# Settings from here on are copied from:
-# $global_settings_file
-
-$global_settings
-END
-    close FH;
-    chown($user_uid, $user_gid, $settings_file);
-    umask($old_umask);
-}
-
 my $settings_file_namepart = "settings-autogen.pl";
 my $settings_file = "$vhost_dir/$settings_file_namepart";
 
-write_settings_file($settings_file,
-                    $settings_file_namepart);
+mySociety::Deploy::write_settings_file($settings_file, $conf);
 
 # Generate daemon init scripts from templates
 foreach my $daemon (keys %{$conf->{'daemons'}}) {
@@ -490,11 +412,11 @@ sub db_conf {
         die "unknown database type '$params->{type}'";
     }
     
-    $database_configs .= one_db_conf_php($params, $database, 1);
-    $external_database_configs .= one_db_conf_php($params, $database, 0);
+    $conf->{database_configs}{defaul} .= one_db_conf_php($params, $database, 1);
+    $conf->{database_configs}{external} .= one_db_conf_php($params, $database, 0);
     
-    $database_configs_yml .= one_db_conf_yml($params, $database, 1);
-    $external_database_configs_yml .= one_db_conf_yml($params, $database, 0);
+    $conf->{database_configs}{yaml} .= one_db_conf_yml($params, $database, 1);
+    $conf->{database_configs}{external_yaml} .= one_db_conf_yml($params, $database, 0);
     
     if ($params->{type} eq 'psql') {
             # XXX doesn't cope with multiple Rails database configs (as you
@@ -502,7 +424,7 @@ sub db_conf {
             # option can't), oh well
             if (scalar(@{$conf->{'databases'}}) == 1) {
                 my $db_host = get_db_host($params, $internal_network);
-                $rails_database_config = <<END;
+                $conf->{database_configs}{rails} = <<END;
     adapter: postgresql
     database: $database
     username: $database
@@ -516,7 +438,7 @@ END
             if (scalar(@{$conf->{'databases'}}) == 1) {
                 my $port = $params->{port} || 3306;
                 my $db_host = get_db_host($params, 0);
-                $rails_database_config = <<END;
+                $conf->{database_configs}{rails} = <<END;
     adapter: mysql2
     database: $database
     username: $database
