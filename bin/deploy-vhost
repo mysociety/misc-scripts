@@ -111,8 +111,8 @@ foreach my $key ( keys %$site_conf ) { $conf->{$key} = $site_conf->{$key}; }
 foreach my $key ( keys %$vhost_conf ) { $conf->{$key} = $vhost_conf->{$key}; }
 die "must specify 'servers' in vhost config" if (!exists($conf->{servers}));
 die "must specify 'staging' in vhost config" if (!exists($conf->{staging}));
-die "must specify one of 'git_repository' or 'private_git_repository' in vhost config" unless exists($conf->{git_repository}) || exists($conf->{private_git_repository});
-my $vcspath;
+die "must specify one of 'git_repository' or 'private_git_repository' in vhost config" unless exists($conf->{git_repository}) || exists($conf->{private_git_repository}) || $conf->{redirects_only};
+my $vcspath = '';
 
 # Check if we should be deploying to a timestamped directory which is
 # then symlinked into place.
@@ -240,7 +240,8 @@ if($conf->{staging} == 1) {
 make_dir("$vhost_dir/applogs");
 chown($user_uid, $user_gid, "$vhost_dir/applogs");
 chmod 0750, "$vhost_dir/applogs";
-make_symlink("$vcspath/".$conf->{'web_dir'}, "$vhost_dir/docs");
+my $web_dir = $conf->{redirects_only} ?  "$vhost_dir/web" : "$vcspath/" . $conf->{web_dir};
+make_symlink($web_dir, "$vhost_dir/docs");
 shell("chown", "-h", "$user_uid:$user_gid", "$vhost_dir/docs"); # perl's chown doesn't do symlinks
 
 # Initial clone, for git repository that don't exist
@@ -266,6 +267,10 @@ if (exists($conf->{'private_git_repository'})){
 foreach my $public_dir (@{$conf->{'public_dirs'}}) {
     make_dir("$vhost_dir/$public_dir");
     chown($user_uid, $user_gid, "$vhost_dir/$public_dir");
+}
+if ($conf->{redirects_only}) {
+    make_dir("$vhost_dir/web");
+    chown($user_uid, $user_gid, "$vhost_dir/web");
 }
 
 # Make database config settings
@@ -1011,7 +1016,8 @@ sub update_site {
         }
     }
 
-    $git_log .= ", updating in $vhost_dir/$vcspath_install";
+    $git_log .= ", " if $git_log;
+    $git_log .= "updating in $vhost_dir/$vcspath_install";
 
     return $git_log;
 }
