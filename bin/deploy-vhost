@@ -165,8 +165,8 @@ die "'$hostname' is not a vhost for '$vhost'" if (!grep { m/^$hostname$/ } @{$co
 $conf->{server_name} = mySociety::Deploy::server_name($conf);
 
 # Look up some values
-my ($user_login, $user_pass, $user_uid, $user_gid, 
-    $user_quota, $user_comment, 
+my ($user_login, $user_pass, $user_uid, $user_gid,
+    $user_quota, $user_comment,
     $user_real_name, $user_home_dir, $user_shell,
     $user_expire) = getpwnam($conf->{'user'});
 die "Unknown user '".$conf->{'user'}."'" if !$user_uid;
@@ -375,7 +375,7 @@ sub one_db_conf_php {
         $port_line = "define('OPTION_$params->{prefix}_DB_PORT', $params->{port});";
     }
     my $db_host = get_db_host($params, $internal);
- 
+
     my $conf = <<END;
 define('OPTION_$params->{prefix}_DB_HOST', '$db_host');
 $port_line
@@ -394,7 +394,7 @@ sub one_db_conf_yml {
         $port_line = "$params->{prefix}_DB_PORT: $params->{port}";
     }
     my $db_host = get_db_host($params, $internal);
- 
+
     my $conf = <<END;
 $params->{prefix}_DB_HOST: '$db_host'
 $port_line
@@ -411,13 +411,13 @@ sub db_conf {
     if ($params->{type} ne 'mysql' && $params->{type} ne 'psql' && $params->{type} ne 'mongo'){
         die "unknown database type '$params->{type}'";
     }
-    
+
     $conf->{database_configs}{defaul} .= one_db_conf_php($params, $database, 1);
     $conf->{database_configs}{external} .= one_db_conf_php($params, $database, 0);
-    
+
     $conf->{database_configs}{yaml} .= one_db_conf_yml($params, $database, 1);
     $conf->{database_configs}{external_yaml} .= one_db_conf_yml($params, $database, 0);
-    
+
     if ($params->{type} eq 'psql') {
             # XXX doesn't cope with multiple Rails database configs (as you
             # have to list them in the yml file in right place, so one text
@@ -448,7 +448,7 @@ END
 END
             }
     }
-} 
+}
 
 sub apache_graceful {
     if (-e "/usr/sbin/apache") {
@@ -506,7 +506,7 @@ sub make_git_repository {
        if ($git_user eq 'root') {
            shell("$fetch_command && chown -R ".$conf->{'user'}.":".$conf->{'user'}." ../");
        } else {
-           shell("su", "-", $conf->{'user'}, "-c $fetch_command"); 
+           shell("su", "-", $conf->{'user'}, "-c $fetch_command");
        }
        if ($git_user eq 'anon' && !$force) {
            shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir/$vcspath_to_use\" && $mysociety_bin/git-safe-to-checkout . $git_ref")
