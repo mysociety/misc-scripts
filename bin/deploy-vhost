@@ -412,7 +412,7 @@ sub db_conf {
         die "unknown database type '$params->{type}'";
     }
 
-    $conf->{database_configs}{defaul} .= one_db_conf_php($params, $database, 1);
+    $conf->{database_configs}{default} .= one_db_conf_php($params, $database, 1);
     $conf->{database_configs}{external} .= one_db_conf_php($params, $database, 0);
 
     $conf->{database_configs}{yaml} .= one_db_conf_yml($params, $database, 1);
