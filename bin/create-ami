@@ -1,0 +1,110 @@
+#!/usr/bin/env python
+#
+# This script will create an AMI using the mySociety install script. It creates
+# an EC2 instance, runs the install script within it, then creates an AMI.
+# Needs a virtualenv with boto and paramiko installed.
+# Run with -u to get unbuffered output.
+
+import argparse
+import datetime
+import os
+import sys
+import time
+
+import boto.ec2
+import boto.manage.cmdshell
+
+USERS = {
+    'FixMyStreet': 'fms',
+    'MapIt': 'mapit',
+    'Alaveteli': 'alaveteli',
+}
+
+
+def parse_command_line():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--site', required=True, help='Which site you wish to create an AMI for',
+        choices=USERS.keys())
+    parser.add_argument('--key', required=True, help='EC2 keypair name')
+    parser.add_argument('--keyfile', help='SSH keypair filename, if different from key name')
+    parser.add_argument('--instance', help='instance ID if it already exists')
+    # The following default is: eu-west-1 trusty 14.04 LTS amd64 hvm:ebs-ssd 20141125
+    parser.add_argument('--ami', help='AMI to base this AMI on', default='ami-823686f5')
+    args = parser.parse_args()
+    args.today = datetime.date.today().isoformat()
+    if not args.keyfile:
+        args.keyfile = args.key + '.pem'
+    args.key_path = os.path.join(os.path.expanduser('~/.ssh'), args.keyfile)
+    if not os.path.isfile(args.key_path):
+        raise argparse.ArgumentTypeError('SSH key does not exist')
+    return args
+
+
+class SSHClient(object):
+    def __init__(self, instance):
+        self.instance = instance
+        self.wait_until_ssh()
+
+    def wait_until_ssh(self):
+        print 'SSH:',
+        while True:
+            try:
+                shell = boto.manage.cmdshell.sshclient_from_instance(self.instance, ARGS.key_path, user_name='ubuntu')
+                if shell:
+                    self.shell = shell
+                    print 'connected! Instance', self.instance
+                    return
+            except:
+                print '.',
+                time.sleep(5)
+
+    def run(self, cmd):
+        stdin, stdout, stderr = self.shell._ssh_client.exec_command(cmd)
+        stdout.channel.setblocking(1)
+        while not stdout.channel.exit_status_ready():
+            print stdout.channel.recv(1024),
+
+
+ARGS = parse_command_line()
+instance_id = ARGS.instance
+conn = boto.ec2.connect_to_region('eu-west-1')
+
+if not instance_id:
+    print 'Creating instance:',
+    reservation = conn.run_instances(
+        ARGS.ami,
+        key_name=ARGS.key,
+        instance_type='m3.medium',
+        security_groups=['HTTP(S) and SSH'])
+
+    instance = reservation.instances[0]
+    instance.add_tag('Name', 'Installing {args.site} {args.today}'.format(args=ARGS))
+    while instance.state != 'running':
+        print '.',
+        time.sleep(5)
+        instance.update()
+    print 'done! DNS', instance.public_dns_name
+
+    cmd = SSHClient(instance)
+    cmd.run('curl -L -O https://raw.github.com/mysociety/commonlib/master/bin/install-site.sh')
+    cmd.run('sudo sh install-site.sh --default {site} {user}'.format(site=ARGS.site.lower(), user=USERS[ARGS.site]))
+    if ARGS.site == 'Alaveteli':
+        cmd.run('sudo rm /var/www/alaveteli/alaveteli/config/general.yml')
+    cmd.run('sudo shutdown -r now')
+    time.sleep(5)
+    cmd.wait_until_ssh()
+    cmd.run('echo -n "" > ~ubuntu/.ssh/authorized_keys')
+    instance_id = instance.id
+
+print 'Creating AMI image from instance'
+name = '{args.site} installation {args.today}'.format(args=ARGS)
+image_id = conn.create_image(instance_id, name)
+image = conn.get_image(image_id)
+image.add_tag('Name', name)
+while image.state == 'pending':
+    print '.',
+    time.sleep(5)
+    image.update()
+print image.state, image_id
+
+conn.stop_instances(instance_ids=[instance_id])
