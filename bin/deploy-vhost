@@ -79,20 +79,13 @@ sub chdir_verbose {
 #####################################################################
 # Main code
 
-# Read in configuration file
-our ($vhosts, $sites, $databases);
-require "$servers_dir/vhosts.pl";
+mySociety::Deploy::read_conf($servers_dir);
 
 # Check command line parameters, look up in config file
 die "Specify virtual host name as first parameter, deploy/stop/update/start/remove as second parameter" if scalar(@ARGV) < 2;
+
 my $vhost = $ARGV[0];
-my $vhost_conf = $vhosts->{$vhost};
-die "vhost '$vhost' is not in vhosts.pl" if !$vhost_conf;
-my $site = $vhost_conf->{'site'};
-die "site not specified for '$vhost' in vhosts.pl" if !$site;
-my $site_conf = $sites->{$site};
-die "site '$site' is not in vhosts.pl" if !$site_conf;
-my $vhost_dir = "/data/vhost/$vhost";
+
 my $action = $ARGV[1];
 die "Specify 'deploy', 'stop', 'update', 'start' or 'remove' as second parameter" if $action ne "deploy" && $action ne "stop" && $action ne "update" && $action ne "start" && $action ne 'remove';
 
@@ -108,96 +101,13 @@ my $debian_version = `lsb_release -rs`;
 chomp($debian_version);
 my ($debian_version_major, $debian_version_minor) = split /\./, $debian_version;
 
-# Merge vhost and site configs together
-my $conf = {
-    vhost => $vhost,
-    vhost_dir => $vhost_dir,
-};
-foreach my $key ( keys %$site_conf ) { $conf->{$key} = $site_conf->{$key}; }
-foreach my $key ( keys %$vhost_conf ) { $conf->{$key} = $vhost_conf->{$key}; }
-die "must specify 'servers' in vhost config" if (!exists($conf->{servers}));
-die "must specify 'staging' in vhost config" if (!exists($conf->{staging}));
-die "must specify one of 'git_repository' or 'private_git_repository' in vhost config" unless exists($conf->{git_repository}) || exists($conf->{private_git_repository}) || $conf->{redirects_only};
-my $vcspath = '';
-
-# Check if we should be deploying to a timestamped directory which is
-# then symlinked into place.
+my $conf = mySociety::Deploy::setup_conf($vhost);
+my $vhost_dir = $conf->{vhost_dir};
 my $timestamped_deploy = $conf->{timestamped_deploy};
-
-if ($timestamped_deploy) {
-    if (exists($conf->{git_repository}) && exists($conf->{private_git_repository})) {
-        die "For a timestamped deploy you can only specify one of git_repository and private_git_repository";
-    }
-    if (exists($conf->{'private_git_dirs'})) {
-        die "You can't use private_git_dirs with the timestamped_deploy option";
-    }
-}
-
-if (exists($conf->{git_repository})) {
-    die "must specify 'git_user' in vhost config" if (!exists($conf->{git_user}));
-    die "can't have blank 'git_user', use 'anon' for anonymous" if ($conf->{git_user} eq '');
-    if (exists($conf->{'git_ref_server_mapping'})) {
-        die "git_ref_server_mapping defined, but no mapping for $hostname"
-            if(!exists($conf->{'git_ref_server_mapping'}{$hostname}));
-        $conf->{'git_ref'} = $conf->{'git_ref_server_mapping'}{$hostname};
-    } elsif (!exists($conf->{'git_ref'})) {
-        $conf->{'git_ref'} = 'origin/master';
-    }
-    $vcspath = $conf->{git_repository};
-}
-
-if (exists($conf->{private_git_repository})) {
-    if (exists($conf->{'private_git_ref_server_mapping'})) {
-        die "private_git_ref_server_mapping defined, but no mapping for $hostname"
-            if(! exists($conf->{'private_git_ref_server_mapping'}{$hostname}));
-        $conf->{'private_git_ref'} = $conf->{'private_git_ref_server_mapping'}{$hostname};
-    } elsif (!exists($conf->{'private_git_ref'})) {
-        $conf->{'private_git_ref'} = 'origin/master' if (!exists($conf->{'private_git_ref'}));
-    }
-    $vcspath = $conf->{private_git_repository} if (!$vcspath);
-}
-$conf->{vcspath} = $vcspath;
+my $vcspath = $conf->{vcspath};
 
 # Verify that this server is listed for this vhost
-die "'$hostname' is not a vhost for '$vhost'" if (!grep { m/^$hostname$/ } @{$conf->{'servers'}}) && $action ne 'remove';
-
-# Deal with redirecting the vhost itself
-$conf->{server_name} = mySociety::Deploy::server_name($conf);
-
-# Look up some values
-my ($user_login, $user_pass, $user_uid, $user_gid,
-    $user_quota, $user_comment,
-    $user_real_name, $user_home_dir, $user_shell,
-    $user_expire) = getpwnam($conf->{'user'});
-die "Unknown user '".$conf->{'user'}."'" if !$user_uid;
-die "Unknown group for user '".$conf->{'user'}."'" if !$user_gid;
-my $user = $conf->{'user'};
-$conf->{user_uid} = $user_uid;
-$conf->{user_gid} = $user_gid;
-$conf->{group} = getgrgid($user_gid);
-$conf->{'wildcard_vhost'} = 0 if (!exists($conf->{'wildcard_vhost'}));
-$conf->{'https'} = 0 if (!exists($conf->{'https'}));
-$conf->{'https_only'} = 0 if(!exists($conf->{'https_only'}));
-$conf->{'fastcgi'} = 1 if (!exists($conf->{'fastcgi'}));
-$conf->{'balancer'} = '' if (!exists($conf->{'balancer'}));
-$conf->{'ipv4addr'} = '' if (!exists($conf->{'ipv4addr'}));
-$conf->{'ipv6addr'} = '' if (!exists($conf->{'ipv6addr'}));
-$conf->{'request_timeout'} = '' if (!exists($conf->{'request_timeout'}));
-
-if ($timestamped_deploy) {
-    # With timestamped_deploy, we use different options to specify hooks
-    # that are run on deploy.
-
-    if ($conf->{'exec_extras'}) {
-        die "exec_extras cannot be used with timestamped_deploy";
-    }
-} else {
-    foreach ("exec_before_down", "exec_while_down") {
-        if ($conf->{$_}) {
-            die "You cannot use $_ without timestamped_deploy";
-        }
-    }
-}
+die "'$hostname' is not a vhost for '$vhost'" if (!grep { m/^$hostname$/ } @{$conf->{servers}}) && $action ne 'remove';
 
 my $vcspath_install = $vcspath;
 my $timestamp = gmtime->strftime('%Y-%m-%dT%H-%M-%S');
@@ -228,7 +138,7 @@ if(-f '/etc/mysociety/ec2') {
 make_dir("/data");
 make_dir("/data/vhost");
 make_dir("$vhost_dir");
-chown($user_uid, $user_gid, "$vhost_dir");
+chown($conf->{user_uid}, $conf->{user_gid}, "$vhost_dir");
 make_dir("$vhost_dir/logs");
 chown(0, scalar(getgrnam('staff')), "$vhost_dir/logs");
 if($conf->{staging} == 1) {
@@ -239,11 +149,11 @@ if($conf->{staging} == 1) {
     chmod 0750, "$vhost_dir/logs";
 }
 make_dir("$vhost_dir/applogs");
-chown($user_uid, $user_gid, "$vhost_dir/applogs");
+chown($conf->{user_uid}, $conf->{user_gid}, "$vhost_dir/applogs");
 chmod 0750, "$vhost_dir/applogs";
 my $web_dir = $conf->{redirects_only} ?  "$vhost_dir/web" : "$vcspath/" . $conf->{web_dir};
 make_symlink($web_dir, "$vhost_dir/docs");
-shell("chown", "-h", "$user_uid:$user_gid", "$vhost_dir/docs"); # perl's chown doesn't do symlinks
+shell("chown", "-h", "$conf->{user_uid}:$conf->{user_gid}", "$vhost_dir/docs"); # perl's chown doesn't do symlinks
 
 # Initial clone, for git repository that don't exist
 my $git_url_base;
@@ -267,24 +177,17 @@ if (exists($conf->{'private_git_repository'})){
 # Make public directories
 foreach my $public_dir (@{$conf->{'public_dirs'}}) {
     make_dir("$vhost_dir/$public_dir");
-    chown($user_uid, $user_gid, "$vhost_dir/$public_dir");
+    chown($conf->{user_uid}, $conf->{user_gid}, "$vhost_dir/$public_dir");
 }
 if ($conf->{redirects_only}) {
     make_dir("$vhost_dir/web");
-    chown($user_uid, $user_gid, "$vhost_dir/web");
+    chown($conf->{user_uid}, $conf->{user_gid}, "$vhost_dir/web");
 }
 
 # Make database config settings
-$conf->{database_configs} = {
-    default => '',
-    external => '',
-    yaml => '',
-    external_yaml => '',
-    rails => '',
-};
 if (defined $conf->{'databases'}) {
     foreach my $database (@{$conf->{'databases'}}) {
-        my $params = $databases->{$database};
+        my $params = $mySociety::Deploy::databases->{$database};
         db_conf($params, $database);
     }
 }
@@ -670,12 +573,12 @@ sub stop_site {
             unlink("$vhost_dir/docs/down.html");
             copy("$servers_dir/vhosts/downs/${vhost}.html", "$vhost_dir/docs/down.html")
                 or warn "can't copy $servers_dir/vhosts/downs/${vhost}.html to $vhost_dir/docs/down.html: $!";
-        } elsif (-s "$servers_dir/vhosts/downs/${site}.html") {
+        } elsif (-s "$servers_dir/vhosts/downs/$conf->{site}.html") {
             # Have to copy rather than symlink because $servers_dir probably isn't readable
             # by the vhost user.
             unlink("$vhost_dir/docs/down.html");
-            copy("$servers_dir/vhosts/downs/${site}.html", "$vhost_dir/docs/down.html")
-                or warn "can't copy $servers_dir/vhosts/downs/${site}.html to $vhost_dir/docs/down.html: $!";
+            copy("$servers_dir/vhosts/downs/$conf->{site}.html", "$vhost_dir/docs/down.html")
+                or warn "can't copy $servers_dir/vhosts/downs/$conf->{site}.html to $vhost_dir/docs/down.html: $!";
         } elsif (-s "$vhost_dir/docs/down.current.html") {
             unlink("$vhost_dir/docs/down.html");
             symlink("$vhost_dir/docs/down.current.html", "$vhost_dir/docs/down.html");
@@ -703,7 +606,7 @@ END
             unlink("$vhost_dir/docs/down.html");
             rename("$vhost_dir/docs/.down.html.new", "$vhost_dir/docs/down.html")
                 or die "failed to rename .down.html.new to down.html in $vhost_dir/docs: $!";
-            chown($user_uid, $user_gid, "$vhost_dir/docs/down.html");
+            chown($conf->{user_uid}, $conf->{user_gid}, "$vhost_dir/docs/down.html");
         }
     }
 }
@@ -766,9 +669,9 @@ sub update_conf_dir {
             }
             # copy into place
             copy($conf_file_tmp, "$conf_file.deployed");
-            chown($user_uid, $user_gid, "$conf_file.deployed");
+            chown($conf->{user_uid}, $conf->{user_gid}, "$conf_file.deployed");
             copy($conf_file_tmp, "$conf_file");
-            chown($user_uid, $user_gid, "$conf_file");
+            chown($conf->{user_uid}, $conf->{user_gid}, "$conf_file");
             unlink($conf_file_tmp) or die "couldn't unlink $conf_file_tmp";
 
             # For squeeze and earlier, we can just symlink the logrotate file;
@@ -861,7 +764,7 @@ sub update_conf_dir {
         if (-f $conf_file) {
             open CRON, ">".$cron_name."-logrotate";
             print CRON "MAILTO=root\n";
-            print CRON "5 0 * * * $user /usr/sbin/logrotate -s $vhost_dir/logrotate.state $conf_file\n";
+            print CRON "5 0 * * * $conf->{user} /usr/sbin/logrotate -s $vhost_dir/logrotate.state $conf_file\n";
             close CRON;
 
             # Make sure any symlink created by an earlier version of this script, or pre-OS-upgrade,
