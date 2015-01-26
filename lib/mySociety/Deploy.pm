@@ -1,5 +1,8 @@
 package mySociety::Deploy;
 
+use strict;
+use warnings;
+
 use Data::Dumper;
 use File::Basename;
 use File::Slurp;
@@ -86,7 +89,7 @@ END
     print FH "\$server_name = '$conf->{server_name}';\n";
     print FH Dumper($conf->{'redirects'});
     print FH "\$redirects = \$VAR1;\n";
-    print FH Dumper($aliases);
+    print FH Dumper($conf->{aliases});
     print FH "\$aliases = \$VAR1;\n";
     print FH <<END;
 
