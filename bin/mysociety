@@ -19,7 +19,7 @@ Usage: mysociety [-u] COMMAND [OPTIONS]
 
 COMMAND is one of:
     config
-        Deploy new config for current server from /data/servers/archetypes/...
+        Tell Puppet to pull new manifests and apply them
     vhost [--server server] VHOST
         Deploy latest version of VHOST, e.g. www.pledgebank.com, optionally on [server]
     vhost stop/update/start [--server server] VHOST
@@ -126,93 +126,13 @@ case $COMMAND in
                 else
                     die "puppet agent running, but pid file can't be read"
                 fi
-                exit
             else
-                if [ $(lsb_release -sc) = 'wheezy' ] ; then
-                    die "puppet agent expected but not running"
-                fi
+                die "puppet agent expected but not running"
             fi
             set -e
+        else
+            die "puppet not installed; no idea what to do next"
         fi
-
-        # don't try to configure if this host isn't known to us
-        if [ "x$ARCHETYPES" = "x" ] ; then
-            die "don't know archetypes for this host ($HOST), add to /data/servers/serverclass"
-        fi
-
-        # update and make the settings file
-        SETTINGS_FILE=/etc/mysociety/config-settings.pl
-        cd /data/servers/machines
-        cp /data/servers/machines/$HOST.pl $SETTINGS_FILE
-        cat >>$SETTINGS_FILE <<END
-
-            sub pgpw {
-                \$_ = shift;
-                \$_ = \`/data/mysociety/bin/pgpw \$_\`;
-                s/\\s+\$//;
-                return \$_;
-            }
-
-            sub in_archetype {
-                my \$test_against = shift;
-                my \$archetypes = "$ARCHETYPES";
-                my @archetypes = split(/ /, \$archetypes);
-                return grep(/^\$test_against$/, @archetypes);
-            }
-            
-END
-
-        # first, check existing configurations (so you see all errors from an archetype)
-        if [ "$1" != "--no-check-existing" ] # XXX should check all parameters
-        then
-            FAILED=no
-            # see if any file will be used twice, from different archetypes
-            ALLFILES=`tempfile`
-            for ARCHETYPE in $ARCHETYPES
-            do
-                cd /data/servers/$ARCHETYPES_DIR/$ARCHETYPE
-                find . -type f | grep -v CVS | sed "s/.ugly//g" >> $ALLFILES
-            done
-            cat $ALLFILES | sort | uniq -c | sort -n | egrep -v "^      1 " > $ALLFILES.sort || echo -n
-            if [ -s $ALLFILES.sort ]
-            then
-                echo -n "these files appear in more than one archetype out of '"
-                echo -n $ARCHETYPES
-                echo "': "
-                cat $ALLFILES.sort
-                rm -f $ALLFILES $ALLFILES.sort
-                exit
-            fi
-            rm -f $ALLFILES $ALLFILES.sort
-            # test for local changes
-            for ARCHETYPE in $ARCHETYPES
-            do
-                /data/mysociety/bin/deploy-configuration --check-existing --save-file=/var/lib/deploy-configuration-$ARCHETYPE.tar /data/servers/$ARCHETYPES_DIR/$ARCHETYPE $SETTINGS_FILE "$@" || FAILED=yes
-            done
-            # if failed, exit
-            if [ "$FAILED" = "yes" ]
-            then
-                echo "check failed for at least one archetype, not installing files"
-                exit
-            fi
-        fi
-        # now, install everything
-        for ARCHETYPE in $ARCHETYPES
-        do
-            /data/mysociety/bin/deploy-configuration --save-file=/var/lib/deploy-configuration-$ARCHETYPE.tar /data/servers/$ARCHETYPES_DIR/$ARCHETYPE $SETTINGS_FILE "$@"
-        done
-        if [[ ! "$@" =~ "--dry-run" ]]; then
-            /data/mysociety/bin/deploy-logger "Deployed configuration for archetypes \"$ARCHETYPES\" with settings \"$HOST.pl\""
-        fi
-        # check all packages installed
-        for PACKAGE_FILE in `find /etc/mysociety/packages.d/ ! -name "*~" ! -name "*.swp" -type f`
-        do
-            if ! $SCRIPT_LOCATION/check-packages-installed $PACKAGE_FILE
-            then
-                echo "While checking archetype package dependencies in $PACKAGE_FILE"
-                exit 1
-            fi
-        done
         ;;
         
     vhost)
