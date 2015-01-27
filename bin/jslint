@@ -4,7 +4,7 @@
 // Spidermonkey hacks by Andy Walker <walkeraj[at]gmail[dot]com
 // Hacked again by Matthew Somerville 2011 to simplify file input
 "use strict";
-JSLINT = function() {
+var JSLINT = function() {
     var adsafe_id, adsafe_may, adsafe_went, anonname, approved, atrule = {
         'import': true,
         media: true,
@@ -550,7 +550,6 @@ JSLINT = function() {
         alert: true,
         appleScript: true,
         animator: true,
-        appleScript: true,
         beep: true,
         bytesToUIString: true,
         Canvas: true,
@@ -4259,4 +4258,4 @@ JSLINT = function() {
         print("jslint: No problems found.");
         quit();
     }
-})(arguments);
+})(scriptArgs);
