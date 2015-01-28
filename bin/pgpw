@@ -15,22 +15,34 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: pgpw,v 1.6 2013-06-06 14:45:45 ian Exp $';
-
 use strict;
 
 use Digest::SHA;
 use Errno;
 use IO::File;
+use Getopt::Long;
 
 my $secret = undef;
+my $new_pgpw;
 
 sub pgpw ($) {
     my $user = shift;
-    return substr(Digest::SHA::sha1_base64("$secret$user"), 0, 8);
+    if ($new_pgpw) {
+        return Digest::SHA::sha512_base64("$secret$user");
+    } else {
+        return substr(Digest::SHA::sha1_base64("$secret$user"), 0, 8);
+    }
 }
 
-foreach my $file ($ENV{PGSECRET}, '/etc/mysociety/postgres_secret', '/usr/local/etc/mysociety/postgres_secret') {
+
+GetOptions(
+    'new|n' => \$new_pgpw,
+);
+
+my $secret_file_suffix = '';
+$secret_file_suffix = '.new' if ($new_pgpw);
+
+foreach my $file ($ENV{PGSECRET}, "/etc/mysociety/postgres_secret$secret_file_suffix", "/usr/local/etc/mysociety/postgres_secret$secret_file_suffix") {
     next if (!defined($file));
     my $h = new IO::File($file, O_RDONLY);
     if (!$h) {
@@ -50,7 +62,7 @@ foreach my $file ($ENV{PGSECRET}, '/etc/mysociety/postgres_secret', '/usr/local/
 }
 
 if (!defined($secret)) {
-    print STDERR "pgpw: no secret file found e.g. /etc/mysociety/postgres_secret\n";
+    print STDERR "pgpw: no secret file found e.g. /etc/mysociety/postgres_secret$secret_file_suffix\n";
     exit(1);
 }
 
