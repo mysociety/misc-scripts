@@ -28,7 +28,7 @@ my $new_pgpw;
 sub pgpw ($) {
     my $user = shift;
     if ($new_pgpw) {
-        return Digest::SHA::sha512_base64("$secret$user");
+        return substr(Digest::SHA::sha512_base64("$secret$user"), 0, 32);
     } else {
         return substr(Digest::SHA::sha1_base64("$secret$user"), 0, 8);
     }
