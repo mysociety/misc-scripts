@@ -121,9 +121,9 @@ foreach my $user (sort keys %$database_permissions) {
     foreach my $database (sort keys %$my_databases) {
         my $password;
         if ($databases->{$database}{new_pgpw}) {
-            my $password = `$FindBin::Bin/pgpw -n $database`;
+            $password = `$FindBin::Bin/pgpw -n $database`;
         } else {
-            my $password = `$FindBin::Bin/pgpw $database`;
+            $password = `$FindBin::Bin/pgpw $database`;
         }
         chomp $password;
         $tmph->print("*:*:$database:$database:$password\n") || throw Oops("$tmpn: write: $!");
