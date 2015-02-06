@@ -33,9 +33,6 @@ my %perms = (
         matthew => 'twfy',
         debbi => 'twfy',
     },
-    majestic => {
-        root => 'root', # XXX As cacti doesn't have a vhost.
-    },
 );
 
 foreach (values %$vhosts) {
