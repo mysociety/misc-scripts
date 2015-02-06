@@ -117,9 +117,14 @@ foreach my $user (sort keys %$database_permissions) {
     my ($tmpn, $tmph) = mySociety::TempFiles::create_file_to_replace("$user_home/.pgpass") or die "open: $!";
     $tmph->print("# DO NOT EDIT - edit and rerun generate-pgpass instead\n");
 
-    my $databases = $database_permissions->{$user};
-    foreach my $database (sort keys %$databases) {
-        my $password = `$FindBin::Bin/pgpw $database`;
+    my $my_databases = $database_permissions->{$user};
+    foreach my $database (sort keys %$my_databases) {
+        my $password;
+        if ($databases->{$database}{new_pgpw}) {
+            my $password = `$FindBin::Bin/pgpw -n $database`;
+        } else {
+            my $password = `$FindBin::Bin/pgpw $database`;
+        }
         chomp $password;
         $tmph->print("*:*:$database:$database:$password\n") || throw Oops("$tmpn: write: $!");
     }

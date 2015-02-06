@@ -76,7 +76,12 @@ foreach my $user (keys %$database_permissions) {
     if ($database eq "root") {
         $database = "mysql";
     }
-    my $password = `$FindBin::Bin/pgpw $user`;
+    my $password;
+    if ($databases->{$database}{new_pgpw}) {
+        $password = `$FindBin::Bin/pgpw -n $user`;
+    } else {
+        $password = `$FindBin::Bin/pgpw $user`;
+    }
     chomp $password;
     my $text = <<END;
 [client]
