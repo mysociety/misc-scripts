@@ -111,7 +111,7 @@ die "'$hostname' is not a vhost for '$vhost'" if (!grep { m/^$hostname$/ } @{$co
 
 my $vcspath_install = $vcspath;
 my $timestamp = gmtime->strftime('%Y-%m-%dT%H-%M-%S');
-if ($timestamped_deploy) {
+if ($timestamped_deploy && $action eq "deploy") {
     $vcspath_install = "$vcspath-$timestamp";
 }
 
