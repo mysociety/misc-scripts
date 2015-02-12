@@ -832,7 +832,7 @@ sub update_site {
 
     # Run any extra executables
     if ($timestamped_deploy) {
-        if (exists($conf->{'exec_extras'})) {
+        if (exists($conf->{'exec_before_down'})) {
             run_tasks_from_config(%{$conf->{'exec_before_down'}});
         }
     } else {
