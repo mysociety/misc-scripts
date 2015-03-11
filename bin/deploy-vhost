@@ -381,28 +381,53 @@ sub graceful {
 sub make_git_repository {
    my ($git_url_base, $git_user, $git_repository, $git_ref) = @_;
 
-   my $vcspath_to_use = $git_repository;
    if ($timestamped_deploy) {
-       $vcspath_to_use = $vcspath_install;
+       # In order to save time on subsequent deploys, keep a shared copy of the
+       # repo that we can update and clone from, which means we don't need to
+       # do a fresh clone on each deploy
+       _make_git_repository($git_user, $git_ref, 'local-git.git', "$git_url_base$git_repository.git", 1);
+       _make_git_repository($git_user, $git_ref, $vcspath_install, "$vhost_dir/local-git.git");
+   } else {
+       _make_git_repository($git_user, $git_ref, $git_repository, "$git_url_base$git_repository.git");
    }
 
-   my $d = "$vhost_dir/$vcspath_to_use/.git";
-   my $git_url = "$git_url_base$git_repository.git";
-   if (! -d $d) {
-       my $clone_command = "cd \"$vhost_dir\" && git clone --no-checkout $git_url $vcspath_to_use && cd \"$vcspath_to_use\" && git checkout $git_ref";
-       my $submodule_command = "cd \"$vhost_dir/$vcspath_to_use\" && git submodule update --init";
+}
+
+sub _make_git_repository {
+   my ($git_user, $git_ref, $vcspath_to_use, $git_url, $bare) = @_;
+
+   my $git_dir;
+   if ($bare) {
+       $git_dir = "$vhost_dir/$vcspath_to_use";
+   } else {
+       $git_dir = "$vhost_dir/$vcspath_to_use/.git";
+   }
+   if (! -d $git_dir) {
+       my $clone_command;
+       my $submodule_command;
+       if ($bare) {
+           $clone_command = "cd \"$vhost_dir\" && git clone --mirror $git_url $vcspath_to_use";
+       } else {
+           $clone_command = "cd \"$vhost_dir\" && git clone --no-checkout $git_url $vcspath_to_use && cd \"$vcspath_to_use\" && git checkout $git_ref";
+           $submodule_command = "cd \"$vhost_dir/$vcspath_to_use\" && git submodule update --init";
+       }
        if ($git_user eq 'root') {
            shell($clone_command);
-           shell("$submodule_command && chown -R ".$conf->{'user'}.":".$conf->{'user'}." ../");
+           shell("$submodule_command && chown -R ".$conf->{'user'}.":".$conf->{'user'}." ../") if $submodule_command;
        } else {
            shell("su", "-", $conf->{'user'}, "-c $clone_command");
-           shell("su", "-", $conf->{'user'}, "-c $submodule_command");
+           shell("su", "-", $conf->{'user'}, "-c $submodule_command") if $submodule_command;
        }
    } else {
        chdir_verbose(__LINE__, "$vhost_dir/$vcspath_to_use");
-       my $current_url = `git config --get remote.origin.url`;
-       $current_url =~ s/\s*$//;
-       die "git remote.origin.url in $d is \n\t$current_url\nwhen config says\n\t$git_url\n" if ($current_url ne $git_url);
+       if (!$bare && $timestamped_deploy) {
+           # Make sure we're using local copy
+           `git config remote.origin.url $git_url`;
+       } else {
+           my $current_url = `git config --get remote.origin.url`;
+           $current_url =~ s/\s*$//;
+           die "git remote.origin.url in $git_dir is \n\t$current_url\nwhen config says\n\t$git_url\n" if ($current_url ne $git_url);
+       }
 
        # get new stuff so various other parts of script can compare before deploying to working directory
        my $fetch_command = "cd \"$vhost_dir/$vcspath_to_use\" && git fetch origin";
@@ -411,7 +436,7 @@ sub make_git_repository {
        } else {
            shell("su", "-", $conf->{'user'}, "-c $fetch_command");
        }
-       if ($git_user eq 'anon' && !$force) {
+       if (!$bare && $git_user eq 'anon' && !$force) {
            shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir/$vcspath_to_use\" && $mysociety_bin/git-safe-to-checkout . $git_ref")
        }
    }
