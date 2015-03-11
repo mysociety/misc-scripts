@@ -381,15 +381,25 @@ sub graceful {
 sub make_git_repository {
    my ($git_url_base, $git_user, $git_repository, $git_ref) = @_;
 
-   my $vcspath_to_use = $git_repository;
    if ($timestamped_deploy) {
-       $vcspath_to_use = $vcspath_install;
+       # In order to save time on subsequent deploys, keep a shared copy of the
+       # repo that we can update and clone from, which means we don't need to
+       # do a fresh clone on each deploy
+       _make_git_repository($git_user, $git_ref, 'local-git', "$git_url_base$git_repository.git");
+       _make_git_repository($git_user, $git_ref, $vcspath_install, "$vhost_dir/local-git", 1);
+   } else {
+       _make_git_repository($git_user, $git_ref, $git_repository, "$git_url_base$git_repository.git", 1);
    }
 
+}
+
+sub _make_git_repository {
+   my ($git_user, $git_ref, $vcspath_to_use, $git_url, $not_bare) = @_;
+
    my $d = "$vhost_dir/$vcspath_to_use/.git";
-   my $git_url = "$git_url_base$git_repository.git";
    if (! -d $d) {
-       my $clone_command = "cd \"$vhost_dir\" && git clone --no-checkout $git_url $vcspath_to_use && cd \"$vcspath_to_use\" && git checkout $git_ref";
+       my $clone_command = "cd \"$vhost_dir\" && git clone --no-checkout $git_url $vcspath_to_use";
+       $clone_command .= " && cd \"$vcspath_to_use\" && git checkout $git_ref" if $not_bare;
        my $submodule_command = "cd \"$vhost_dir/$vcspath_to_use\" && git submodule update --init";
        if ($git_user eq 'root') {
            shell($clone_command);
@@ -400,9 +410,14 @@ sub make_git_repository {
        }
    } else {
        chdir_verbose(__LINE__, "$vhost_dir/$vcspath_to_use");
-       my $current_url = `git config --get remote.origin.url`;
-       $current_url =~ s/\s*$//;
-       die "git remote.origin.url in $d is \n\t$current_url\nwhen config says\n\t$git_url\n" if ($current_url ne $git_url);
+       if ($not_bare && $timestamped_deploy) {
+           # Make sure we're using local copy
+           `git config remote.origin.url $git_url`;
+       } else {
+           my $current_url = `git config --get remote.origin.url`;
+           $current_url =~ s/\s*$//;
+           die "git remote.origin.url in $d is \n\t$current_url\nwhen config says\n\t$git_url\n" if ($current_url ne $git_url);
+       }
 
        # get new stuff so various other parts of script can compare before deploying to working directory
        my $fetch_command = "cd \"$vhost_dir/$vcspath_to_use\" && git fetch origin";
