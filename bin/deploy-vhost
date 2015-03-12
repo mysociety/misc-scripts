@@ -649,10 +649,11 @@ sub update_conf_dir {
         $name_base =~ s/\.yml$//;
 
         # find source template (.ugly) file
-        my $conf_ugly_part;
-        $conf_ugly_part = "$vcspath/$conf_dir/$name_part"; # e.g. whatdotheyknow/config/general
+        my $conf_ugly_part = "$conf_dir/$name_part"; # e.g. config/general
         $conf_ugly_part =~ s#/#_#g;
-        my $conf_ugly_file = "$servers_dir/vhosts/$conf_ugly_part.ugly";
+        my $conf_ugly_file = "$servers_dir/vhosts/$vcspath/$vhost/$conf_ugly_part.ugly";
+        $conf_ugly_file = "$servers_dir/vhosts/$vcspath/$conf_ugly_part.ugly" unless -e $conf_ugly_file;
+        $conf_ugly_file = "$servers_dir/vhosts/${vcspath}_$conf_ugly_part.ugly" unless -e $conf_ugly_file;
         # update the conf/general (or whatever) template in private git repo
         chdir_verbose(__LINE__, "$servers_dir/vhosts");
         shell("git", "pull", "-q", "origin");
