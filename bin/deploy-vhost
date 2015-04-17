@@ -892,6 +892,7 @@ sub install_or_remove_crontab {
     }
 
     if ($ok) {
+        chdir_verbose(__LINE__, "$vhost_dir/$vcspath_install");
         my $setup_git_cron = sub {
             my ( $conf_dir, $git_ref ) = @_;
             # if a crontab exists in the conf directory in source control, or has been created there
@@ -901,7 +902,6 @@ sub install_or_remove_crontab {
                 copy($crontab, "$cron_name");
             } else {
                 my $tmp_crontab_ugly = mktemp("/tmp/deploy-vhost-crontab.ugly-XXXXXXXX");
-                chdir_verbose(__LINE__, "$vhost_dir/$vcspath_install");
                 return unless -e "$conf_dir/crontab.ugly";
                 shell("git show $git_ref:$conf_dir/crontab.ugly >$tmp_crontab_ugly");
                 shell("$mysociety_bin/mugly", "-O", $cron_name, "-p", "$settings_file", "$tmp_crontab_ugly");
