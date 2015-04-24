@@ -453,22 +453,28 @@ sub update_vcspath_symlink {
 sub create_daemons {
   foreach my $daemon (keys %{$conf->{'daemons'}}) {
     my $daemon_mugly_file = $conf->{'daemons'}->{$daemon};
-    my $daemon_mugly;
+    # See if there's an ugly file in the servers dir
+    $daemon_mugly_file  =~ m#^(.*?).ugly$#;
+    my $name_part = $1;
+    my $daemon_mugly = mktemp("/tmp/daemon-mugly-file-XXXXXXXX");
+    my $servers_dir_ugly_file = get_conf_ugly_file_from_servers_dir($name_part);
 
-    $daemon_mugly = mktemp("/tmp/daemon-mugly-file-XXXXXXXX");
-    chdir_verbose(__LINE__, "$vhost_dir/$vcspath_install");
+    if (-e $servers_dir_ugly_file) {
+      shell("cat $servers_dir_ugly_file >$daemon_mugly");
+    } else {
+      chdir_verbose(__LINE__, "$vhost_dir/$vcspath_install");
+      my $git_ref;
+      my $conf_dir;
+      if ( $conf->{git_ref} ) {
+          $git_ref = $conf->{git_ref};
+          $conf_dir = $conf->{conf_dir}->[0]
+      } elsif ( $conf->{private_git_ref} ) {
+          $git_ref = $conf->{private_git_ref};
+          $conf_dir = $conf->{private_conf_dir}->[0]
+      }
 
-    my $git_ref;
-    my $conf_dir;
-    if ( $conf->{git_ref} ) {
-        $git_ref = $conf->{git_ref};
-        $conf_dir = $conf->{conf_dir}->[0]
-    } elsif ( $conf->{private_git_ref} ) {
-        $git_ref = $conf->{private_git_ref};
-        $conf_dir = $conf->{private_conf_dir}->[0]
+      shell("git show $git_ref:" . $conf_dir . "/$daemon_mugly_file >$daemon_mugly");
     }
-
-    shell("git show $git_ref:" . $conf_dir . "/$daemon_mugly_file >$daemon_mugly");
 
     my ($fh, $filename) = tempfile();
     open(FH, ">$filename") or die "failed to open $filename for write";
@@ -641,6 +647,17 @@ END
     }
 }
 
+sub get_conf_ugly_file_from_servers_dir {
+  my ($conf_ugly_part) = @_;
+  my $conf_ugly_file = "$servers_dir/vhosts/$vcspath/$vhost/$conf_ugly_part.ugly";
+  $conf_ugly_file = "$servers_dir/vhosts/$vcspath/$conf_ugly_part.ugly" unless -e $conf_ugly_file;
+  $conf_ugly_file = "$servers_dir/vhosts/${vcspath}_$conf_ugly_part.ugly" unless -e $conf_ugly_file;
+  # update the conf/general (or whatever) template in private git repo
+  chdir_verbose(__LINE__, "$servers_dir/vhosts");
+  shell("git", "pull", "-q", "origin");
+  return $conf_ugly_file;
+}
+
 # Update a config dir
 sub update_conf_dir {
     my ($conf_dir, $public, $unchecked_schemas) = @_;
@@ -656,12 +673,8 @@ sub update_conf_dir {
         # find source template (.ugly) file
         my $conf_ugly_part = "$conf_dir/$name_part"; # e.g. config/general
         $conf_ugly_part =~ s#/#_#g;
-        my $conf_ugly_file = "$servers_dir/vhosts/$vcspath/$vhost/$conf_ugly_part.ugly";
-        $conf_ugly_file = "$servers_dir/vhosts/$vcspath/$conf_ugly_part.ugly" unless -e $conf_ugly_file;
-        $conf_ugly_file = "$servers_dir/vhosts/${vcspath}_$conf_ugly_part.ugly" unless -e $conf_ugly_file;
-        # update the conf/general (or whatever) template in private git repo
-        chdir_verbose(__LINE__, "$servers_dir/vhosts");
-        shell("git", "pull", "-q", "origin");
+        my $conf_ugly_file = get_conf_ugly_file_from_servers_dir($conf_ugly_part);
+
         # update example we'll be comparing against, to make sure no missing entries.
         # For public conf files, use the example in the main public checkout. For
         # private, use the example in the vhost conf dir.
