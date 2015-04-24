@@ -198,37 +198,8 @@ my $settings_file = "$vhost_dir/$settings_file_namepart";
 
 mySociety::Deploy::write_settings_file($settings_file, $conf);
 
-# Generate daemon init scripts from templates
-foreach my $daemon (keys %{$conf->{'daemons'}}) {
-    my $daemon_mugly_file = $conf->{'daemons'}->{$daemon};
-    my $daemon_mugly;
-
-    $daemon_mugly = mktemp("/tmp/daemon-mugly-file-XXXXXXXX");
-    chdir_verbose(__LINE__, "$vhost_dir/$vcspath_install");
-
-    my $git_ref;
-    my $conf_dir;
-    if ( $conf->{git_ref} ) {
-        $git_ref = $conf->{git_ref};
-        $conf_dir = $conf->{conf_dir}->[0]
-    } elsif ( $conf->{private_git_ref} ) {
-        $git_ref = $conf->{private_git_ref};
-        $conf_dir = $conf->{private_conf_dir}->[0]
-    }
-
-    shell("git show $git_ref:" . $conf_dir . "/$daemon_mugly_file >$daemon_mugly");
-
-    my ($fh, $filename) = tempfile();
-    open(FH, ">$filename") or die "failed to open $filename for write";
-    print FH "\$daemon_name = '$daemon';\n";
-    close FH;
-    shell("$mysociety_bin/mugly", "-O", "/etc/init.d/$daemon", "-p", "$settings_file", "-p", "$filename", "$daemon_mugly");
-    unlink($filename);
-    chmod 0755, "/etc/init.d/$daemon";
-    system("update-rc.d $daemon defaults | grep -v \"System startup links for .* already exist\"");
-
-    unlink($daemon_mugly);
-}
+# Create the daemon
+create_daemons();
 
 # Create apache configuration stanza
 shell("$mysociety_bin/mugly", "-O", "/etc/apache2/virtualhosts.d/$vhost.conf", "-p", "$settings_file", "$servers_dir/vhosts/single-vhost.conf.ugly");
@@ -476,6 +447,40 @@ sub update_vcspath_symlink {
     }
     shell("ln -snf $vcspath_install $vcspath");
     chdir_verbose(__LINE__, $old_cwd);
+}
+
+# Generate daemon init scripts from templates
+sub create_daemons {
+  foreach my $daemon (keys %{$conf->{'daemons'}}) {
+    my $daemon_mugly_file = $conf->{'daemons'}->{$daemon};
+    my $daemon_mugly;
+
+    $daemon_mugly = mktemp("/tmp/daemon-mugly-file-XXXXXXXX");
+    chdir_verbose(__LINE__, "$vhost_dir/$vcspath_install");
+
+    my $git_ref;
+    my $conf_dir;
+    if ( $conf->{git_ref} ) {
+        $git_ref = $conf->{git_ref};
+        $conf_dir = $conf->{conf_dir}->[0]
+    } elsif ( $conf->{private_git_ref} ) {
+        $git_ref = $conf->{private_git_ref};
+        $conf_dir = $conf->{private_conf_dir}->[0]
+    }
+
+    shell("git show $git_ref:" . $conf_dir . "/$daemon_mugly_file >$daemon_mugly");
+
+    my ($fh, $filename) = tempfile();
+    open(FH, ">$filename") or die "failed to open $filename for write";
+    print FH "\$daemon_name = '$daemon';\n";
+    close FH;
+    shell("$mysociety_bin/mugly", "-O", "/etc/init.d/$daemon", "-p", "$settings_file", "-p", "$filename", "$daemon_mugly");
+    unlink($filename);
+    chmod 0755, "/etc/init.d/$daemon";
+    system("update-rc.d $daemon defaults | grep -v \"System startup links for .* already exist\"");
+
+    unlink($daemon_mugly);
+  }
 }
 
 #####################################################################
