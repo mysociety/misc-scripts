@@ -173,6 +173,7 @@ sub write_settings_file {
 \$fastcgi = '$conf->{fastcgi}';
 \$request_timeout = '$conf->{request_timeout}';
 \$randomly = '/data/mysociety/bin/randomly -p 0.5'; # for crontab
+\$ruby_version = '$conf->{ruby_version}';
 \$database_configs = <<DONE_DATABASE_CONFIGS;
 $conf->{database_configs}{default}
 DONE_DATABASE_CONFIGS
