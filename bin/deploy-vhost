@@ -650,11 +650,11 @@ END
 sub get_conf_ugly_file_from_servers_dir {
   my ($conf_ugly_part) = @_;
   my $conf_ugly_file = "$servers_dir/vhosts/$vcspath/$vhost/$conf_ugly_part.ugly";
-  $conf_ugly_file = "$servers_dir/vhosts/$vcspath/$conf_ugly_part.ugly" unless -e $conf_ugly_file;
-  $conf_ugly_file = "$servers_dir/vhosts/${vcspath}_$conf_ugly_part.ugly" unless -e $conf_ugly_file;
   # update the conf/general (or whatever) template in private git repo
   chdir_verbose(__LINE__, "$servers_dir/vhosts");
   shell("git", "pull", "-q", "origin");
+  $conf_ugly_file = "$servers_dir/vhosts/$vcspath/$conf_ugly_part.ugly" unless -e $conf_ugly_file;
+  $conf_ugly_file = "$servers_dir/vhosts/${vcspath}_$conf_ugly_part.ugly" unless -e $conf_ugly_file;
   return $conf_ugly_file;
 }
 
