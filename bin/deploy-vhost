@@ -477,9 +477,8 @@ sub create_daemons {
     }
 
     my ($fh, $filename) = tempfile();
-    open(FH, ">$filename") or die "failed to open $filename for write";
-    print FH "\$daemon_name = '$daemon';\n";
-    close FH;
+    print $fh "\$daemon_name = '$daemon';\n";
+    close $fh;
     shell("$mysociety_bin/mugly", "-O", "/etc/init.d/$daemon", "-p", "$settings_file", "-p", "$filename", "$daemon_mugly");
     unlink($filename);
     chmod 0755, "/etc/init.d/$daemon";
