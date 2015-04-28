@@ -31,6 +31,7 @@ use Time::Piece;
 use Data::Dumper;
 use File::Slurp;
 use File::Copy;
+use File::Copy::Recursive qw(dircopy);
 use File::Temp qw(tempfile mktemp);
 
 our $verbose = $ENV{VERBOSE} ? 1 : 0;
@@ -855,6 +856,8 @@ sub update_site {
         }
     }
 
+    set_or_clear_ruby_version();
+
     # Run any extra executables
     if ($timestamped_deploy) {
         if (exists($conf->{'exec_before_down'})) {
@@ -870,6 +873,37 @@ sub update_site {
     $git_log .= "updating in $vhost_dir/$vcspath_install";
 
     return $git_log;
+}
+
+sub set_or_clear_ruby_version {
+
+  if (exists($conf->{'ruby_version'})) {
+
+    # Write a .rbenv-version file at the root of the application directory
+    # This should set the version of ruby for any rbenv-enabled user when operating
+    # in the directory or subdirectories
+    shell("su", "-", $conf->{'user'}, "-c echo \"$conf->{'ruby_version'}\" >$vhost_dir/$vcspath_install/.rbenv-version");
+
+    # copy .rbenv files from /etc/skel
+    # This gives the shims and the version-specific binaries
+    # they point to.
+    dircopy("/etc/skel/.rbenv", "/home/$conf->{'user'}/.rbenv");
+    shell("chown", "-Rh", "$conf->{user_uid}:$conf->{user_gid}", "/home/$conf->{'user'}/.rbenv");
+
+    # copy .profile.rbenv to the user's home directory
+    # to initialise rbenv - this should be sourced by .profile, if it was created
+    # from /etc/skel
+    copy("/data/servers/langs/.profile.rbenv", "/home/$conf->{'user'}/.profile.rbenv");
+    shell("chown", "$conf->{user_uid}:$conf->{user_gid}", "/home/$conf->{'user'}/.profile.rbenv");
+
+  } else {
+
+    # Remove any .rbenv-version file
+    unlink("$vhost_dir/$vcspath_install/.rbenv-version");
+
+    # Remove any .profile.rbenv file in the user's home directory
+    unlink("/home/$conf->{'user'}/.profile.rbenv");
+  }
 }
 
 sub make_dot_forward {
@@ -966,6 +1000,11 @@ sub remove_site {
         foreach my $email_user (keys %{$conf->{'email'}}) {
             unlink("/home/$email_user/.forward");
         }
+    }
+
+       # Remove any .profile.rbenv file in the user's home directory
+    if ($conf->{'ruby_version'}) {
+      unlink("/home/$conf->{'$user'}/.profile.rbenv");
     }
 
     # Remove Apache virtual host config
