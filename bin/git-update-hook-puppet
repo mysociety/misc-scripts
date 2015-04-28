@@ -55,23 +55,23 @@ do
 
   if [[ $name =~ [.]pp$ ]]
   then
-    puppet parser validate $tmp 2>&1 | grep -v '^import' | sed "s|$tmp|$name|"> $log
+    puppet parser validate $tmp 2>&1 > $log
     if [[ $? != 0 ]]
     then
       echo
-      echo -e "$(cat $log | sed 's|JOJOMOJO|'\\${RED}${name}\\${NOBOLD}'|')" >&2
+      grep -v '^import' $log | sed "s|$tmp|$name|" >&2
       echo -e "For more details run this: ${CYAN} git diff $old_sha1 $new_sha1 ${NOBOLD}" >&2 
       echo
       exit_status=1
     fi
   elif [[ $name =~ [.]erb$ ]]
   then
-    erb -P -x -T '-' $tmp | ruby -c 2>&1 | sed "s|$tmp|$name|" > $log
+    erb -P -x -T '-' $tmp | ruby -c 2>&1 > $log
     if [[ $? != 0 ]]
     then
       echo
       echo -e "${MAGENTA}${name} failed syntax check${NOBOLD}"
-      echo -e "$(cat $log | sed 's|JOJOMOJO|'\\${RED}${name}\\${NOBOLD}'|')" >&2
+      sed "s|$tmp|$name|" $log >&2
       echo -e "For more details run this: ${CYAN} git diff $old_sha1 $new_sha1 ${NOBOLD}" >&2 
       echo
       exit_status=1
