@@ -287,12 +287,15 @@ sub db_conf {
         die "unknown database type '$params->{type}'";
     }
 
+    # Strings for PHP configuration
     $conf->{database_configs}{default} .= one_db_conf_php($params, $database, 1);
     $conf->{database_configs}{external} .= one_db_conf_php($params, $database, 0);
 
+    # Strings for YAML configuration
     $conf->{database_configs}{yaml} .= one_db_conf_yml($params, $database, 1);
     $conf->{database_configs}{external_yaml} .= one_db_conf_yml($params, $database, 0);
 
+    # Strings for Rails configuration
     if ($params->{type} eq 'psql') {
             # XXX doesn't cope with multiple Rails database configs (as you
             # have to list them in the yml file in right place, so one text
@@ -323,6 +326,26 @@ END
 END
             }
     }
+
+    # Add all the parameters as structured data
+
+    push @{$conf->{struct_database_configs}{internal}}, {
+        prefix => $params->{prefix},
+        host => get_db_host($params, 0),
+        port => $params->{port},
+        name => $database,
+        username => $database,
+        password => "\${\\(pgpw('$database'))}",
+    };
+    push @{$conf->{struct_database_configs}{external}}, {
+        prefix => $params->{prefix},
+        host => get_db_host($params, 1),
+        port => $params->{port},
+        name => $database,
+        username => $database,
+        password => "\${\\(pgpw('$database'))}",
+    };
+
 }
 
 sub apache_graceful {

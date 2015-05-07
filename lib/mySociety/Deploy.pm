@@ -192,6 +192,22 @@ $conf->{database_configs}{external_yaml}
 DONE_EXTERNAL_DATABASE_CONFIGS_YML
 END
 
+    foreach my $db (@{$conf->{struct_database_configs}{internal}}) {
+        print FH "\$db_config_$db->{prefix}_host = '$db->{host}';\n";
+        print FH "\$db_config_$db->{prefix}_port = $db->{port};\n";
+        print FH "\$db_config_$db->{prefix}_name = '$db->{name}';\n";
+        print FH "\$db_config_$db->{prefix}_username = '$db->{username}';\n";
+        print FH "\$db_config_$db->{prefix}_password = $db->{password};\n";
+    }
+
+    foreach my $db (@{$conf->{struct_database_configs}{external}}) {
+        print FH "\$db_config_$db->{prefix}_external_host = '$db->{host}';\n";
+        print FH "\$db_config_$db->{prefix}_external_port = $db->{port};\n";
+        print FH "\$db_config_$db->{prefix}_external_name = '$db->{name}';\n";
+        print FH "\$db_config_$db->{prefix}_external_username = '$db->{username}';\n";
+        print FH "\$db_config_$db->{prefix}_external_password = $db->{password};\n";
+    }
+
     print FH Dumper($conf->{conf_dir});
     print FH "\$conf_dirs = \$VAR1;\n";
     print FH Dumper($conf->{private_conf_dir});
