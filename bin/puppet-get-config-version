@@ -8,7 +8,9 @@
 #  * an arbitrary (but ever-changing) value, if we can't get the hash
 #
 # This script is referenced by the config_version directive in environment.conf, and 
-# called with its cwd inside the Puppet environment being used.
+# called with its cwd inside the Puppet environment being used.  The directive should
+# look like
+#   config_version=/data/mysociety/bin/puppet-get-config-version $environment
 #
 
 GIT=/usr/bin/git
@@ -16,7 +18,8 @@ GIT=/usr/bin/git
 
 ref=$($GIT rev-parse HEAD 2>/dev/null)
 if [ $? -eq 0 ]; then
-    echo "$ref"
+    environment=${1:-YOU-MUST-CALL-THIS-SCRIPT-WITH-THE-ENVIRONMENT-NAME}
+    echo "$environment $ref"
 else
     now=$(date +%s)
     echo "WARNING-no-git-commit-hash-available-$now"
