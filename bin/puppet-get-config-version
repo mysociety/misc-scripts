@@ -1,0 +1,23 @@
+#!/bin/bash
+#
+# Return a string which will be helpful in identifying the config version used by Puppet
+# for any given run.
+#
+# We return--
+#  * the hash of the current commit, or
+#  * an arbitrary (but ever-changing) value, if we can't get the hash
+#
+# This script is referenced by the config_version directive in environment.conf, and 
+# called with its cwd inside the Puppet environment being used.
+#
+
+GIT=/usr/bin/git
+
+
+ref=$($GIT rev-parse HEAD 2>/dev/null)
+if [ $? -eq 0 ]; then
+    echo "$ref"
+else
+    now=$(date +%s)
+    echo "WARNING-no-git-commit-hash-available-$now"
+fi
