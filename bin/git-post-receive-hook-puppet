@@ -1,0 +1,34 @@
+#!/bin/bash
+#
+# Update the local copy of puppet manifests whenever new stuff is pushed.
+#
+
+# Location of our Puppet repo
+export MY_REPO=ssh://git.mysociety.org/data/git/private/mysociety-puppet.git
+
+# Reset environment so we can use git
+unset GIT_INDEX_FILE
+
+cd /etc/puppet/environments
+
+while read oldref newref name
+do
+    branch=$(basename $name)
+    if [ "$branch" == 'master' ]; then
+        directory='production'
+    else
+        directory=$branch
+    fi
+
+    export GIT_WORK_TREE=/etc/puppet/environments/$directory
+    export GIT_DIR=/etc/puppet/environments/$directory/.git
+
+    if [ ! -d "$directory" ]; then
+        git clone $MY_REPO $directory
+        cd $directory
+        git checkout $branch
+    else
+        cd $directory
+        git pull
+    fi
+done
