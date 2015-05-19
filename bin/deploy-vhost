@@ -917,7 +917,7 @@ sub update_site {
 
 sub set_or_clear_ruby_version {
 
-  if (exists($conf->{'ruby_version'})) {
+  if ($conf->{ruby_version}) {
 
     # Write a .rbenv-version file at the root of the application directory
     # This should set the version of ruby for any rbenv-enabled user when operating
