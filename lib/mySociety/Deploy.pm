@@ -194,7 +194,7 @@ END
 
     foreach my $db (@{$conf->{struct_database_configs}{internal}}) {
         print FH "\$db_config_$db->{prefix}_host = '$db->{host}';\n";
-        print FH "\$db_config_$db->{prefix}_port = $db->{port};\n";
+        print FH "\$db_config_$db->{prefix}_port = $db->{port};\n" if $db->{port};
         print FH "\$db_config_$db->{prefix}_name = '$db->{name}';\n";
         print FH "\$db_config_$db->{prefix}_username = '$db->{username}';\n";
         print FH "\$db_config_$db->{prefix}_password = $db->{password};\n";
@@ -202,7 +202,7 @@ END
 
     foreach my $db (@{$conf->{struct_database_configs}{external}}) {
         print FH "\$db_config_$db->{prefix}_external_host = '$db->{host}';\n";
-        print FH "\$db_config_$db->{prefix}_external_port = $db->{port};\n";
+        print FH "\$db_config_$db->{prefix}_external_port = $db->{port};\n" if $db->{port};
         print FH "\$db_config_$db->{prefix}_external_name = '$db->{name}';\n";
         print FH "\$db_config_$db->{prefix}_external_username = '$db->{username}';\n";
         print FH "\$db_config_$db->{prefix}_external_password = $db->{password};\n";
