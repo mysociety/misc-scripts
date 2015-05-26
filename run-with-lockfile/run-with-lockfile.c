@@ -26,27 +26,30 @@ static const char rcsid[] = "$Id: run-with-lockfile.c,v 1.2 2013-03-04 09:33:23 
 
 #define SHELL_PATH "/bin/sh"
 #define SHELL_NAME "sh"
+#define WAIT_AFTER_TERM 10  /* seconds to wait after SIGTERM sent */
 
-const char *opts="hnt:";
+const char *opts="hnet:";
 pid_t pid;
 int timeout = 0;
 char *command;
 
 void usage(FILE *fp) {
     fprintf(fp,
-"run-with-lockfile [-n] [-t timeout] FILE COMMAND\n"
+"run-with-lockfile [-ne] [-t timeout] FILE COMMAND\n"
 "\n"
 "Open (perhaps create) and fcntl-lock FILE, then run COMMAND. If option -n\n"
 "is given, fail immediately if the lock is held by another process;\n"
 "otherwise, wait for the lock. When COMMAND is run, the variable LOCKFILE\n"
-"will be set to FILE in its environment. COMMAND is run by passing it to\n"
-"/bin/sh with the -c parameter.\n"
+"will be set to FILE in its environment. If -e is given, execute the command\n"
+"directly; otherwise COMMAND is run by passing it to /bin/sh with the -c\n"
+"parameter.  The full path of the command should be given when -e is used.\n"
 "\n"
 "Exit value is that returned from COMMAND; or, if -n is given and the lock\n"
 "could not be obtained, 100; or, if another error occurs, 101.\n"
 "\n"
 "If a timeout value is given with -t, the command will be killed if it runs\n"
 "for longer than that number of seconds, and the exit value will be 102.\n"
+"Note that, for the timeout to be effective, -e should also be used.\n"
 "\n"
 "Copyright (c) 2003-4 Chris Lightfoot, Mythic Beasts Ltd.\n"
 "%s\n",
@@ -54,13 +57,35 @@ void usage(FILE *fp) {
         );
 }
 
+void alarm_handler_kill(int sig) {
+    fprintf(stderr, "run-with-lockfile: timed out; sending KILL to pid %d\n", pid);
+    kill(pid, SIGKILL);
+    exit(102);
+}
+
 void alarm_handler(int sig) {
+    int n;
+    struct sigaction si;
+
     alarm(0);
     if(pid <= 0)
         fprintf(stderr, "run-with-lockfile: timeout, but not killing pid %d!\n", pid);
     else {
-        fprintf(stderr, "run-with-lockfile: %s timed out after %ds; killing pid %d\n", command, timeout, pid);
+        fprintf(stderr, "run-with-lockfile: %s timed out after %ds; sending TERM to pid %d and waiting for it to die...\n", command, timeout, pid);
         kill(pid, SIGTERM);
+
+        si.sa_handler = alarm_handler_kill;
+        sigemptyset(&si.sa_mask);
+        si.sa_flags = 0;
+        sigaction(SIGALRM, &si, NULL);
+
+        alarm(WAIT_AFTER_TERM);
+
+        waitpid(pid, &n, 0);
+
+        /* If we get this far, the process exited */
+        alarm(0);
+        fprintf(stderr, "run-with-lockfile: pid %d died with status %d\n", pid, n);
     }
     exit(102);
 }
@@ -69,10 +94,11 @@ int main(int argc, char *argv[]) {
     extern char *optarg;
     extern int optind;
     char opt, *file, *envvar;
-    int wait = 1, n;
+    int wait = 1, call_exec = 0, n;
     int fd;
     struct stat st;
     struct flock fl;
+    struct sigaction si;
 
     while ((opt = getopt(argc, argv, opts))!=-1) {
         switch (opt) {
@@ -83,6 +109,9 @@ int main(int argc, char *argv[]) {
             case 'n':
                 wait = 0;
                 break;
+            case 'e':
+                call_exec = 1;
+                break;
             case 't':
                 timeout = atoi(optarg);
                 break;
@@ -92,7 +121,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    if (argc - optind != 2) {
+    if (argc - optind < 2) {
         fprintf(stderr, "run-with-lockfile: incorrect arguments\n");
         usage(stderr);
         return 101;
@@ -136,13 +165,13 @@ int main(int argc, char *argv[]) {
     sprintf(envvar, "LOCKFILE=%s", file);
     putenv(envvar);
         
-    /* Set an alarm (if -t wasn't specified, timeout will be zero
-       which disables the alarm anyway) */
-    signal(SIGALRM, &alarm_handler);
-    alarm(timeout);
-
     if ((pid = fork()) == 0) {
-        if (execl(SHELL_PATH, SHELL_NAME, "-c", command, NULL) < 0) {
+        if (call_exec) {
+            if (execv(command, &argv[optind+1]) < 0) {
+                fprintf(stderr, "run-with-lockfile: %s: %s\n", command, strerror(errno));
+                n = 101;
+            }
+        } else if (execl(SHELL_PATH, SHELL_NAME, "-c", command, NULL) < 0) {
             if (n == -1) {
                 fprintf(stderr, "run-with-lockfile: %s: %s\n", command, strerror(errno));
                 n = 101;
@@ -155,6 +184,16 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "run-with-lockfile: fork failed: %s\n", strerror(errno));
         n = 101;
     } else {
+        /* Set an alarm (if -t wasn't specified, timeout will be zero
+           which disables the alarm anyway).  SA_NODEFER ensures that another
+           alarm can be set in the signal handler. */
+        si.sa_handler = alarm_handler;
+        sigemptyset(&si.sa_mask);
+        si.sa_flags = SA_NODEFER;
+        sigaction(SIGALRM, &si, NULL);
+
+        alarm(timeout);
+
         if (waitpid(pid, &n, 0) != pid) {
             fprintf(stderr, "run-with-lockfile: waitpid failed: %s\n", strerror(errno));
             n = 101;
