@@ -121,7 +121,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    if (argc - optind < 2) {
+    if ((call_exec && argc - optind < 2) || (!call_exec && argc - optind != 2)) {
         fprintf(stderr, "run-with-lockfile: incorrect arguments\n");
         usage(stderr);
         return 101;
