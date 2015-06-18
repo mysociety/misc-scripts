@@ -936,13 +936,21 @@ sub set_or_clear_ruby_version {
     copy("/data/servers/langs/.profile.rbenv", "/home/$conf->{'user'}/.profile.rbenv");
     shell("chown", "$conf->{user_uid}:$conf->{user_gid}", "/home/$conf->{'user'}/.profile.rbenv");
 
-  } else {
+    # add a wrapper script to allow the user's .forward files to operate with the right ruby version
+    shell("$mysociety_bin/mugly", "-O", "/home/$conf->{'user'}/run-with-rbenv-path", "-p", "$settings_file", "$servers_dir/vhosts/run-with-rbenv-path.ugly");
+    shell("chown", "$conf->{user_uid}:$conf->{user_gid}", "/home/$conf->{'user'}/run-with-rbenv-path");
+    chmod 0755, "/home/$conf->{'user'}/run-with-rbenv-path";
+
+   } else {
 
     # Remove any .rbenv-version file
     unlink("$vhost_dir/$vcspath_install/.rbenv-version");
 
     # Remove any .profile.rbenv file in the user's home directory
     unlink("/home/$conf->{'user'}/.profile.rbenv");
+
+    # Remove any run-with-rbenv-path in the user's home directory
+    unlink("/home/$conf->{'user'}/run-with-rbenv-path");
   }
 }
 
@@ -950,7 +958,11 @@ sub make_dot_forward {
     my ($email_user, $script, $suffix) = @_;
     my $forward_file_name = defined($suffix) ? ".forward-$suffix" : ".forward";
 
-    shell("su", "-", $email_user, "-c echo \"|$vhost_dir/$vcspath/$script\" >~$email_user/$forward_file_name");
+    if ($conf->{ruby_version}){
+        shell("su", "-", $email_user, "-c echo \"|/home/$conf->{'user'}/run-with-rbenv-path $vhost_dir/$vcspath/$script\" >~$email_user/$forward_file_name");
+    } else {
+        shell("su", "-", $email_user, "-c echo \"|$vhost_dir/$vcspath/$script\" >~$email_user/$forward_file_name");
+    }
 }
 
 sub install_or_remove_crontab {
