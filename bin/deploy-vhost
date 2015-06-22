@@ -373,6 +373,12 @@ sub graceful {
     }
 }
 
+sub sphinx_restart {
+    if (-e "/etc/init.d/sphinxsearch") {
+        shell("/etc/init.d/sphinxsearch", "reload");
+    }
+}
+
 sub make_git_repository {
    my ($git_url_base, $git_user, $git_repository, $git_ref) = @_;
 
@@ -558,6 +564,9 @@ if ($action eq "stop") {
         use mySociety::Memcached;
         mySociety::Memcached::flush_all();
         print `varnishadm -T localhost:6082 -S /etc/varnish/secret purge req.http.host == "$vhost"`;
+    }
+    if ($conf->{'sphinx'}) {
+        sphinx_restart();
     }
 } elsif ($action eq "remove") {
     stop_site();
@@ -1063,6 +1072,10 @@ sub remove_site {
     } else {
         # Remove possibly symlinked logrotate file
         unlink("/etc/logrotate.d/$vhost");
+    }
+
+    if ($conf->{'sphinx'}) {
+        sphinx_restart();
     }
 
     print "Config files removed, please tidy $vhost_dir yourself.\n";
