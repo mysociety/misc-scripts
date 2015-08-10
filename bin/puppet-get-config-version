@@ -16,11 +16,13 @@
 GIT=/usr/bin/git
 
 
+environment=${1:-YOU-MUST-CALL-THIS-SCRIPT-WITH-THE-ENVIRONMENT-NAME}
+cd /etc/puppet/environments/$environment
+
 ref=$($GIT rev-parse HEAD 2>/dev/null)
 if [ $? -eq 0 ]; then
-    environment=${1:-YOU-MUST-CALL-THIS-SCRIPT-WITH-THE-ENVIRONMENT-NAME}
-    echo "$environment $ref"
+    echo "$environment ($ref)"
 else
     now=$(date +%s)
-    echo "WARNING-no-git-commit-hash-available-$now"
+    echo "WARNING: no git commit hash available (time=$now)"
 fi
