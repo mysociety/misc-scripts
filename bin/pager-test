@@ -14,4 +14,9 @@ do
     cmd="[`date +%s`] PROCESS_SERVICE_CHECK_RESULT;$i;$NAGIOS_CHECK;1;Test page from $i"
     ssh $i "echo '$cmd' > $NAGIOS_CMD_FILE"
     echo "done."
+
+    echo -n "Clearing test pager state on $i... "
+    cmd="[`date +%s`] PROCESS_SERVICE_CHECK_RESULT;$i;$NAGIOS_CHECK;0;OK"
+    ssh $i "echo '$cmd' > $NAGIOS_CMD_FILE"
+    echo "done."
 done
