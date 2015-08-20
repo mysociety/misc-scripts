@@ -993,15 +993,40 @@ sub install_or_remove_crontab {
             # if a crontab exists in the conf directory in source control, or has been created there
             # in the update_conf_dir function, just install it
             my $crontab = "$conf_dir/crontab";
+            my $tmp_crontab = mktemp("/tmp/deploy-vhost-crontab-XXXXXXXX");
             if (-e $crontab) {
-                copy($crontab, "$cron_name");
+                copy($crontab, $tmp_crontab);
             } else {
                 my $tmp_crontab_ugly = mktemp("/tmp/deploy-vhost-crontab.ugly-XXXXXXXX");
                 return unless -e "$conf_dir/crontab.ugly";
                 shell("git show $git_ref:$conf_dir/crontab.ugly >$tmp_crontab_ugly");
-                shell("$mysociety_bin/mugly", "-O", $cron_name, "-p", "$settings_file", "$tmp_crontab_ugly");
+                shell("$mysociety_bin/mugly", "-O", $tmp_crontab, "-p", "$settings_file", "$tmp_crontab_ugly");
                 unlink $tmp_crontab_ugly;
             }
+
+            # Check that MAILTO is valid
+            open CRON, $tmp_crontab or die "can't open $tmp_crontab: $!";
+            while (<CRON>) {
+                if (/^MAILTO=(.*)$/) {
+                    system("/data/mysociety/bin/lookup_google_apps_email.py $1");
+                    my $result = $? >> 8;
+                    if ($result == 1) {
+                        unlink $tmp_crontab;
+                        die "MAILTO=$1: not a valid address in crontab";
+                    } elsif ($result == 2) {
+                        warn "Google Apps API not working; can't check MAILTO address";
+                    } elsif ($result != 0) {
+                        warn "unexpected result code $result from lookup_google_apps_email.py";
+                    }
+
+                    last;
+                }
+            }
+            close CRON;
+
+            # Now copy the file in place
+            copy($tmp_crontab, $cron_name);
+            unlink $tmp_crontab;
         };
 
         $setup_git_cron->( $_, $conf->{'git_ref'} )         for @{$conf->{conf_dir}};
