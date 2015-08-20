@@ -10,8 +10,6 @@
 #
 
 import sys
-sys.path.insert(0, '/data/mysociety/lib/google')
-
 from oauth2client.client import SignedJwtAssertionCredentials
 from apiclient.discovery import build
 from apiclient import errors
