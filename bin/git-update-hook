@@ -18,6 +18,19 @@ if [[ "$2" != $NULL_SHA1 ]]; then
     branch=$(git rev-parse --symbolic --abbrev-ref $1)
 fi
 
+if [[ "$branch" == "gh-pages" || "$branch" == "master" ]]; then
+  log=$(mktemp /tmp/git.update.log.XXXXXX)
+  if git log --oneline "$2".."$3" | grep -i '^[^ ]* \([^a-z]*WIP\|fixup\|squash\)' > $log; then
+    echo
+    echo -e "${RED}Bad commits found:${NOBOLD}" >&2
+    echo -e "${CYAN}$(cat $log)${NOBOLD}" >&2
+    echo
+    rm -f $log
+    exit 1
+  fi
+  rm -f $log
+fi
+
 if [[ "`git config --get mysociety.jslint`" != 'true' ]]; then
    exit 0
 fi
