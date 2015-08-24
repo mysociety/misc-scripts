@@ -18,6 +18,10 @@ if [[ "$2" != $NULL_SHA1 ]]; then
     branch=$(git rev-parse --symbolic --abbrev-ref $1)
 fi
 
+if [[ "`git config --get mysociety.jslint`" != 'true' ]]; then
+   exit 0
+fi
+
 if [[ "$branch" == *gh-pages* ]]
 then
     exit 0
