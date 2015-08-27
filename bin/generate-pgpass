@@ -64,7 +64,7 @@ my %extra_perms = (
        'louise' => [ 'foi-demo' ],
     },
     'firefly' => {
-	'mark' => [ 'mark-za-hansard-tmp', 'pombola-mark-scratch' ],
+	'mark' => [ 'mark-za-hansard-tmp', 'pombola-mark-scratch', , 'test_pombola-mark-scratch' ],
     },
 );
 
