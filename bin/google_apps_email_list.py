@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 #
 # Fetch list of email addresses in our Google Apps domain.
 
@@ -56,5 +56,7 @@ for r in response['groups']:
     members = groupadmin.members().list(groupKey=r['id']).execute()
     print '<ul>'
     for member in members.get('members', []):
-        print '<li>%s %s %s</li>' % (member['email'], member['role'], member['type'])
+        role = '(Owner)' if member['role'] == 'OWNER' else ''
+        typ = '(Group)' if member['type'] == 'GROUP' else ''
+        print '<li>%s %s %s</li>' % (member['email'], role, typ)
     print '</ul>'
