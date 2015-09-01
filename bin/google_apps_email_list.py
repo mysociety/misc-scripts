@@ -63,7 +63,7 @@ response = groupadmin.groups().list(domain='mysociety.org').execute()
 for r in response['groups']:
     email = r['email'].replace('@mysociety.org', '')
     url = GROUPS_URL % email
-    print '<h3>%s (<a href="%s">%s</a>)</h3>' % (r['name'], url, email)
+    print '<h3>%s (<a target="_top" href="%s">%s</a>)</h3>' % (r['name'], url, email)
     if r.get('aliases'):
         print '<p>Aliases: %s</p>' % ', '.join(r['aliases'])
     if email in ('mysociety-community', 'fixmystreet', 'theyworkforyou'):
