@@ -40,6 +40,11 @@ then
     exit 0
 fi
 
+# Branch being deleted
+if [[ "$3" == $NULL_SHA1 ]]; then
+    exit 0
+fi
+
 if [ -n "$(git branch -a --contains "$3")" ]
 then
     echo "$3 is already pointed to by another branch, assuming it's already been checked"
