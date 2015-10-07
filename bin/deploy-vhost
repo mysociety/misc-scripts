@@ -108,7 +108,8 @@ my $timestamped_deploy = $conf->{timestamped_deploy};
 my $vcspath = $conf->{vcspath};
 
 # Verify that this server is listed for this vhost
-die "'$hostname' is not a vhost for '$vhost'" if (!grep { m/^$hostname$/ } @{$conf->{servers}}) && $action ne 'remove';
+die "'$hostname' is not a server for '$vhost'\nValid options: @{$conf->{servers}}\n"
+    if (!grep { m/^$hostname$/ } @{$conf->{servers}}) && $action ne 'remove';
 
 my $vcspath_install = $vcspath;
 my $timestamp = gmtime->strftime('%Y-%m-%dT%H-%M-%S');
