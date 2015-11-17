@@ -18,7 +18,8 @@ if [[ "$2" != $NULL_SHA1 ]]; then
     branch=$(git rev-parse --symbolic --abbrev-ref $1)
 fi
 
-if [[ "$branch" == "gh-pages" || "$branch" == "master" ]]; then
+MAINBRANCH=$(git config --get mysociety.mainbranch)
+if [[ "$branch" == "gh-pages" || "$branch" == "${MAINBRANCH:=master}" ]]; then
   log=$(mktemp /tmp/git.update.log.XXXXXX)
   if git log --oneline "$2".."$3" | grep -i '^[^ ]* \([^a-z]*WIP\|fixup\|squash\)' > $log; then
     echo
