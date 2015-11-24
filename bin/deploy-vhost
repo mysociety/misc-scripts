@@ -1091,7 +1091,7 @@ sub remove_site {
 
        # Remove any .profile.rbenv file in the user's home directory
     if ($conf->{'ruby_version'}) {
-      unlink("/home/$conf->{'$user'}/.profile.rbenv");
+      unlink("/home/$conf->{'user'}/.profile.rbenv");
     }
 
     # Remove Apache virtual host config
