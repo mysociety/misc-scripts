@@ -101,11 +101,11 @@ name = '{args.site} installation {args.today}'.format(args=ARGS)
 image_id = conn.create_image(instance_id, name)
 image = conn.get_image(image_id)
 image.add_tag('Name', name)
-image.set_launch_permissions(group_names=['all'])
 while image.state == 'pending':
     print '.',
     time.sleep(5)
     image.update()
 print image.state, image_id
+image.set_launch_permissions(group_names=['all'])
 
 conn.stop_instances(instance_ids=[instance_id])
