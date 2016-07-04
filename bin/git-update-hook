@@ -72,7 +72,7 @@ do
   # skip deletions
   [ "$new_sha1" = $NULL_SHA1 ] && continue
   # skip Modernizr and the like
-  [[ $name =~ dropzone.min|modernizr|OpenLayers|cordova|fancybox|placeholder|json2|geo.min|jquery|backbone|lodash|underscore|moment|bootstrap|select2|warwickshire/gamma ]] && continue
+  [[ $name =~ history.polyfill|dropzone.min|yepnope|html5shiv|modernizr|OpenLayers|cordova|fancybox|placeholder|json2|geo.min|jquery|backbone|lodash|underscore|moment|bootstrap|select2|warwickshire/gamma ]] && continue
   # Only test .js files
   if [[ $name =~ [.]js$ ]]
   then
