@@ -1,97 +1,120 @@
-#!/bin/sh
+#!/usr/bin/python
 
-set -e
+import argparse
+import json
+import os
+import requests
+import socket
+from subprocess import check_call
+import sys
 
-GIT_IP=`dig +short git.mysociety.org`
-LOCAL_IP=`hostname -i`
+def is_correct_server():
+    git_ip = socket.gethostbyname('git.mysociety.org')
 
-if [ $GIT_IP != $LOCAL_IP ]; then
-  echo "You can only run this on leopard\n"
-  exit 1
-fi
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.connect(('46.43.39.78', 0))  # connecting to a UDP address doesn't send packets
+    local_ip = s.getsockname()[0]
 
-package=`basename $0`
+    if git_ip != local_ip:
+        sys.exit("You can only run this on git.mysociety.org")
 
-help() {
-    echo "$package - create a new git repository under /data/git"
-    echo " "
-    echo "$package [options] name"
-    echo " "
-    echo "options:"
-    echo "  --public        Public repository"
-    echo "  --private       Private repository"
-    echo "  --group GROUP   Group name if private (defaults to privatecvs)"
-}
+def parse_arguments():
+    parser = argparse.ArgumentParser(description='Create a new git repository under /data/git')
+    parser.add_argument('name')
+    group1 = parser.add_argument_group()
+    group2 = group1.add_mutually_exclusive_group(required=True)
+    group2.add_argument('--public', action='store_const', const='public', dest='pubpriv', help='Public repository')
+    group2.add_argument('--private', action='store_const', const='private', dest='pubpriv', help='Private repository')
+    group1.add_argument('--group', help='Group name if private (defaults to privatecvs)')
+    parser.add_argument('--github', action='store_true', help='Create repo on GitHub')
+    args = parser.parse_args()
 
-while [ $# -gt 0 ]; do
-    case "$1" in
-        -h|--help)
-            help
-            exit 0
-            ;;
-        --public)
-            PUBPRIV=public
-            shift
-            ;;
-        --private)
-            PUBPRIV=private
-            shift
-            ;;
-        -g|--group)
-            shift
-            if test $# -gt 0; then
-                GROUP=$1
-            else
-                echo "No group name specified"
-                exit 1
-            fi
-            shift
-            ;;
-        *)
-            NAME=$1
-            shift
-            ;;
-    esac
-done
+    if args.pubpriv == 'public':
+        if args.group:
+            parser.error('Do not specify a group for a public repository')
+        args.group = 'publiccvs'
+    else:
+        if not args.group:
+            args.group = 'privatecvs'
 
-if [ x$NAME = x -o x$PUBPRIV = x ]; then
-  echo "You must give a repository name, and --public or --private\n"
-  help
-  exit 1
-fi
+    if args.name[-4:] != '.git':
+        args.name += '.git'
 
-if [ $PUBPRIV = private -a x$GROUP = x ]; then
-  GROUP=privatecvs
-elif [ $PUBPRIV = public ]; then
-  GROUP=publiccvs
-fi
+    return args
 
-NAME=${NAME%.git}
-NAME=$NAME.git
+def git(*args):
+    check_call(['git', '-C', repo_path] + list(args))
 
-if [ -e /data/git/$PUBPRIV/$NAME ]; then
-  echo "That repository name already exists"
-  exit 1
-fi
 
-cd /data/git/$PUBPRIV
-sudo mkdir $NAME
-cd $NAME
-sudo git init --quiet --bare --shared=group
-cd ..
-sudo chgrp -R $GROUP $NAME
-if [ $PUBPRIV = private ]; then
-  sudo chmod -R o-xr $NAME
-fi
-cd $NAME/hooks/
-ln -s /data/mysociety/bin/git-post-receive-hook post-receive
-cd ..
-git config hooks.emailprefix ""
-git config hooks.mailinglist git-$PUBPRIV@mysociety.org
-git config hooks.showrev "git show -C %s; echo"
-git config receive.denynonfastforwards false
-if [ $PUBPRIV = public ]; then
-  touch git-daemon-export-ok
-fi
+if os.geteuid() != 0:
+    sys.exit("Please run as root")
+is_correct_server()
+ARGS = parse_arguments()
+repo_path = '/data/git/{0.pubpriv}/{0.name}'.format(ARGS)
 
-echo "New repository created at /data/git/$PUBPRIV/$NAME"
+if os.path.exists(repo_path):
+    sys.exit("That repository name already exists")
+
+os.mkdir(repo_path)
+git('init', '--quiet', '--bare', '--shared=group')
+check_call('chgrp', '-R', ARGS.group, repo_path)
+if ARGS.pubpriv == 'private':
+    check_call('chmod', '-R', 'o-xr', repo_path)
+os.symlink('/data/mysociety/bin/git-post-receive-hook', os.path.join(repo_path, 'hooks', 'post-receive'))
+git('config', 'hooks.emailprefix', '')
+git('config', 'hooks.mailinglist', 'git-%s@mysociety.org' % ARGS.pubpriv)
+git('config', 'hooks.showrev', 'git show -C %s; echo')
+git('config', 'receive.denynonfastforwards', 'false')
+if ARGS.pubpriv == 'public':
+    open(os.path.join(repo_path, 'git-daemon-export-ok'), 'a').close()
+
+print "New repository created at /data/git/{0.pubpriv}/{0.name}".format(ARGS)
+
+if ARGS.github:
+    print "Creating on GitHub..."
+    name = ARGS.name[:-4]
+
+    j = json.load(open('/etc/mysociety/github-oauth/token.json'))
+    token = j['token']
+    if not token:
+        sys.exit('Failed to find the GitHub API token')
+
+    headers = {
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json',
+        'User-Agent': 'mySociety.org/1.0',
+        'Authorization': 'bearer %s' % token,
+    }
+
+    data = {
+        'name': name,
+        'homepage': 'https://www.mysociety.org/',
+        'private': ARGS.pubpriv == 'private',
+    }
+    url = 'https://api.github.com/orgs/mysociety/repos'
+    req = requests.post(url, headers=headers, data=json.dumps(data))
+    if req.status_code == 201:
+        print 'New repo created on GitHub'
+    else:
+        print 'Received bad response creating repo: {0.status_code} {0.json}'.format(req)
+
+    data = {
+        'name': 'irc',
+        'config': {
+            'server': 'irc.mysociety.org',
+            'port': '6697',
+            'room': 'activity',
+            'nick': 'github',
+            'ssl': True,
+            'message_without_join': True,
+            'long_url': True,
+            'notice': True,
+        },
+        'active': True,
+    }
+    url = 'https://api.github.com/repos/mysociety/%s/hooks' % (name,)
+    req = requests.post(url, headers=headers, data=json.dumps(data))
+    if req.status_code == 201:
+        print 'IRC hook created on GitHub'
+    else:
+        print 'Received bad response creating hook: {0.status_code} {0.json}'.format(req)
