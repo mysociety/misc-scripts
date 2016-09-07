@@ -57,9 +57,9 @@ if os.path.exists(repo_path):
 
 os.mkdir(repo_path)
 git('init', '--quiet', '--bare', '--shared=group')
-check_call('chgrp', '-R', ARGS.group, repo_path)
+check_call(['chgrp', '-R', ARGS.group, repo_path])
 if ARGS.pubpriv == 'private':
-    check_call('chmod', '-R', 'o-xr', repo_path)
+    check_call(['chmod', '-R', 'o-xr', repo_path])
 os.symlink('/data/mysociety/bin/git-post-receive-hook', os.path.join(repo_path, 'hooks', 'post-receive'))
 git('config', 'hooks.emailprefix', '')
 git('config', 'hooks.mailinglist', 'git-%s@mysociety.org' % ARGS.pubpriv)
