@@ -61,6 +61,7 @@ check_call(['chgrp', '-R', ARGS.group, repo_path])
 if ARGS.pubpriv == 'private':
     check_call(['chmod', '-R', 'o-xr', repo_path])
 os.symlink('/data/mysociety/bin/git-post-receive-hook', os.path.join(repo_path, 'hooks', 'post-receive'))
+os.symlink('/data/mysociety/bin/git-update-hook', os.path.join(repo_path, 'hooks', 'update'))
 git('config', 'hooks.emailprefix', '')
 git('config', 'hooks.mailinglist', 'git-%s@mysociety.org' % ARGS.pubpriv)
 git('config', 'hooks.showrev', 'git show -C %s; echo')
