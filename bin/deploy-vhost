@@ -72,6 +72,13 @@ sub chdir_verbose {
     chdir $dir;
 }
 
+sub mugly {
+    my ($in, $out, $extra_settings) = @_;
+    shell("$mysociety_bin/mugly", "-O", $out, "-p", $settings_file,
+        $extra_settings ? ("-p", $extra_settings) : (),
+        $in);
+}
+
 #####################################################################
 # Main code
 
@@ -189,11 +196,11 @@ mySociety::Deploy::write_settings_file($settings_file, $conf);
 create_daemons();
 
 # Create apache configuration stanza
-shell("$mysociety_bin/mugly", "-O", "/etc/apache2/virtualhosts.d/$vhost.conf", "-p", "$settings_file", "$servers_dir/vhosts/single-vhost.conf.ugly");
+mugly("$servers_dir/vhosts/single-vhost.conf.ugly", "/etc/apache2/virtualhosts.d/$vhost.conf");
 
 # Create nginx configuration stanza, if needed
 if ($conf->{'https'} eq 'nginx') {
-    shell("$mysociety_bin/mugly", "-O", "/etc/nginx/virtualhosts.d/$vhost.conf", "-p", "$settings_file", "$servers_dir/vhosts/single-vhost-nginx-https-proxy.conf.ugly");
+    mugly("$servers_dir/vhosts/single-vhost-nginx-https-proxy.conf.ugly", "/etc/nginx/virtualhosts.d/$vhost.conf");
 }
 
 # Update NRPE's sudo and config files so that it can call monitoring scripts as the vhost user
@@ -496,7 +503,7 @@ sub create_daemons {
     my ($fh, $filename) = tempfile();
     print $fh "\$daemon_name = '$daemon';\n";
     close $fh;
-    shell("$mysociety_bin/mugly", "-O", "/etc/init.d/$daemon", "-p", "$settings_file", "-p", "$filename", "$daemon_mugly");
+    mugly($daemon_mugly, "/etc/init.d/$daemon", $filename);
     unlink($filename);
     chmod 0755, "/etc/init.d/$daemon";
     system("update-rc.d $daemon defaults | grep -v \"System startup links for .* already exist\"");
@@ -715,8 +722,7 @@ sub update_conf_dir {
             my $conf_file_tmp = $conf_file;
             $conf_file_tmp =~ s/((\.yml)?)$/.tmp$1/;
 
-            # call mugly to generate from template
-            shell("$mysociety_bin/mugly", "-O", $conf_file_tmp, "-p", "$settings_file", "$conf_ugly_file");
+            mugly($conf_ugly_file, $conf_file_tmp);
             if ($name_base eq 'general') {
                 # test contents of new configuration file before copying it over
                 chdir_verbose(__LINE__, $mysociety_bin);
@@ -934,7 +940,7 @@ sub set_or_clear_ruby_version {
     shell("chown", "$conf->{user_uid}:$conf->{user_gid}", "/home/$conf->{'user'}/.profile.rbenv");
 
     # add a wrapper script to allow the user's .forward files to operate with the right ruby version
-    shell("$mysociety_bin/mugly", "-O", "/home/$conf->{'user'}/run-with-rbenv-path", "-p", "$settings_file", "$servers_dir/vhosts/run-with-rbenv-path.ugly");
+    mugly("$servers_dir/vhosts/run-with-rbenv-path.ugly", "/home/$conf->{'user'}/run-with-rbenv-path");
     shell("chown", "$conf->{user_uid}:$conf->{user_gid}", "/home/$conf->{'user'}/run-with-rbenv-path");
     chmod 0755, "/home/$conf->{'user'}/run-with-rbenv-path";
 
@@ -988,7 +994,7 @@ sub install_or_remove_crontab {
                 my $tmp_crontab_ugly = mktemp("/tmp/deploy-vhost-crontab.ugly-XXXXXXXX");
                 return unless -e "$conf_dir/crontab.ugly";
                 shell("git show $git_ref:$conf_dir/crontab.ugly >$tmp_crontab_ugly");
-                shell("$mysociety_bin/mugly", "-O", $tmp_crontab, "-p", "$settings_file", "$tmp_crontab_ugly");
+                mugly($tmp_crontab_ugly, $tmp_crontab);
                 unlink $tmp_crontab_ugly;
             }
 
