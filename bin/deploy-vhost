@@ -6,49 +6,44 @@
 # Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
 # WWW: http://www.mysociety.org/
 
-package main;
-
 use strict;
-require 5.8.0;
 
 use FindBin;
 use lib "$FindBin::Bin/../lib";
 use lib "$FindBin::Bin/../perllib";
 my $mysociety_bin = $FindBin::Bin;
 my $servers_dir = "$FindBin::Bin/../../servers";
-my $machines_dir = "$servers_dir/machines";
 my $mysociety_dir = "$FindBin::Bin/../../mysociety";
 
 use mySociety::SystemMisc qw(shell);
 use mySociety::Config;
-
 use mySociety::Deploy;
 
 use Cwd;
 use Errno;
-use POSIX qw(getuid);
 use Time::Piece;
-use Data::Dumper;
-use File::Slurp;
+use File::Path qw(make_path);
 use File::Copy;
 use File::Copy::Recursive qw(dircopy);
 use File::Temp qw(tempfile mktemp);
 
 our $verbose = $ENV{VERBOSE} ? 1 : 0;
 
+#####################################################################
+# General functions
+
 sub deploy_logger {
     my $message = shift;
     shell("/data/mysociety/bin/deploy-logger", $message);
 }
 
-#####################################################################
-# General functions
-
 sub make_dir {
-    my $dir = shift;
+    my ($dir, $chmod, $uid, $gid) = @_;
     if (! -d $dir) {
         mkdir($dir) || die "failed to mkdir '$dir'";
     }
+    chown($uid || $conf->{user_uid}, $gid || $conf->{user_gid}, $dir);
+    chmod $chmod, $dir if $chmod;
 }
 
 sub make_symlink {
@@ -127,32 +122,24 @@ foreach my $dir (qw( conf_dir private_conf_dir )){
 
 # Read in relevant stuff from machine configuration file
 our ($internal_network);
-if(-f '/etc/mysociety/ec2') {
-    require "$machines_dir/EC2.pl";
+if (-f '/etc/mysociety/ec2') {
+    require "$servers_dir/machines/EC2.pl";
 } else {
-    require "$machines_dir/$hostname.pl";
+    require "$servers_dir/machines/$hostname.pl";
 }
 
 #####################################################################
 # Make directories and conf files, check database and conf files
 
 # Create directories and symlink to docs
-make_dir("/data");
-make_dir("/data/vhost");
-make_dir("$vhost_dir");
-chown($conf->{user_uid}, $conf->{user_gid}, "$vhost_dir");
-make_dir("$vhost_dir/logs");
-chown(0, scalar(getgrnam('staff')), "$vhost_dir/logs");
-if($conf->{staging} == 1) {
+make_path($vhost_dir, { user => $conf->{user_uid}, group => $conf->{user_gid} });
+make_dir("$vhost_dir/logs",
     # Allow logs to be read on staging hosts so that tests can run
-    chmod 0755, "$vhost_dir/logs";
-} else {
     # Protect logs on production hosts
-    chmod 0750, "$vhost_dir/logs";
-}
-make_dir("$vhost_dir/applogs");
-chown($conf->{user_uid}, $conf->{user_gid}, "$vhost_dir/applogs");
-chmod 0750, "$vhost_dir/applogs";
+    $conf->{staging} ? 0755 : 0750,
+    0, scalar(getgrnam('staff'))
+);
+make_dir("$vhost_dir/applogs", 0750);
 my $web_dir = $conf->{redirects_only} ?  "$vhost_dir/web" : "$vcspath/" . $conf->{web_dir};
 make_symlink($web_dir, "$vhost_dir/docs");
 shell("chown", "-h", "$conf->{user_uid}:$conf->{user_gid}", "$vhost_dir/docs"); # perl's chown doesn't do symlinks
@@ -179,11 +166,9 @@ if (exists($conf->{'private_git_repository'})){
 # Make public directories
 foreach my $public_dir (@{$conf->{'public_dirs'}}) {
     make_dir("$vhost_dir/$public_dir");
-    chown($conf->{user_uid}, $conf->{user_gid}, "$vhost_dir/$public_dir");
 }
 if ($conf->{redirects_only}) {
     make_dir("$vhost_dir/web");
-    chown($conf->{user_uid}, $conf->{user_gid}, "$vhost_dir/web");
 }
 
 # Make database config settings
