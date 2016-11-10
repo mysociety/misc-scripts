@@ -1,0 +1,18 @@
+#!/usr/bin/perl
+
+use strict;
+use warnings;
+
+use Data::Dumper;
+
+our($vhosts, $sites, $databases);
+require "/data/servers/vhosts.pl";
+
+open(FP, ">/data/vhosts.pl") or die $!;
+print FP Data::Dumper->Dump([$sites], ["sites"]);
+print FP Data::Dumper->Dump([$vhosts], ["vhosts"]);
+print FP Data::Dumper->Dump([$databases], ["databases"]);
+close FP;
+
+chown((getpwnam("root"))[2], (getgrnam("root"))[2], "/data/vhosts.pl");
+chmod 0644, "/data/vhosts.pl";

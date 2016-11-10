@@ -29,7 +29,6 @@ use mySociety::ServerClass;
 use Data::Dumper;
 use Sys::Hostname;
 use IO::Socket::INET;
-use File::Copy;
 use DBI
 
 our $verbose = $ENV{VERBOSE} ? 1 : 0;
@@ -268,8 +267,7 @@ foreach my $database (keys %{$databases}) {
 # Become user postgresql, and run script again to do postgresql ones
 if (getpwuid($>) eq 'root') {
     # XXX yeuch, but seems easiest way to give postgres access to vhosts.pl, and postgres_secret
-    copy( "$servers_dir/vhosts.pl", "/data/vhosts.pl" );
-    chown((getpwnam("postgres"))[2], (getgrnam("postgres"))[2], "/data/vhosts.pl");
+    system("/data/mysociety/bin/copy-vhosts-pl");
     chown((getpwnam("root"))[2], (getgrnam("postgres"))[2], "/etc/mysociety/postgres_secret");
     chmod(0755, '/data/mysociety/bin/pgpw');
     exit system("su postgres -c \"$0\"") >> 8;
