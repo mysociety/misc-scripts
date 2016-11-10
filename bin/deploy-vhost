@@ -135,49 +135,6 @@ if (-f '/etc/mysociety/ec2') {
     require "$servers_dir/machines/$hostname.pl";
 }
 
-#####################################################################
-# Make directories and conf files, check database and conf files
-
-# Create directories and symlink to docs
-make_path($vhost_dir, { user => $conf->{user_uid}, group => $conf->{user_gid} });
-make_dir("$vhost_dir/logs",
-    # Allow logs to be read on staging hosts so that tests can run
-    # Protect logs on production hosts
-    $conf->{staging} ? 0755 : 0750,
-    0, scalar(getgrnam('staff'))
-);
-make_dir("$vhost_dir/applogs", 0750);
-my $web_dir = $conf->{redirects_only} ?  "$vhost_dir/web" : "$vcspath/" . $conf->{web_dir};
-make_symlink($web_dir, "$vhost_dir/docs");
-shell("chown", "-h", "$conf->{user_uid}:$conf->{user_gid}", "$vhost_dir/docs"); # perl's chown doesn't do symlinks
-
-# Initial clone, for git repository that don't exist
-my $git_url_base;
-if (exists($conf->{'git_repository'})){
-    if (!exists($conf->{'git_url_base'})) {
-        if ($conf->{'git_user'} eq 'anon') {
-            $git_url_base = "git://git.mysociety.org/"
-        } else {
-            $git_url_base = "ssh://" . $conf->{'git_user'} . "\@git.mysociety.org/data/git/public/";
-        }
-    } else {
-        $git_url_base = $conf->{'git_url_base'};
-    }
-    make_git_repository($git_url_base, $conf->{'git_user'}, $conf->{'git_repository'}, $conf->{'git_ref'});
-}
-if (exists($conf->{'private_git_repository'})){
-    $git_url_base = "ssh://" . $conf->{'user'} . "\@git.mysociety.org/data/git/private/";
-    make_git_repository($git_url_base, $conf->{'user'}, $conf->{'private_git_repository'}, $conf->{'private_git_ref'});
-}
-
-# Make public directories
-foreach my $public_dir (@{$conf->{'public_dirs'}}) {
-    make_dir("$vhost_dir/$public_dir");
-}
-if ($conf->{redirects_only}) {
-    make_dir("$vhost_dir/web");
-}
-
 # Make database config settings
 if (defined $conf->{'databases'}) {
     foreach my $database (@{$conf->{'databases'}}) {
@@ -186,34 +143,12 @@ if (defined $conf->{'databases'}) {
     }
 }
 
-# Create a settings file:
 my $settings_file_namepart = "settings-autogen.pl";
 my $settings_file = "$vhost_dir/$settings_file_namepart";
 
-mySociety::Deploy::write_settings_file($settings_file, $conf);
-
-# Create the daemon
-create_daemons();
-
-# Create apache configuration stanza
-mugly("$servers_dir/vhosts/single-vhost.conf.ugly", "/etc/apache2/virtualhosts.d/$vhost.conf");
-
-# Create nginx configuration stanza, if needed
-if ($conf->{'https'} eq 'nginx') {
-    mugly("$servers_dir/vhosts/single-vhost-nginx-https-proxy.conf.ugly", "/etc/nginx/virtualhosts.d/$vhost.conf");
-}
-
-# Update NRPE's sudo and config files so that it can call monitoring scripts as the vhost user
-system("/data/mysociety/bin/update-vhost-monitoring");
-
-# Work out name of crontab
 my $cron_name = "vhost-$vhost";
 $cron_name =~ s/\./-/g;
 $cron_name = "/etc/cron.d/$cron_name";
-
-if ($action ne "remove"){
-    check_packages();
-}
 
 #####################################################################
 # Helper functions
@@ -513,16 +448,71 @@ sub create_daemons {
 }
 
 #####################################################################
-# Shut down services, update, start services
+# Make directories and conf files, check database and conf files
 
-# XXX Bit annoying that the global things above (e.g. Apache config), are done
-# even if we're just stopping/starting. Should split into separate check and
-# live update functions. But mainly harmless to update live config so hey.
+sub create_or_update_files {
+    # Create directories and symlink to docs
+    make_path($vhost_dir, { user => $conf->{user_uid}, group => $conf->{user_gid} });
+    make_dir("$vhost_dir/logs",
+        # Allow logs to be read on staging hosts so that tests can run
+        # Protect logs on production hosts
+        $conf->{staging} ? 0755 : 0750,
+        0, scalar(getgrnam('staff')));
+    make_dir("$vhost_dir/applogs", 0750);
+    my $web_dir = $conf->{redirects_only} ?  "$vhost_dir/web" : "$vcspath/" . $conf->{web_dir};
+    make_symlink($web_dir, "$vhost_dir/docs");
+    shell("chown", "-h", "$conf->{user_uid}:$conf->{user_gid}", "$vhost_dir/docs"); # perl's chown doesn't do symlinks
+
+    # Initial clone, for git repository that don't exist
+    my $git_url_base;
+    if (exists($conf->{git_repository})) {
+        if (exists($conf->{git_url_base})) {
+            $git_url_base = $conf->{git_url_base};
+        } elsif ($conf->{git_user} eq 'anon') {
+            $git_url_base = "git://git.mysociety.org/"
+        } else {
+            $git_url_base = "ssh://" . $conf->{git_user} . '@git.mysociety.org/data/git/public/';
+        }
+        make_git_repository($git_url_base, $conf->{git_user}, $conf->{git_repository}, $conf->{git_ref});
+    }
+    if (exists($conf->{private_git_repository})) {
+        $git_url_base = "ssh://" . $conf->{user} . '@git.mysociety.org/data/git/private/';
+        make_git_repository($git_url_base, $conf->{user}, $conf->{private_git_repository}, $conf->{private_git_ref});
+    }
+
+    # Make public directories
+    foreach my $public_dir (@{$conf->{public_dirs}}) {
+        make_dir("$vhost_dir/$public_dir");
+    }
+    if ($conf->{redirects_only}) {
+        make_dir("$vhost_dir/web");
+    }
+
+    mySociety::Deploy::write_settings_file($settings_file, $conf);
+
+    # Create the daemon
+    create_daemons();
+
+    # Create apache/nginx configuration stanzas
+    my $vhost_file = "virtualhosts.d/$vhost.conf";
+    mugly("$servers_dir/vhosts/single-vhost.conf.ugly", "/etc/apache2/$vhost_file");
+    mugly("$servers_dir/vhosts/single-vhost-nginx-https-proxy.conf.ugly", "/etc/nginx/$vhost_file")
+        if $conf->{https} eq 'nginx';
+
+    # Update NRPE's sudo and config files so that it can call monitoring scripts as the vhost user
+    system("/data/mysociety/bin/update-vhost-monitoring");
+
+    check_packages();
+}
+
+#####################################################################
+# Shut down services, update, start services
 
 if ($action eq "stop") {
     stop_site();
     deploy_logger("Stopped vhost $vhost");
 } elsif ($action eq "update") {
+    create_or_update_files();
     update_config_and_schemas();
     my $git_log = update_site();
     graceful();
@@ -531,6 +521,7 @@ if ($action eq "stop") {
     start_site();
     deploy_logger("Started vhost $vhost");
 } elsif ($action eq "deploy") {
+    create_or_update_files();
     my $deploy_log_message;
     update_config_and_schemas();
     if ($timestamped_deploy) {
