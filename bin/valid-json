@@ -1,0 +1,12 @@
+#!/usr/bin/env python
+
+import fileinput
+import json
+import sys
+
+s = ''.join(x for x in fileinput.input())
+try:
+    json_object = json.loads(s)
+except ValueError:
+    sys.exit(1)
+sys.exit(0)

@@ -32,10 +32,6 @@ if [[ "$branch" == "gh-pages" || "$branch" == "${MAINBRANCH:=master}" ]]; then
   rm -f $log
 fi
 
-if [[ "`git config --get mysociety.jslint`" != 'true' ]]; then
-   exit 0
-fi
-
 if [[ "$branch" == *gh-pages* ]]
 then
     exit 0
@@ -52,7 +48,10 @@ then
     exit 0
 fi
 
-syntax_check="js -f /data/mysociety/bin/jslint"
+exit_status=0
+
+# Check JSON files are valid JSON
+syntax_check="/data/mysociety/bin/valid-json"
 tmp=$(mktemp /tmp/git.update.XXXXXX)
 log=$(mktemp /tmp/git.update.log.XXXXXX)
 tree=$(mktemp /tmp/git.diff-tree.XXXXXX)
@@ -63,7 +62,34 @@ if [[ "$2" == $NULL_SHA1 ]]; then
 fi
 git diff-tree -r "$FROM" "$3" > $tree
 
-exit_status=0
+while read old_mode new_mode old_sha1 new_sha1 status name
+do
+  # skip lines showing parent commit
+  test -z "$new_sha1" && continue
+  # skip deletions
+  [ "$new_sha1" = $NULL_SHA1 ] && continue
+  # Only test .json files
+  if [[ $name =~ [.]json$ ]]
+  then
+    git cat-file blob $new_sha1 > $tmp
+    set -o pipefail
+    if ! $syntax_check < $tmp; then
+      echo
+      echo -e "${RED}Invalid JSON${NOBOLD}" >&2
+      echo -e "For more details run this: ${CYAN}git diff $old_sha1 $new_sha1 ${NOBOLD}" >&2
+      echo
+      exit_status=1
+    fi
+  fi
+done < $tree
+
+# JSlint if we've been asked to
+if [[ "`git config --get mysociety.jslint`" != 'true' ]]; then
+   rm -f $log $tmp $tree
+   exit $exit_status
+fi
+
+syntax_check="js -f /data/mysociety/bin/jslint"
 
 while read old_mode new_mode old_sha1 new_sha1 status name
 do
