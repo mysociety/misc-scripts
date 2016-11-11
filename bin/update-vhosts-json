@@ -1,0 +1,49 @@
+#!/usr/bin/env python
+"""
+Combines all of the individual deployment JSON files into a single JSON object in
+/data/vhosts.json with keys for databases, sites and vhosts.
+"""
+from __future__ import print_function
+
+import os
+import sys
+import json
+from glob import glob
+
+from pprint import pprint
+
+DEPLOYMENTS_DIR = u"/data/servers/deployments"
+OUTPUT_PATH = u"/data/vhosts.json"
+
+def collect_json(subdir, filename_as_key=True, add_site_key=False):
+    output = {}
+    for root, _, files in os.walk(os.path.join(DEPLOYMENTS_DIR, subdir)):
+        for filename in files:
+            if not filename.endswith(u'.json'):
+                continue
+            filepath = os.path.join(root, filename)
+            with open(filepath) as f:
+                try:
+                    parsed = json.load(f)
+                except ValueError:
+                    print(u"Couldn't load JSON from '{}'.".format(filepath))
+                    sys.exit(1)
+            if add_site_key:
+                parsed[u'site'] = root.split("/")[-1]
+            if filename_as_key:
+                output[filename.rsplit(u".", 1)[0]] = parsed
+            else:
+                output.update(parsed)
+    return output
+
+def main():
+    output = {
+        u'databases': collect_json(u"databases", filename_as_key=False),
+        u'sites': collect_json(u"sites"),
+        u'vhosts': collect_json(u"vhosts", add_site_key=True)
+    }
+    with open(OUTPUT_PATH, "wb") as f:
+        json.dump(output, f)
+
+if __name__ == '__main__':
+    main()
