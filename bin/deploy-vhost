@@ -501,8 +501,8 @@ if ($action eq "stop") {
     stop_site();
     deploy_logger("Stopped vhost $vhost");
 } elsif ($action eq "update") {
-    create_or_update_files();
     update_config_and_schemas();
+    create_or_update_files();
     my $git_log = update_site();
     graceful();
     deploy_logger("Updated vhost $vhost ($git_log)");
@@ -510,9 +510,9 @@ if ($action eq "stop") {
     start_site();
     deploy_logger("Started vhost $vhost");
 } elsif ($action eq "deploy") {
+    update_config_and_schemas();
     create_or_update_files();
     my $deploy_log_message;
-    update_config_and_schemas();
     if ($timestamped_deploy) {
         $deploy_log_message = update_site();
     }
@@ -520,11 +520,10 @@ if ($action eq "stop") {
     if ($timestamped_deploy) {
         run_tasks_from_config($conf->{exec_while_down});
         update_vcspath_symlink();
-        graceful();
     } else {
         $deploy_log_message = update_site();
-        graceful();
     }
+    graceful();
     start_site();
     deploy_logger("Deployed vhost $vhost ($deploy_log_message)")
         unless $vhost =~ /testharness/;
