@@ -24,6 +24,7 @@ do
     export GIT_DIR=/etc/puppet/environments/$directory/.git
 
     if [ ! -d "$directory" ]; then
+        umask 0002
         git clone $MY_REPO $directory
         cd $directory
         git checkout $branch
