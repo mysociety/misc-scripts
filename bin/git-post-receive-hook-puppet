@@ -9,6 +9,9 @@ export MY_REPO=ssh://git.mysociety.org/data/git/private/mysociety-puppet.git
 # Reset environment so we can use git
 unset GIT_INDEX_FILE
 
+# Set a sane umask for shared directories
+umask 0002
+
 cd /etc/puppet/environments
 
 while read oldref newref name
@@ -24,7 +27,6 @@ do
     export GIT_DIR=/etc/puppet/environments/$directory/.git
 
     if [ ! -d "$directory" ]; then
-        umask 0002
         git clone $MY_REPO $directory
         cd $directory
         git checkout $branch
