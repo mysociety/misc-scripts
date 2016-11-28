@@ -25,7 +25,7 @@ do
         directory=${branch}
     fi
     # Loction of the relevant working copy:
-    export envdir=/etc/puppet/environments/${branch}
+    export envdir=/etc/puppet/environments/${directory}
 
     # Cater for branch removal, with a sanity check for master
     if [[ ${newref} =~ ^0+$ ]]; then
