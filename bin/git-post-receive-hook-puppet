@@ -8,6 +8,7 @@ export MY_REPO=ssh://git.mysociety.org/data/git/private/mysociety-puppet.git
 
 # Reset environment so we can use git
 unset GIT_INDEX_FILE
+unset GIT_DIR
 
 # Set a sane umask for shared directories
 umask 0002
@@ -16,22 +17,39 @@ cd /etc/puppet/environments
 
 while read oldref newref name
 do
-    branch=$(basename $name)
-    if [ "$branch" == 'master' ]; then
+    # Environments should match branch names except for master.
+    branch=$(basename ${name})
+    if [ "${branch}" == 'master' ]; then
         directory='production'
     else
-        directory=$branch
+        directory=${branch}
     fi
+    # Loction of the relevant working copy:
+    export envdir=/etc/puppet/environments/${branch}
 
-    export GIT_WORK_TREE=/etc/puppet/environments/$directory
-    export GIT_DIR=/etc/puppet/environments/$directory/.git
-
-    if [ ! -d "$directory" ]; then
-        git clone $MY_REPO $directory
-        cd $directory
-        git checkout $branch
+    # Cater for branch removal, with a sanity check for master
+    if [[ ${newref} =~ ^0+$ ]]; then
+      if [[ "${branch}" == "master" ]]; then
+        echo "Looks like you're trying to delete the master branch - not going to do that."
+        echo "You might want to check what has happened."
+        exit 1
+      else
+        echo "Removing environment at ${envdir}"
+        rm -fr ${envdir}
+      fi
     else
-        cd $directory
-        git pull
+      # We're either creating or updating an environment.
+      if [ -d ${envdir} ]; then
+        # Our branch environment already exists.
+        # There shouldn't be any local changes in this working copy!
+        echo "Updating existing environment in ${envdir}"
+        cd ${envdir}
+        git fetch --all
+        git reset --hard origin/${branch}
+      else
+        # We should be able to just clone out the new branch directly
+        echo "Creating new environment in ${envdir}"
+        git clone ${MY_REPO} ${envdir} --branch ${branch}
+      fi
     fi
 done
