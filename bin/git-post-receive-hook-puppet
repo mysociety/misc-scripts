@@ -31,7 +31,7 @@ do
       echo "We won't create an environment from this branch."
       exit 1
     fi
-      
+
     # Loction of the relevant working copy:
     export envdir=/etc/puppet/environments/${directory}
 
@@ -49,11 +49,16 @@ do
       # We're either creating or updating an environment.
       if [ -d ${envdir} ]; then
         # Our branch environment already exists.
-        # There shouldn't be any local changes in this working copy!
-        echo "Updating existing environment in ${envdir}"
         cd ${envdir}
         git fetch --all
-        git reset --hard origin/${branch}
+        # There shouldn't be any local changes in this working copy!
+        if [[ -n $( git status --porcelain ) ]]; then
+          echo "There appear to be local changes in ${envdir}."
+          echo "Not updating, please check and fix manually."
+        else
+          echo "Updating existing environment in ${envdir}"
+          git reset --hard ${newref}
+        fi
       else
         # We should be able to just clone out the new branch directly
         echo "Creating new environment in ${envdir}"
