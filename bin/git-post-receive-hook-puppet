@@ -17,13 +17,21 @@ cd /etc/puppet/environments
 
 while read oldref newref name
 do
-    # Environments should match branch names except for master.
-    branch=$(basename ${name})
+    # Check the branch name used. We need to map "master" to "production"
+    # and ensure that only characters permitted in Puppet environment names are used.
+    # See: https://docs.puppet.com/puppet/3.8/reference/lang_reserved.html#environments
+    branch=${name##refs/heads/}
     if [ "${branch}" == 'master' ]; then
-        directory='production'
+      directory='production'
+    elif [[ ${branch} =~ ^[a-z0-9_]+$ ]]; then
+      directory=${branch}
     else
-        directory=${branch}
+      echo "Branch names in this repo should be valid Puppet Environment names."
+      echo "Valid names match the regex ^[a-z0-9_]+$."
+      echo "We won't create an environment from this branch."
+      exit 1
     fi
+      
     # Loction of the relevant working copy:
     export envdir=/etc/puppet/environments/${directory}
 
