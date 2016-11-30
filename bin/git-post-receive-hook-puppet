@@ -10,7 +10,8 @@ export MY_REPO=ssh://git.mysociety.org/data/git/private/mysociety-puppet.git
 unset GIT_INDEX_FILE
 unset GIT_DIR
 
-# Set a sane umask for shared directories
+# Set a sane umask. This is a shared environment so needs to be group writeable.
+# The default umask is 0022 and we can't be sure how users may have set theirs.
 umask 0002
 
 cd /etc/puppet/environments
@@ -36,6 +37,7 @@ do
     export envdir=/etc/puppet/environments/${directory}
 
     # Cater for branch removal, with a sanity check for master
+    # a newref of 0000000000000000000000000000000000000000 indicates branch deletion
     if [[ ${newref} =~ ^0+$ ]]; then
       if [[ "${branch}" == "master" ]]; then
         echo "Looks like you're trying to delete the master branch - not going to do that."
