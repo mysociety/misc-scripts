@@ -22,10 +22,12 @@ my $gpg_passphrase = read_file($gpg_passphrase_file)
 
 my $source_url;
 my $target_directory;
+my $restore_time;
 
 GetOptions(
     "source_url=s"       => \$source_url,
     "target_directory=s" => \$target_directory,
+    "restore_time=s"     => \$restore_time,
 );
 
 die "Usage: $0 --source_url ... --target_directory ...\n"
@@ -35,6 +37,6 @@ die "Usage: $0 --source_url ... --target_directory ...\n"
 $options->{'gpg_passphrase'}   = $gpg_passphrase;
 $options->{'target_directory'} = $target_directory;
 $options->{'source_url'}       = $source_url;
+$options->{'restore_time'}     = $restore_time if defined $restore_time;
 
 duplicity_retrieve( $options, );
-
