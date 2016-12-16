@@ -63,6 +63,10 @@ class SSHClient(object):
         stdout.channel.setblocking(1)
         while not stdout.channel.exit_status_ready():
             print stdout.channel.recv(1024),
+        ret = stdout.channel.recv_exit_status()
+        if ret:
+            print "'%s' failed with exit code %d" % (cmd, ret)
+            sys.exit(ret)
 
 
 ARGS = parse_command_line()
