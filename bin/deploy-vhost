@@ -462,7 +462,8 @@ sub update_git {
     }
     my $hash = `cd "$vhost_dir/$vcspath" && git rev-parse --short HEAD`;
     chomp $hash;
-    return "branch $git_ref, commit $hash";
+    $git_ref =~ s{origin/}{};
+    return "<https://github.com/mysociety/$git_repository/tree/$git_ref|$git_ref> branch, commit <https://github.com/mysociety/$git_repository/commit/$hash|$hash>";
 }
 
 sub update_vcspath_symlink {
@@ -912,7 +913,7 @@ sub update_site {
     }
 
     $git_log .= ", " if $git_log;
-    $git_log .= "updating in $vhost_dir/$vcspath_install";
+    $git_log .= "updating in $vcspath_install";
 
     return $git_log;
 }

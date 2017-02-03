@@ -38,7 +38,8 @@ echo "$DATELOG $WHO-" "$@" >>$LOGFILE
 # Backgrounded due to ident delay
 if [[ ! "$@" =~ "Deployed vhost" || ! "$@" =~ "test.mysociety.org" ]]
 then
-(( echo nick $HOST; echo user $HOST 8 "*" :mySociety IRCBot; echo notice "#activity" :"$WHO $@"; echo quit; ) | nc irc.mysociety.org 6667 >/dev/null &) 2>/dev/null
+SLACK=`cat /etc/mysociety/slack.webhook`
+curl -X POST --data-urlencode 'payload={"channel": "#activity", "username": "Deploy", "text": "'"$WHO $@"'", "icon_emoji": ":ms:"}' $SLACK >/dev/null
 fi
 
 # Commit it
