@@ -39,7 +39,7 @@ echo "$DATELOG $WHO-" "$@" >>$LOGFILE
 if [[ ! "$@" =~ "Deployed vhost" || ! "$@" =~ "test.mysociety.org" ]]
 then
 SLACK=`cat /etc/mysociety/slack.webhook`
-curl -X POST --data-urlencode 'payload={"channel": "#activity", "username": "Deploy", "text": "'"$WHO $@"'", "icon_emoji": ":ms:"}' $SLACK >/dev/null
+curl --silent -X POST --data-urlencode 'payload={"channel": "#activity", "username": "Deploy", "text": "'"$WHO $@"'", "icon_emoji": ":ms:"}' $SLACK >/dev/null
 fi
 
 # Commit it
