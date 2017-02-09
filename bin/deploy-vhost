@@ -866,15 +866,24 @@ sub update_config_and_schemas {
     }
 }
 
-sub run_tasks_from_config {
-    my (%exec_extras) = @_;
-    foreach my $exec_extra (@{$exec_extras{'user'}}) {
+sub _run_sub_tasks_from_config {
+    my $exec_extras = shift;
+    foreach my $exec_extra (@{$exec_extras->{user}}) {
         shell("su", "-l", $conf->{'user'}, "-c cd \"$vhost_dir/$vcspath_install\" && $exec_extra");
-        }
-    foreach my $exec_extra (@{$exec_extras{'root'}}) {
+    }
+    foreach my $exec_extra (@{$exec_extras->{root}}) {
         chdir_verbose(__LINE__, "$vhost_dir/$vcspath_install");
         shell("$exec_extra");
     }
+}
+
+sub run_tasks_from_config {
+    my $exec_extras = shift;
+    _run_sub_tasks_from_config($exec_extras->{always}) if $exec_extras->{always};
+    foreach my $group (@{$exec_extras->{groups}}) {
+        _run_sub_tasks_from_config($exec_extras->{$group});
+    }
+    _run_sub_tasks_from_config($exec_extras);
 }
 
 sub update_site {
@@ -907,8 +916,8 @@ sub update_site {
             run_tasks_from_config(%{$conf->{'exec_before_down'}});
         }
     } else {
-        if (exists($conf->{'exec_extras'})) {
-            run_tasks_from_config(%{$conf->{'exec_extras'}});
+        if (exists($conf->{exec_extras})) {
+            run_tasks_from_config($conf->{exec_extras});
         }
     }
 
