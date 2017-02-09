@@ -1,0 +1,81 @@
+#!/bin/bash
+
+# Usage: $0 <LOCAL_DB_PATH> <PORT> <REMOTEHOST> <REMOTEUSER> <REMOTEPATH> <SSH_IDENTITY_FILE> [<REMOTE_LOCKFILE_PATH> [<REMOTE_RUN_WITH_LOCKFILE_BINARY_PATH>]]
+
+# LOCAL_DB_PATH
+#  Absolute path to the local Xapian database to be replicated.
+# PORT
+#  Port to bind the xapian-replicate-server instance to
+# REMOTEHOST
+#  Hostname of the server to replicate to
+# REMOTEUSER
+#  User for SSH connection to the REMOTEHOST
+# REMOTEPATH
+#  Absolute path to the directory containing the DB copy on the remote host
+# SSH_IDENTITY_FILE
+#  Absolute path to the SSH identity file
+# REMOTE_LOCKFILE_PATH
+#  Absolute path to the lockfile on the remote server (optional)
+# REMOTE_RUN_WITH_LOCKFILE_BINARY_PATH
+#  Location of run-with-lockfile on the remote host if not in $PATH (optional)
+
+# Exit on error
+set -e
+
+# Enable job control and batch mode
+set -mb
+
+# Args
+LOCAL_DB_PATH="$1"
+PORT="$2"
+REMOTEHOST="$3"
+REMOTEUSER="$4"
+REMOTEPATH="$5"
+IDENTITY_FILE="$6"
+
+if [ "x$7" != "x" ]; then
+    REMOTE_LOCKFILE_PATH="$7"
+
+    if [ "x$8" != "x" ]; then
+        REMOTE_RUNWITHLOCKFILE_BIN="$8"
+    else
+        REMOTE_RUNWITHLOCKFILE_BIN="run-with-lockfile"
+    fi
+else
+    REMOTE_LOCKFILE_PATH=""
+fi
+
+# Vars
+LOCALHOST="$(hostname -f)"
+XAPIAN_DB_DIR="$(dirname $LOCAL_DB_PATH)"
+DBNAME="$(basename $LOCAL_DB_PATH)"
+
+# Set traps
+trap "jobs -ln" SIGCHLD
+trap "echo 'Caught SIGTERM, tidying up child processes...'; jobs -p | xargs --no-run-if-empty kill -TERM; sleep 5s; jobs -p | xargs --no-run-if-empty kill -KILL; sleep 2s; trap - TERM; kill -TERM $$" TERM
+
+# Start server
+xapian-replicate-server -p "$PORT" --one-shot "$XAPIAN_DB_DIR" &
+
+# Wait for a moment to give the server a chance to start up and listen
+sleep 2s
+
+# Start client on remote host
+if [ "x$REMOTE_LOCKFILE_PATH" = "x" ]; then
+    ssh -n -i "$IDENTITY_FILE" "$REMOTEUSER"@"$REMOTEHOST" -- xapian-replicate -h "$LOCALHOST" -p "$PORT" --one-shot -m "$DBNAME" "$REMOTEPATH/$DBNAME" &
+else
+    # Use printf to force the command to be escaped/quoted so it survives being passed through the SSH wormhole
+    # See: http://stackoverflow.com/questions/6592376/prevent-ssh-from-breaking-up-shell-script-parameters
+    COMMAND="xapian-replicate -h $LOCALHOST -p $PORT --one-shot -m $DBNAME $REMOTEPATH/$DBNAME"
+    COMMAND_QUOTED=$(printf "%q" "$COMMAND")
+    ssh -n -i "$IDENTITY_FILE" "$REMOTEUSER"@"$REMOTEHOST" -- "$REMOTE_RUNWITHLOCKFILE_BIN" "$REMOTE_LOCKFILE_PATH" "$COMMAND_QUOTED" &
+fi
+
+# Print jobs list
+jobs -l
+
+# Wait for both to finish
+wait || exit 1
+
+# Done
+exit 0
