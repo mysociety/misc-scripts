@@ -546,7 +546,7 @@ if ($action eq "stop") {
     }
     stop_site();
     if ($timestamped_deploy) {
-        run_tasks_from_config(%{$conf->{'exec_while_down'}});
+        run_tasks_from_config($conf->{exec_while_down});
         update_vcspath_symlink();
         graceful();
     } else {
@@ -913,7 +913,7 @@ sub update_site {
     # Run any extra executables
     if ($timestamped_deploy) {
         if (exists($conf->{'exec_before_down'})) {
-            run_tasks_from_config(%{$conf->{'exec_before_down'}});
+            run_tasks_from_config($conf->{exec_before_down});
         }
     } else {
         if (exists($conf->{exec_extras})) {
