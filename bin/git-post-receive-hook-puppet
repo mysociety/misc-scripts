@@ -6,6 +6,9 @@
 # Location of our Puppet repo
 export MY_REPO=ssh://git.mysociety.org/data/git/private/mysociety-puppet.git
 
+# Do we want to run librarian-puppet?
+RUN_LIBRARIAN='yes'
+
 # Reset environment so we can use git
 unset GIT_INDEX_FILE
 unset GIT_DIR
@@ -57,6 +60,7 @@ do
         if [[ -n $( git status --porcelain ) ]]; then
           echo "There appear to be local changes in ${envdir}."
           echo "Not updating, please check and fix manually."
+          RUN_LIBRARIAN='no'
         else
           echo "Updating existing environment in ${envdir}"
           git reset --hard ${newref}
@@ -65,6 +69,11 @@ do
         # We should be able to just clone out the new branch directly
         echo "Creating new environment in ${envdir}"
         git clone ${MY_REPO} ${envdir} --branch ${branch}
+      fi
+      if [[ ${RUN_LIBRARIAN} == 'yes' ]] &&  [[ -f ${envdir}/Puppetfile ]]; then
+        cd ${envdir}
+        echo "Running librarian-puppet"
+        librarian-puppet install
       fi
     fi
 done
