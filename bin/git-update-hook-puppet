@@ -55,7 +55,7 @@ do
 
   if [[ $name =~ [.]pp$ ]]
   then
-    puppet parser validate $tmp 2>&1 > $log
+    puppet parser validate --parser future $tmp 2>&1 > $log
     if [[ $? != 0 ]]
     then
       echo
