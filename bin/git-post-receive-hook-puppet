@@ -74,6 +74,8 @@ do
         cd ${envdir}
         echo "Running librarian-puppet"
         librarian-puppet install
+        # Fix permissions.
+        chmod -R ug+w ${envdir}/modules
       fi
     fi
 done
