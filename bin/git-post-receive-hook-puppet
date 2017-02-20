@@ -75,7 +75,8 @@ do
         echo "Running librarian-puppet"
         librarian-puppet install
         # Fix permissions.
-        find ${envdir} -user ${USER} -exec chmod ug+w {} \; 2>/dev/null
+        find ${envdir}/modules -user ${USER} -exec chmod ug+w {} \; -exec chown :privatecvs {} \; 2>/dev/null
+        find ${envdir}/modules -user ${USER} -a -type d -exec chmod g+s {} \; 2>/dev/null
       fi
     fi
 done
