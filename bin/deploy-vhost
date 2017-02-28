@@ -429,6 +429,10 @@ sub create_or_update_files {
 
     mySociety::Deploy::write_settings_file($settings_file, $conf);
 
+    check_packages();
+}
+
+sub update_system_config {
     # Create the daemon
     create_daemons();
 
@@ -440,8 +444,6 @@ sub create_or_update_files {
 
     # Update NRPE's sudo and config files so that it can call monitoring scripts as the vhost user
     system("/data/mysociety/bin/update-vhost-monitoring");
-
-    check_packages();
 }
 
 #####################################################################
@@ -451,8 +453,9 @@ if ($action eq "stop") {
     stop_site();
     deploy_logger("Stopped vhost $vhost");
 } elsif ($action eq "update") {
-    update_config_and_schemas();
     create_or_update_files();
+    update_config_and_schemas();
+    update_system_config();
     my $git_log = update_site();
     graceful();
     deploy_logger("Updated vhost $vhost ($git_log)");
@@ -460,8 +463,9 @@ if ($action eq "stop") {
     start_site();
     deploy_logger("Started vhost $vhost");
 } elsif ($action eq "deploy") {
-    update_config_and_schemas();
     create_or_update_files();
+    update_config_and_schemas();
+    update_system_config();
     my $deploy_log_message;
     if ($timestamped_deploy) {
         $deploy_log_message = update_site();
