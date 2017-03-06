@@ -37,7 +37,7 @@ REMOTE_RUNWITHLOCKFILE_BIN=${7:-"run-with-lockfile"}
 LOCALHOST="$(hostname -f)"
 XAPIAN_DB_DIR="$(dirname $LOCAL_DB_PATH)"
 DBNAME="$(basename $LOCAL_DB_PATH)"
-REMOTE_LOCKFILE_PATH="${DBNAME}.replica-lock"
+REMOTE_LOCKFILE_PATH="${REMOTEPATH}/${DBNAME}.replica-lock"
 
 # Set traps
 trap "jobs -ln" SIGCHLD
