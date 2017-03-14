@@ -100,6 +100,10 @@ my $cron_name = "vhost-$vhost";
 $cron_name =~ s/\./-/g;
 $cron_name = "/etc/cron.d/$cron_name";
 
+# This variable is used to decide whether to restart Apache if you are using
+# the touch_to_restart config option (otherwise it always restarts).
+my $restart_apache = 0;
+
 #####################################################################
 # Helper functions
 
@@ -236,7 +240,11 @@ sub nginx_graceful {
 
 sub graceful {
     # Prompt webserver to reread files, on machines which have apache...
-    apache_graceful();
+    if (!$conf->{touch_to_restart} || $restart_apache) {
+        apache_graceful();
+    } else {
+        utime(undef, undef, "$vhost_dir/$vcspath/$conf->{touch_to_restart}");
+    }
 
     # ...and nginx
     nginx_graceful() if $conf->{'https'} eq 'nginx';
@@ -438,7 +446,15 @@ sub update_system_config {
 
     # Create apache/nginx configuration stanzas
     my $vhost_file = "virtualhosts.d/$vhost.conf";
-    mugly("$servers_dir/vhosts/single-vhost.conf.ugly", "/etc/apache2/$vhost_file");
+
+    my $temp_file = mktemp("/tmp/deploy-vhost-apache-XXXXXXXX");
+    my $apache_file = "/etc/apache2/$vhost_file";
+    mugly("$servers_dir/vhosts/single-vhost.conf.ugly", $temp_file);
+    if (!-e $apache_file || system("diff", "-u", $apache_file, $temp_file) != 0) {
+        $restart_apache = 1;
+        copy($temp_file, $apache_file);
+    }
+
     mugly("$servers_dir/vhosts/single-vhost-nginx-https-proxy.conf.ugly", "/etc/nginx/$vhost_file")
         if $conf->{https} eq 'nginx';
 
@@ -469,12 +485,11 @@ if ($action eq "stop") {
     my $deploy_log_message;
     if ($timestamped_deploy) {
         $deploy_log_message = update_site();
-    }
-    stop_site();
-    if ($timestamped_deploy) {
+        stop_site();
         run_tasks_from_config($conf->{exec_while_down});
         update_vcspath_symlink();
     } else {
+        stop_site();
         $deploy_log_message = update_site();
     }
     graceful();
@@ -660,6 +675,11 @@ sub update_conf_dir {
                 # test contents of new configuration file before copying it over
                 chdir_verbose(__LINE__, $mysociety_bin);
                 shell("$mysociety_bin/compareconfig.pl", $conf_file_tmp, $example_file);
+            }
+            if ($name_base eq 'httpd.conf') {
+                if (!-e $conf_file || system("diff", "-u", "$conf_file.deployed", $conf_file_tmp) != 0) {
+                    $restart_apache = 1;
+                }
             }
             # copy into place
             copy($conf_file_tmp, "$conf_file.deployed");
