@@ -243,7 +243,10 @@ sub graceful {
     if (!$conf->{touch_to_restart} || $restart_apache) {
         apache_graceful();
     } else {
-        utime(undef, undef, "$vhost_dir/$vcspath/$conf->{touch_to_restart}");
+        my $touch = "$vhost_dir/$vcspath/$conf->{touch_to_restart}";
+        utime(undef, undef, $touch)
+            || open(TMP, ">>", $touch)
+            || apache_graceful();
     }
 
     # ...and nginx
