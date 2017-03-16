@@ -632,6 +632,7 @@ sub update_conf_dir {
 
         my $name_part = $1;
         my $conf_file = "$vhost_dir/$vcspath_install/$conf_dir/$name_part"; # destination file
+        my $previous_conf_file = "$vhost_dir/$vcspath/$conf_dir/$name_part"; # same on non-timestamped deploys
         my $old_umask = umask(0027);
         my $name_base = $name_part;
         $name_base =~ s/\.yml$//;
@@ -677,7 +678,7 @@ sub update_conf_dir {
                 shell("$mysociety_bin/compareconfig.pl", $conf_file_tmp, $example_file);
             }
             if ($name_base eq 'httpd.conf') {
-                if (!-e $conf_file || system("diff", "-u", "$conf_file.deployed", $conf_file_tmp) != 0) {
+                if (!-e $previous_conf_file || system("diff", "-u", "$previous_conf_file.deployed", $conf_file_tmp) != 0) {
                     $restart_apache = 1;
                 }
             }
