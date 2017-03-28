@@ -1,0 +1,73 @@
+#!/bin/bash
+
+function print_help {
+  HELP_TEXT=$( cat<<'EOF'
+
+  disable-email activate|deactivate|fail
+
+  Simple script designed to activate/deactivate mail when .forward* files are used.
+
+  Run this script as the user you wish to modify with arguments as follows:
+
+  activate
+    - moves all files in $USER's homedir matching the pattern .forward* to *.bak
+    - replaces the originals with '|/data/mysociety/bin/disable-email fail'
+
+  deactivate
+    - restores files matching .forward*.bak to their original locations
+
+  fail
+    - exits with 75
+
+  Any other invocation should print this and exit 75.
+EOF
+  )
+  echo "$HELP_TEXT"
+  exit 75
+}
+
+function move_files {
+  echo Changing pwd to $HOME
+  cd $HOME
+  if stat -t .forward*.bak >/dev/null 2>&1 ; then
+    echo Looks like there are some backup files already present \($( ls .forward*.bak )\), aborting.
+    exit 75
+  else
+    for forward_file in .forward* ; do
+      echo Moving ${forward_file} to ${forward_file}.bak
+      mv ${forward_file} ${forward_file}.bak
+      echo Echoing '|/data/mysociety/bin/disable-email fail' to ${forward_file}
+      echo '|/data/mysociety/bin/disable-email fail' > ${forward_file}
+    done
+  fi
+}
+
+function restore_files {
+  echo Changing pwd to $HOME
+  cd $HOME
+  if stat -t .forward*.bak >/dev/null 2>&1 ; then
+    for forward_file in .forward*.bak ; do
+      original_file=$( echo $forward_file | sed -e 's/.bak$//' )
+      echo Moving mv $forward_file to $original_file
+      mv $forward_file $original_file
+    done
+  else
+    echo Cannot see any backup files to restore.
+    exit 75
+  fi
+}
+
+case "$1" in
+  -a|--activate|activate)
+    move_files
+    ;;
+  -d|--deactivate|deactivate)
+    restore_files
+    ;;
+  -f|--fail|fail)
+    exit 75
+    ;;
+  *)
+    print_help
+    ;;
+esac
