@@ -98,24 +98,3 @@ if ARGS.github:
         print 'New repo created on GitHub'
     else:
         print 'Received bad response creating repo: {0.status_code} {0.json}'.format(req)
-
-    data = {
-        'name': 'irc',
-        'config': {
-            'server': 'irc.mysociety.org',
-            'port': '6697',
-            'room': 'activity',
-            'nick': 'github',
-            'ssl': True,
-            'message_without_join': True,
-            'long_url': True,
-            'notice': True,
-        },
-        'active': True,
-    }
-    url = 'https://api.github.com/repos/mysociety/%s/hooks' % (name,)
-    req = requests.post(url, headers=headers, data=json.dumps(data))
-    if req.status_code == 201:
-        print 'IRC hook created on GitHub'
-    else:
-        print 'Received bad response creating hook: {0.status_code} {0.json}'.format(req)
