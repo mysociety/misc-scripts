@@ -247,6 +247,7 @@ sub graceful {
         utime(undef, undef, $touch)
             || open(TMP, ">>", $touch)
             || apache_graceful();
+        close TMP;
     }
 
     # ...and nginx
