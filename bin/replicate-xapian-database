@@ -21,9 +21,6 @@
 # Exit on error
 set -e
 
-# Enable job control and batch mode
-set -mb
-
 # Args
 LOCAL_DB_PATH="$1"
 PORT="$2"
@@ -40,7 +37,6 @@ DBNAME="$(basename $LOCAL_DB_PATH)"
 REMOTE_LOCKFILE_PATH="${REMOTEPATH}/${DBNAME}.replica-lock"
 
 # Set traps
-trap "jobs -ln" SIGCHLD
 trap "echo 'Caught SIGTERM, tidying up child processes...'; jobs -p | xargs --no-run-if-empty kill -TERM; sleep 5s; jobs -p | xargs --no-run-if-empty kill -KILL; sleep 2s; trap - TERM; kill -TERM $$" TERM
 
 # Start server
@@ -54,9 +50,6 @@ sleep 2s
 COMMAND="xapian-replicate -h $LOCALHOST -p $PORT --one-shot -m $DBNAME $REMOTEPATH/$DBNAME"
 COMMAND_QUOTED=$(printf "%q" "$COMMAND")
 ssh -n -i "$IDENTITY_FILE" "$REMOTEUSER"@"$REMOTEHOST" -- "$REMOTE_RUNWITHLOCKFILE_BIN" "$REMOTE_LOCKFILE_PATH" "$COMMAND_QUOTED" &
-
-# Print jobs list
-jobs -l
 
 # Wait for both to finish
 wait || exit 1
