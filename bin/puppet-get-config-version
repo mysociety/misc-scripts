@@ -17,7 +17,7 @@ GIT=/usr/bin/git
 
 
 environment=${1:-YOU-MUST-CALL-THIS-SCRIPT-WITH-THE-ENVIRONMENT-NAME}
-cd /etc/puppet/environments/$environment
+cd /etc/puppetlabs/code/environments/$environment
 
 ref=$($GIT rev-parse HEAD 2>/dev/null)
 if [ $? -eq 0 ]; then
