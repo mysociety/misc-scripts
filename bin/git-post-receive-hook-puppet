@@ -17,7 +17,7 @@ unset GIT_DIR
 # The default umask is 0022 and we can't be sure how users may have set theirs.
 umask 0002
 
-cd /etc/puppet/environments
+cd /etc/puppetlabs/code/environments
 
 while read oldref newref name
 do
@@ -37,7 +37,7 @@ do
     fi
 
     # Loction of the relevant working copy:
-    export envdir=/etc/puppet/environments/${directory}
+    export envdir=/etc/puppetlabs/code/environments/${directory}
 
     # Cater for branch removal, with a sanity check for master
     # a newref of 0000000000000000000000000000000000000000 indicates branch deletion
