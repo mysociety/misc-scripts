@@ -6,7 +6,7 @@
 #
 # Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
 # Email: francis@mysociety.org; WWW: http://www.mysociety.org/
-# 
+#
 
 my $rcsid = ''; $rcsid .= '$Id: generate-pgpass,v 1.168 2013-01-09 15:41:05 louise Exp $';
 
@@ -29,15 +29,13 @@ our ($vhosts, $sites, $databases);
 # databases, or for services that aren't set up as standard.
 # XXX these should be moved into flags in vhosts.pl
 my %extra_perms = (
-    'atlas' => {
-	'louise' => [ 'foi' ],
-        'skenaja' => [ 'foi' ], # so he can do stats and stuff
-    },
     'milo' => {
         'tilma' => [ 'openstreetmap', 'openstreetmap-gb' ],
+        'msservices' => [ 'mapit', 'mapit-ro' ],
     },
     'stork' => {
         'tilma' => [ 'openstreetmap', 'openstreetmap-gb' ],
+        'msservices' => [ 'mapit', 'mapit-ro' ],
     },
     'buffalo' => {
         'debbi' => [ 'bci', 'ycml', 'fyr' ],
@@ -48,23 +46,8 @@ my %extra_perms = (
         'matthew' => [ 'openstreetmap-gb', 'openstreetmap' ],
         'louise' => [ 'hm' ],
     },
-    'vulcan' => {
-        'matthew' => ['bbcparlvid'],
-        'louise' => ['bbcparlvid'],
-    },
-    'majestic' => {
-        # Is this needed on new services too?
-        'dademcron' => ['fyr'],
-    },
-    'arrow' => {
-        # What was this needed for?
-        'mssecure' => ['donate'],
-    },
-    'victory' => {
-       'louise' => [ 'foi-demo' ],
-    },
     'firefly' => {
-	'mark' => [ 'mark-za-hansard-tmp', 'pombola-mark-scratch', , 'test_pombola-mark-scratch' ],
+        'mark' => [ 'mark-za-hansard-tmp', 'pombola-mark-scratch', , 'test_pombola-mark-scratch' ],
     },
 );
 
@@ -136,4 +119,3 @@ foreach my $user (sort keys %$database_permissions) {
     my $dest = "$user_home/.pgpass";
     rename($tmpn, $dest);
 }
-
