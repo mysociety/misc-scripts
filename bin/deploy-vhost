@@ -876,24 +876,39 @@ sub set_or_clear_ruby_version {
     # in the directory or subdirectories
     shell("su", "-", $conf->{'user'}, "-c echo \"$conf->{'ruby_version'}\" >$vhost_dir/$vcspath_install/.rbenv-version");
 
-    # copy .rbenv files from /etc/skel
-    # This gives the shims and the version-specific binaries
-    # they point to.
-    dircopy("/etc/skel/.rbenv", "/home/$conf->{'user'}/.rbenv");
-    shell("chown", "-Rh", "$conf->{user_uid}:$conf->{user_gid}", "/home/$conf->{'user'}/.rbenv");
+    # Set rbenv_global to something true to activate the new, global rbenv under /opt/rbenv.
+    # If it evaluates false, keep using the old per-user method.
 
-    # copy .profile.rbenv to the user's home directory
-    # to initialise rbenv - this should be sourced by .profile, if it was created
-    # from /etc/skel
-    copy("/data/servers/langs/.profile.rbenv", "/home/$conf->{'user'}/.profile.rbenv");
+    # Location of profile snippet depends on rbenv_global.
+    my $rbenv_profile;
+
+    if ($conf->{rbenv_global}) {
+
+      $rbenv_profile = '/data/servers/langs/profile.rbenv.global';
+
+    } else {
+
+      $rbenv_profile = '/data/servers/langs/.profile.rbenv';
+
+      # copy .rbenv files from /etc/skel
+      # This gives the shims and the version-specific binaries they point to.
+      dircopy("/etc/skel/.rbenv", "/home/$conf->{'user'}/.rbenv");
+      shell("chown", "-Rh", "$conf->{user_uid}:$conf->{user_gid}", "/home/$conf->{'user'}/.rbenv");
+
+    }
+
+    # Create .profile.rbenv to the user's home directory to initialise rbenv.
+    # This should be sourced by .profile, if it was created from /etc/skel
+    copy("$rbenv_profile", "/home/$conf->{'user'}/.profile.rbenv");
     shell("chown", "$conf->{user_uid}:$conf->{user_gid}", "/home/$conf->{'user'}/.profile.rbenv");
 
     # add a wrapper script to allow the user's .forward files to operate with the right ruby version
+    # The logic in the mugly template checks for rbenv_global.
     mugly("$servers_dir/vhosts/run-with-rbenv-path.ugly", "/home/$conf->{'user'}/run-with-rbenv-path");
     shell("chown", "$conf->{user_uid}:$conf->{user_gid}", "/home/$conf->{'user'}/run-with-rbenv-path");
     chmod 0755, "/home/$conf->{'user'}/run-with-rbenv-path";
 
-   } else {
+  } else {
 
     # Remove any .rbenv-version file
     unlink("$vhost_dir/$vcspath_install/.rbenv-version");
