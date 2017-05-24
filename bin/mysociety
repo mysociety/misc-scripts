@@ -120,8 +120,8 @@ case $COMMAND in
             set +e
             /etc/init.d/puppet status > /dev/null 2>&1
             if [ "$?" = 0 ]; then
-                if [ -r '/var/run/puppet/agent.pid' ] ; then
-                    kill -USR1 "`cat /var/run/puppet/agent.pid`"
+                if [ -r '/var/run/puppetlabs/agent.pid' ] ; then
+                    kill -USR1 "`cat /var/run/puppetlabs/agent.pid`"
                     echo "Signalled puppet to fetch new manifests"
                 else
                     die "puppet agent running, but pid file can't be read"
