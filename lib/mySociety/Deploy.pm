@@ -119,6 +119,7 @@ sub setup_conf {
     $conf->{ipv6addr} = '' if !exists($conf->{ipv6addr});
     $conf->{request_timeout} = '' if !exists($conf->{request_timeout});
     $conf->{ruby_version} = '' if !exists($conf->{ruby_version});
+    $conf->{rbenv_global} = 0 if !exists($conf->{rbenv_global});
     $conf->{database_configs} = {
         default => '',
         external => '',
