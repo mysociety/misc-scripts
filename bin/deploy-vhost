@@ -871,24 +871,23 @@ sub set_or_clear_ruby_version {
 
   if ($conf->{ruby_version}) {
 
-    # Write a .rbenv-version file at the root of the application directory
-    # This should set the version of ruby for any rbenv-enabled user when operating
-    # in the directory or subdirectories
-    shell("su", "-", $conf->{'user'}, "-c echo \"$conf->{'ruby_version'}\" >$vhost_dir/$vcspath_install/.rbenv-version");
-
     # Set rbenv_global to something true to activate the new, global rbenv under /opt/rbenv.
     # If it evaluates false, keep using the old per-user method.
 
     # Location of profile snippet depends on rbenv_global.
     my $rbenv_profile;
+    # Filename to use for the local Ruby version.
+    my $version_file;
 
     if ($conf->{rbenv_global}) {
 
       $rbenv_profile = '/data/servers/langs/profile.rbenv.global';
+      $version_file = '.ruby-version';
 
     } else {
 
       $rbenv_profile = '/data/servers/langs/.profile.rbenv';
+      $version_file = '.rbenv-version';
 
       # copy .rbenv files from /etc/skel
       # This gives the shims and the version-specific binaries they point to.
@@ -896,6 +895,11 @@ sub set_or_clear_ruby_version {
       shell("chown", "-Rh", "$conf->{user_uid}:$conf->{user_gid}", "/home/$conf->{'user'}/.rbenv");
 
     }
+
+    # Write a .(ruby|rbenv)-version file at the root of the application directory
+    # This should set the version of ruby for any rbenv-enabled user when operating
+    # in the directory or subdirectories
+    shell("su", "-", $conf->{'user'}, "-c echo \"$conf->{'ruby_version'}\" >$vhost_dir/$vcspath_install/$version_file");
 
     # Create .profile.rbenv to the user's home directory to initialise rbenv.
     # This should be sourced by .profile, if it was created from /etc/skel
@@ -911,7 +915,7 @@ sub set_or_clear_ruby_version {
   } else {
 
     # Remove any .rbenv-version file
-    unlink("$vhost_dir/$vcspath_install/.rbenv-version");
+    unlink("$vhost_dir/$vcspath_install/$version_file");
 
     # Remove any .profile.rbenv file in the user's home directory
     unlink("/home/$conf->{'user'}/.profile.rbenv");
