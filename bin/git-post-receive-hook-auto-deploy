@@ -47,7 +47,7 @@ foreach my $vhost (keys %$vhosts) {
         $vhost_git_ref = 'origin/master';
     }
 
-    my ($vhost_git_head, $vhost_git_branch) = split /\//, $vhost_git_ref;
+    my ($vhost_git_head, $vhost_git_branch) = split /\//, $vhost_git_ref, 2;
 
     ### Ignore if its repo doesn't match the one that was just pushed to
     next if($REPOSITORY_NAME ne $vhost_git_repo);
@@ -56,7 +56,7 @@ foreach my $vhost (keys %$vhosts) {
     my @pushed_branches;
     while(<STDIN>) {
         my ($oldrev, $newrev, $refname) = split /\s+/;
-        my ($ref, $head, $branch) = split /\//, $refname;
+        my ($ref, $head, $branch) = split /\//, $refname, 3;
         if(!grep(/^$branch$/, @pushed_branches)) {
             push @pushed_branches, $branch;
         }
