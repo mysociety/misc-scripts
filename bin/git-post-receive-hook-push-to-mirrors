@@ -107,7 +107,7 @@ loop do
 
   break unless response.key? 'Link'
 
-  if response['Link'] =~ /rel="next",\s<(.*?)>;/
+  if response['Link'] =~ /<(.*?)>;\s*rel="next"/
     api_url = $1
   else
     break
