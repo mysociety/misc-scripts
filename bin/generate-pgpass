@@ -38,6 +38,7 @@ my %extra_perms = (
         'msservices' => [ 'mapit', 'mapit-ro' ],
     },
     'buffalo' => {
+        'davea' => [ 'bci' ],
         'debbi' => [ 'bci', 'ycml', 'fyr' ],
         'matthew' => [ 'bci', 'bci-emptyhomes', 'pb', 'ycml', 'ycml-cllr', 'fyr' ],
         'timsk' => [ 'pb' ],
