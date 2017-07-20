@@ -869,6 +869,9 @@ sub update_site {
 
 sub set_or_clear_ruby_version {
 
+  # Filename to use for the local Ruby version.
+  my $version_file = ".rbenv-version";
+
   if ($conf->{ruby_version}) {
 
     # Set rbenv_global to something true to activate the new, global rbenv under /opt/rbenv.
@@ -876,8 +879,6 @@ sub set_or_clear_ruby_version {
 
     # Location of profile snippet depends on rbenv_global.
     my $rbenv_profile;
-    # Filename to use for the local Ruby version.
-    my $version_file;
 
     if ($conf->{rbenv_global}) {
 
