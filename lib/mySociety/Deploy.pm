@@ -91,7 +91,7 @@ sub setup_conf {
         }
     } else {
         foreach ("exec_before_down", "exec_while_down") {
-            if ($conf->{$_}) {
+            if ($conf->{$_} && ($conf->{$_}->{root} || $conf->{$_}->{user} || $conf->{$_}->{groups})) {
                 die "You cannot use $_ without timestamped_deploy";
             }
         }
