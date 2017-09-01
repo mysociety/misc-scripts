@@ -11,7 +11,8 @@ use Sys::Hostname;
 
 my $REPO_HOST='leopard';
 my $REPO_BASE='/data/vhost/debian.mysociety.org/docs';
-
+my $DATE=`date -R -u`;
+chomp $DATE;
 
 die "Run on $REPO_HOST only" if(hostname() ne $REPO_HOST);
 
@@ -34,6 +35,7 @@ foreach my $i (glob 'dists/*/*/binary-*') {
     print RELEASE "Origin: mySociety\n";
     print RELEASE "Label: mySociety\n";
     print RELEASE "Architecture: $arch\n";
+    print RELEASE "Date: $DATE\n";
     close RELEASE;
     rename "$i/Release.new", "$i/Release";
     system "/usr/bin/gpg --batch --yes --sign --armor --detach-sig --passphrase-file /data/vhost/debian.mysociety.org/signing_key_passphrase --output $i/Release.gpg $i/Release";
@@ -56,6 +58,7 @@ foreach my $i (keys %releases) {
     print RELEASE "Origin: mySociety\n";
     print RELEASE "Label: mySociety\n";
     print RELEASE "Codename: $i\n";
+    print RELEASE "Date: $DATE\n";
     print RELEASE "Components: ".join(' ', @{$releases{$i}{'components'}})."\n";
     print RELEASE "Architectures: ".join(' ', @{$releases{$i}{'archs'}})."\n";
     print RELEASE "MD5Sum:\n";
@@ -65,6 +68,14 @@ foreach my $i (keys %releases) {
         chop $md5sum;
         my @st=stat $file;
         print RELEASE " $md5sum $st[7] $file\n";
+    }
+    print RELEASE "SHA256:\n";
+    foreach my $file (glob '*/*/{Sources*,Release*,Packages*}') {
+        my $sha256=`sha256sum $file`;
+        $sha256=~s/ .*$//;
+        chop $sha256;
+        my @st=stat $file;
+        print RELEASE " $sha256 $st[7] $file\n";
     }
     close RELEASE;
     rename "Release.new", "Release";
