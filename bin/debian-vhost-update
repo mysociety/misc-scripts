@@ -38,7 +38,7 @@ foreach my $i (glob 'dists/*/*/binary-*') {
     print RELEASE "Date: $DATE\n";
     close RELEASE;
     rename "$i/Release.new", "$i/Release";
-    system "/usr/bin/gpg --batch --yes --sign --armor --detach-sig --passphrase-file /data/vhost/debian.mysociety.org/signing_key_passphrase --output $i/Release.gpg $i/Release";
+    system "/usr/bin/gpg --batch --yes --sign --armor --detach-sig --passphrase-file /data/vhost/debian.mysociety.org/signing_key_passphrase --digest-algo SHA256 --output $i/Release.gpg $i/Release";
 
     push @{$releases{$release}{'components'}}, $component;
     push @{$releases{$release}{'archs'}}, $arch;
@@ -79,5 +79,5 @@ foreach my $i (keys %releases) {
     }
     close RELEASE;
     rename "Release.new", "Release";
-    system "/usr/bin/gpg --batch --yes --sign --armor --detach-sig --passphrase-file /data/vhost/debian.mysociety.org/signing_key_passphrase --output Release.gpg Release";
+    system "/usr/bin/gpg --batch --yes --sign --armor --detach-sig --passphrase-file /data/vhost/debian.mysociety.org/signing_key_passphrase --digest-algo SHA256 --output Release.gpg Release";
 }
