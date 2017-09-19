@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 #
 # Check if an email address exists in our Google Apps domain.
 #
