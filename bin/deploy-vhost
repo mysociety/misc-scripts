@@ -971,7 +971,7 @@ sub install_or_remove_crontab {
             open CRON, $tmp_crontab or die "can't open $tmp_crontab: $!";
             while (<CRON>) {
                 if (/^MAILTO=(.*)$/) {
-                    system("/data/mysociety/bin/lookup_google_apps_email.py $1");
+                    system("/data/mysociety/bin/lookup_google_apps_email.sh $1");
                     my $result = $? >> 8;
                     if ($result == 1) {
                         unlink $tmp_crontab;
@@ -979,7 +979,7 @@ sub install_or_remove_crontab {
                     } elsif ($result == 2) {
                         warn "Google Apps API not working; can't check MAILTO address";
                     } elsif ($result != 0) {
-                        warn "unexpected result code $result from lookup_google_apps_email.py";
+                        warn "unexpected result code $result from lookup_google_apps_email.sh";
                     }
 
                     last;
