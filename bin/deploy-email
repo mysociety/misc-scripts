@@ -86,6 +86,9 @@ sub test_aliasfile ($) {
             $k =~ s/\\(.)/$1/g;
             $keys{$k}++;
 
+            # Escape any asterisks, otherwise they interfere with the regex below.
+            $k =~ s/\*/\\\*/g;
+
             my $v = $line;
             $v =~ s/^$k\s*://;
             if ( !check_line($v) ) {
