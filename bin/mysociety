@@ -116,23 +116,19 @@ case $COMMAND in
     config)
         # if a puppet agent is (or should be) running, force it to fetch new configs
         # (and don't use the old configuration system)
-        if [ -x '/etc/init.d/puppet' ] ; then
-            set +e
-            /etc/init.d/puppet status > /dev/null 2>&1
-            if [ "$?" = 0 ]; then
-                if [ -r '/var/run/puppetlabs/agent.pid' ] ; then
-                    kill -USR1 "`cat /var/run/puppetlabs/agent.pid`"
-                    echo "Signalled puppet to fetch new manifests"
-                else
-                    die "puppet agent running, but pid file can't be read"
-                fi
+        set +e
+        /usr/sbin/service puppet status >/dev/null 2>&1
+        if [ "$?" = 0 ]; then
+            if [ -r '/var/run/puppetlabs/agent.pid' ] ; then
+                kill -USR1 "`cat /var/run/puppetlabs/agent.pid`"
+                echo "Signalled puppet to fetch new manifests"
             else
-                die "puppet agent expected but not running"
+                die "puppet agent running, but pid file can't be read"
             fi
-            set -e
         else
-            die "puppet not installed; no idea what to do next"
+            die "puppet agent expected but not running"
         fi
+        set -e
         ;;
         
     vhost)
