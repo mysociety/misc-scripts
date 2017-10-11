@@ -60,7 +60,7 @@ ssh $PARAM_DB_HOST su - $POSTGRES -c \""$PGDUMP --port $PARAM_DB_PORT --schema-o
 ssh $PARAM_DB_HOST su - $POSTGRES -c \""dropdb --port $PARAM_DB_PORT $SCHEMATEST"\"
 
 # ... the live database dump
-su $PARAM_UNIX_USER -c "$PGDUMP --schema-only --schema=public --encoding=UTF-8 -U $PARAM_DB_USER --host $PARAM_DB_HOST --port $PARAM_DB_PORT $PARAM_DB_NAME" | egrep -v "^--|SET SESSION AUTHORIZATION|\\connect - |GRANT ALL|REVOKE ALL|START WITH 1|OWNER TO|SET default_with_oids" | grep -v "SET search_path = public, pg_catalog;" | sed "s/,$//;" | grep -v '^[ \t]*$' > $CURRENT_SCHEMA_FILE
+ssh $PARAM_DB_HOST su - $POSTGRES -c \""$PGDUMP --port $PARAM_DB_PORT --schema-only --schema=public --encoding=UTF-8 -s $PARAM_DB_NAME"\" | egrep -v "^--|SET SESSION AUTHORIZATION|\\connect - |GRANT ALL|REVOKE ALL|START WITH 1|OWNER TO|SET default_with_oids" | grep -v "SET search_path = public, pg_catalog;" | sed "s/,$//;" | grep -v '^[ \t]*$' > $CURRENT_SCHEMA_FILE 
 
 # Compare them
 #if [ "$PARAM_DB_PORT" = "5433" ]
