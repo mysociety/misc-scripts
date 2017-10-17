@@ -28,4 +28,4 @@ touch $SYNC_PATH/.$HOSTNAME-timestamp
 
 # Run the sync as the last command so the exit status is preserved.
 # Errors will still go to stderr despite '-silent'.
-/usr/bin/ionice -c 3 $UNISON -servercmd '/usr/bin/ionice -c3 /usr/bin/unison' -batch -times -owner -group -retry 5 -ignore "Name dovecot.index*" -preferpartial "Path .$HOSTNAME-timestamp -> $SYNC_PATH" "$SYNC_PATH" "ssh://$SYNC_PAIR//$SYNC_PATH" >> /var/log/unison.log 2>&1
+/usr/bin/ionice -c 3 $UNISON -servercmd '/usr/bin/ionice -c3 /usr/bin/unison' -batch -times -owner -group -retry 5 -ignore "Name dovecot.index*" -ignore "Name mailboxes" -preferpartial "Path .$HOSTNAME-timestamp -> $SYNC_PATH" "$SYNC_PATH" "ssh://$SYNC_PAIR//$SYNC_PATH" >> /var/log/unison.log 2>&1
