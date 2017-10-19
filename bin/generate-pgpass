@@ -38,18 +38,16 @@ my %extra_perms = (
         'msservices' => [ 'mapit', 'mapit-ro' ],
     },
     'buffalo' => {
-        'davea' => [ 'bci' ],
-        'debbi' => [ 'bci', 'ycml', 'fyr' ],
-        'matthew' => [ 'bci', 'bci-emptyhomes', 'pb', 'ycml', 'ycml-cllr', 'fyr' ],
-        'timsk' => [ 'pb' ],
-    },
-    'elephant' => {
-        'matthew' => [ 'openstreetmap-gb', 'openstreetmap' ],
-        'louise' => [ 'hm' ],
+        'matthew' => [ 'bci-emptyhomes', 'pb', 'ycml' ],
     },
     'firefly' => {
         'mark' => [ 'mark-za-hansard-tmp', 'pombola-mark-scratch', , 'test_pombola-mark-scratch' ],
     },
+    'pelican' => {
+        'davea' => [ 'bci' ],
+        'matthew' => [ 'bci', 'fyr', 'openstreetmap', 'openstreetmap-gb' ],
+    },
+
 );
 
 # begin with the overrides from above ...
