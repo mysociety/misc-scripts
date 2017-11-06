@@ -4,12 +4,6 @@
 # Creates databases that are listed in vhosts.pl. Creates corresponding users
 # and gives them permissions and right password. Testharness databases/users
 # get the extra ownership and permissions they need.
-#
-# Copyright (c) 2008 UK Citizens Online Democracy. All rights reserved.
-# Email: francis@mysociety.org; WWW: http://www.mysociety.org/
-#
-
-my $rcsid = ''; $rcsid .= '$Id: mysociety-create-databases,v 1.24 2013-08-01 08:52:37 ian Exp $';
 
 package main;
 
@@ -86,10 +80,7 @@ foreach my $database (keys %{$databases}) {
 
             # Testharness databases get dropped and recreated by the test script, so
             # give them more permissions.
-            my $testharness = 0;
-            if ($database =~ m/testharness$/) {
-                $testharness = 1;
-            }
+            my $testharness = $database =~ m/testharness$/;
 
             # Connect to server
             my $dbh = DBI->connect("dbi:Pg:dbname=template1;port=$params->{port}", 'postgres', undef, { PrintWarn => 1, PrintError => 1, RaiseError => 0, AutoCommit => 1 }) || die DBI->errstr();
@@ -104,29 +95,26 @@ foreach my $database (keys %{$databases}) {
             # Create database
             if (!$dbh->selectrow_array("select count(*) from pg_catalog.pg_database where datname = '$database'")) {
                 push @out, "creating db";
-                my $owner_clause = "";
-                if ($testharness) {
-                    $owner_clause = "owner \"$database\"" 
-                }
-                my $template_clause = '';
-		my $encoding = 'UTF8';
-		if ($params->{encoding}) {
-		    # template1 is UTF-8, so we have to use template0 for different encodings
-		    $encoding = $params->{encoding} if $params->{encoding};
-		    $template_clause = ' template "template0"';
-		} elsif ($params->{geo}) {
-                    $template_clause = ' template "template_postgis"' if $params->{geo};
-		}
+                my $owner_clause = $testharness ? qq{owner "$database"} : "";
+                # template1 is UTF-8, so we have to use template0 for different encodings
+                my $template_clause = $params->{encoding} ? 'template "template0"' : '';
+                my $encoding = $params->{encoding} || 'UTF8';
                 $dbh->do("create database \"$database\" $owner_clause $template_clause encoding '$encoding'");
-		if ($params->{encoding}) {
-		    # As we're not using template1, we have to enable PL/pgSQL for the new database
-		    my $dbh_db = DBI->connect("dbi:Pg:dbname=$database;port=$params->{port}", 'postgres', undef, { PrintWarn => 1, PrintError => 1, RaiseError => 0, AutoCommit => 1 }) || die DBI->errstr();
-            if($pg_version =~ /^8\./) {
-                $dbh_db->do("CREATE FUNCTION plpgsql_call_handler() RETURNS OPAQUE AS '\$libdir/plpgsql' LANGUAGE 'C';");
-                $dbh_db->do("CREATE TRUSTED PROCEDURAL LANGUAGE 'plpgsql' HANDLER plpgsql_call_handler LANCOMPILER 'PL/pgSQL';");
-            }
-		    $dbh_db->disconnect;
-		}
+                if ($params->{geo}) {
+                    # Need to reconnect to get search_path to be used properly
+                    my $one = [ "ALTER DATABASE \"$database\" SET search_path TO public,postgis" ];
+                    my $two = [
+                        "CREATE SCHEMA postgis",
+                        "CREATE EXTENSION postgis SCHEMA postgis",
+                        "CREATE EXTENSION postgis_topology",
+                        "GRANT USAGE ON SCHEMA postgis TO \"$database\"",
+                    ];
+                    foreach my $queries ($one, $two) {
+                        my $dbh_db = DBI->connect("dbi:Pg:dbname=$database;port=$params->{port}", 'postgres', undef, { PrintWarn => 1, PrintError => 1, RaiseError => 0, AutoCommit => 1 }) || die DBI->errstr();
+                        $dbh_db->do($_) foreach @$queries;
+                        $dbh_db->disconnect;
+                    }
+                }
             }
 
             # Give user permissions on database
@@ -163,107 +151,6 @@ foreach my $database (keys %{$databases}) {
     }
 }
 
-# Create warm standby clusters, including configuration files
-# XXX disabled while database servers are being upgraded, then
-#     this functionality will move to puppet.
-#if(getpwuid($>) eq 'root') {
-#    my $pguid=getpwnam('postgres');
-#    my $pggid=getgrnam('postgres');
-#
-#    my $mysqluid=getpwnam('mysql');
-#    my $mysqlgid=getgrnam('mysql');
-#
-#    foreach my $machine (glob "$servers_dir/machines/*.pl") {
-#        our $database_failover_pair='';
-#	our ($hostnumber, $hostname, $domainname);
-#        do $machine;
-#
-#	next if($database_failover_pair ne $myhostname);
-#
-#	my %dbtypes;
-#	$dbtypes{'psql'}=0 if(mySociety::ServerClass::server_in_class($myhostname, "database-psql-standby"));
-#	$dbtypes{'mysql'}=0 if(mySociety::ServerClass::server_in_class($myhostname, "database-mysql-standby"));
-#
-#        foreach my $db (values %$databases) {
-#	    $dbtypes{$db->{type}}++ if($db->{host} eq $hostname);
-#	}
-#
-#        foreach my $dbtype (keys %dbtypes) {
-#            next if(!$dbtypes{$dbtype});
-#
-#            if($dbtype eq 'psql') {
-#	        # ensure a unique port for each standby instance...
-#	        my $port=5432 + $hostnumber;
-#	        my $clusterdir="/var/lib/postgresql/8.4/".$hostname."_standby";
-#
-#                # ...but don't go any further if something's already running on that port,
-#                # or if the cluster dir already exists.
-#	        next if(-d $clusterdir);
-#                my $sock=IO::Socket::INET->new(PeerAddr=>'localhost', PeerPort=>"$port", PeerProto=>'tcp');
-#	        next if($sock);
-#	        die "connect test failed: $!" if($! ne 'Connection refused');
-#
-#	        # create a new cluster, make a directory for incoming logs, and drop in 
-#	        # a recovery.conf file to make sure it comes up in recovery mode.
-#	        die "pg_createcluster failed for $hostname"
-#	            unless(system("pg_createcluster -p $port 8.4 ".$hostname."_standby") >> 8 == 0);
-#            
-#	        # make the directory that will receive logs from the live database...
-#	        mkdir "$clusterdir/incoming_logs";
-#
-#	        # ...and drop in a recovery.conf so that the database will start in recovey mode
-#                open RECOVERY, ">$clusterdir/recovery.conf" or die "can't write to $clusterdir/recovery.conf: $!";
-#	        print RECOVERY "restore_command = '/usr/lib/postgresql/8.4/bin/pg_standby -t $clusterdir/fail_over_now $clusterdir/incoming_logs %f %p %r'\n";
-#	        close RECOVERY;
-#
-#                # fix up permissions
-#	        chown $pguid, $pggid, "$clusterdir/incoming_logs", "$clusterdir/recovery.conf";
-#	        chmod 0700, "$clusterdir/incoming_logs";
-#
-#	        print "warm standby cluster created for $hostname on port $port\n" if $::verbose;
-#                print "*** You must transfer the initial state of the live database on $hostname\n";
-#                print "*** before you can start the warm standby cluster ".$hostname."_cluster\n";
-#
-#	    } elsif($dbtype eq 'mysql') {
-#		# mysql requires one instance per replication master, and the instances are managed
-#		# with mysqld_master.  This requires each one to be called 'mysqld<number>'.
-#	        my $datadir="/var/lib/mysql_".$hostname."_standby";
-#		my $port=3306+$hostnumber;
-#
-#		# don't go any further if the data directory exists, or something's running on the port.
-#		next if(-d $datadir);
-#                my $sock=IO::Socket::INET->new(PeerAddr=>'localhost', PeerPort=>"$port", PeerProto=>'tcp');
-#	        next if($sock);
-#	        die "connect test failed: $!" if($! ne 'Connection refused');
-#
-#		# create the mysql database...
-#		die "mysql_install_db failed for $hostname"
-#	            unless(system("mysql_install_db --user=mysql --datadir=$datadir >/dev/null") >> 8 == 0);
-#
-#		# ...and start it
-#		die "can't run mysqld_multi"
-#		    unless(system("mysqld_multi --defaults-file=/etc/mysql/my-replication.cnf start $hostnumber") >> 8 == 0);
-#
-#		# give it a chance to start up
-#		sleep 3;
-#
-#	        # connect to the database (root password is blank at the moment)
-#	        my $dbh = DBI->connect("dbi:mysql:database=mysql;hostname=127.0.0.1;port=$port", 'root', '', { PrintWarn => 1, PrintError => 1, RaiseError => 0, AutoCommit => 1 }) || die DBI->errstr();
-#
-#		# set root password
-#                $dbh->do("UPDATE user SET Password = PASSWORD('".pgpw('root')."') WHERE User = 'root'");
-#
-#		# create a user able to shutdown the database (used by mysqld_multi)
-#		$dbh->do("GRANT SHUTDOWN ON *.* TO 'multi_admin'\@'localhost' IDENTIFIED BY '".pgpw('multi_admin')."'");
-#
-#		$dbh->do("FLUSH PRIVILEGES");
-#	        $dbh->disconnect();
-#	        print "mysql replication database for $hostname created\n";
-#            }
-#	}
-#    }
-#}
-#
 # Become user postgresql, and run script again to do postgresql ones
 if (getpwuid($>) eq 'root') {
     # XXX yeuch, but seems easiest way to give postgres access to vhosts.pl, and postgres_secret
