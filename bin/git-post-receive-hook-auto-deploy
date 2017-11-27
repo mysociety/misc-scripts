@@ -14,7 +14,7 @@ my $REPOSITORY_NAME = $ARGV[0];
 
 ### Get vhost details from vhosts.pl
 our ($sites, $vhosts);
-do '/data/servers/vhosts.pl';
+do '/data/vhosts.pl';
 
 ### Make a list of things we want to do
 
