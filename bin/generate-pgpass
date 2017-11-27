@@ -46,6 +46,7 @@ my %extra_perms = (
     'pelican' => {
         'davea' => [ 'bci' ],
         'matthew' => [ 'bci', 'fyr', 'openstreetmap', 'openstreetmap-gb' ],
+        'tilma' => [ 'openstreetmap', 'openstreetmap-gb' ],
     },
 
 );
