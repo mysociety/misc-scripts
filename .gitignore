@@ -1,3 +1,4 @@
 _Inline
 /rotatelogs/rotatelogs
 /run-with-lockfile/run-with-lockfile
+bin/node_modules

@@ -1,0 +1,8 @@
+{
+  "name": "misc-scripts",
+  "description": "Dummy Package to handle NPM dependencies",
+  "version": "1.0.0",
+  "dependencies": {
+    "jshint": "^2.0.0"
+  }
+}

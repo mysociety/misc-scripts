@@ -89,7 +89,8 @@ if [[ "`git config --get mysociety.jslint`" != 'true' ]]; then
    exit $exit_status
 fi
 
-syntax_check="js -f /data/mysociety/bin/jslint"
+syntax_check="/data/mysociety/bin/node_modules/.bin/jshint"
+# Need to read out .jshintrc and .jshintignore from git to use them!
 
 while read old_mode new_mode old_sha1 new_sha1 status name
 do
@@ -104,9 +105,9 @@ do
   then
     git cat-file blob $new_sha1 > $tmp
     set -o pipefail
-    if $syntax_check < $tmp 2>&1 | grep 'Lint at line' > $log; then
+    if ! $syntax_check $tmp > $log; then
       echo
-      echo -e "$(cat $log | sed 's|Lint at|'\\${RED}${name}\\${NOBOLD}'|')" >&2
+      echo -e "$(sed 's|[^:]*:|'\\${RED}${name}\\${NOBOLD}'|' $log)" >&2
       echo -e "For more details run this: ${CYAN}git diff $old_sha1 $new_sha1 ${NOBOLD}" >&2 
       echo
       exit_status=1
