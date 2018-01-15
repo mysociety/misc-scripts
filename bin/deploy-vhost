@@ -631,6 +631,8 @@ sub get_conf_ugly_file_from_servers_dir {
 # Update a config dir
 sub update_conf_dir {
     my ($conf_dir, $public, $unchecked_schemas) = @_;
+    my $git_ref = $public ? $conf->{git_ref} : $conf->{private_git_ref};
+
     foreach my $glob (glob "$vhost_dir/$vcspath_install/$conf_dir/*-example") {
        $glob =~ m#^.*/(.*?)-example$#;
 
@@ -650,15 +652,8 @@ sub update_conf_dir {
         # For public conf files, use the example in the main public checkout. For
         # private, use the example in the vhost conf dir.
         my $example_file;
-        my $git_ref;
         $example_file = mktemp("/tmp/deploy-vhost-$name_part-example-XXXXXXXX");
-        if ($public) {
-            chdir_verbose(__LINE__, "$vhost_dir/$vcspath_install");
-            $git_ref = $conf->{'git_ref'};
-        } else {
-            chdir_verbose(__LINE__, "$vhost_dir/" . $conf->{'private_git_repository'});
-            $git_ref = $conf->{'private_git_ref'};
-        }
+        chdir_verbose(__LINE__, "$vhost_dir/$vcspath_install");
         shell("git show $git_ref:$conf_dir/$name_part-example >$example_file");
         # check destination file hasn't been separately modified
         chdir_verbose(__LINE__, $mysociety_dir);
@@ -723,13 +718,7 @@ sub update_conf_dir {
                 my $psql_user = mySociety::Config::get($psql_conf_prefix.'_DB_USER');
 
                 my $tmp_psql_schema = mktemp("/tmp/deploy-vhost-psql-schema-XXXXXXXX");
-                if ($public) {
-                    chdir_verbose(__LINE__, "$vhost_dir/$vcspath_install");
-                    $git_ref = $conf->{'git_ref'};
-                } else {
-                    chdir_verbose(__LINE__, "$vhost_dir/" . $conf->{'private_git_repository'});
-                    $git_ref = $conf->{'private_git_ref'};
-                }
+                chdir_verbose(__LINE__, "$vhost_dir/$vcspath_install");
                 shell("git show $git_ref:$psql_schema >$tmp_psql_schema");
                 chdir_verbose(__LINE__, $mysociety_bin);
                 shell("./psql-schema-compare", $tmp_psql_schema, $conf->{'user'}, $psql_name, $psql_user, $psql_host, $psql_port);
@@ -757,7 +746,6 @@ sub update_conf_dir {
                 my $schema_full_path;
                 $schema_full_path = mktemp("/tmp/deploy-vhost-mysociety-schema.sql-XXXXXXXX");
                 chdir_verbose(__LINE__, "$vhost_dir/$vcspath_install");
-                my $git_ref = $conf->{'git_ref'};
                 shell("git show $git_ref:$mysql_schema >$schema_full_path");
 
                 # It isn't safe to pass the password over the command line or in the
