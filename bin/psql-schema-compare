@@ -29,7 +29,7 @@
 #set -x # debug
 
 set -e
-. ../shlib/deployfns
+. /data/mysociety/shlib/deployfns
 
 # Command line parameters
 PARAM_SCHEMA=$1

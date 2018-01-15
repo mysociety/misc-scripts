@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w -I../perllib
+#!/usr/bin/perl -w
 #
 # compareconfig.pl:
 # Compare two configuration files.
@@ -6,14 +6,10 @@
 # Compares the two config files given on the command line, and displays keys
 # which are present in one but not the other. Exits successfully if there are
 # no differences.
-#
-# Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
-# Email: francis@mysociety.org; WWW: http://www.mysociety.org/
-#
-# $Id: compareconfig.pl,v 1.7 2012-08-17 09:59:47 matthew Exp $
-#
 
 use strict;
+use FindBin;
+use lib "$FindBin::Bin/../perllib";
 
 use mySociety::Config;
 

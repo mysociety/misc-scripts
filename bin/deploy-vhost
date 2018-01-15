@@ -13,7 +13,6 @@ use lib "$FindBin::Bin/../lib";
 use lib "$FindBin::Bin/../perllib";
 my $mysociety_bin = $FindBin::Bin;
 my $servers_dir = "$FindBin::Bin/../../servers";
-my $mysociety_dir = "$FindBin::Bin/../../mysociety";
 
 use mySociety::SystemMisc qw(shell);
 use mySociety::Config;
@@ -346,15 +345,12 @@ sub update_vcspath_symlink {
     unless ($timestamped_deploy) {
         die "You can only use update_vcspath_symlink with timestamped_deploy";
     }
-    my $old_cwd = getcwd();
-    chdir_verbose(__LINE__, $vhost_dir);
     # If there's a real directory there, rather than a symlink, move
     # it out of the way:
-    if (-d $vcspath && ! -l $vcspath) {
-        rename($vcspath, "$vcspath.moved");
+    if (-d "$vhost_dir/$vcspath" && ! -l "$vhost_dir/$vcspath") {
+        rename("$vhost_dir/$vcspath", "$vhost_dir/$vcspath.moved");
     }
-    shell("ln -snf $vcspath_install $vcspath");
-    chdir_verbose(__LINE__, $old_cwd);
+    shell("ln -snf $vhost_dir/$vcspath_install $vhost_dir/$vcspath");
 }
 
 # Generate daemon init scripts from templates
@@ -611,8 +607,7 @@ sub get_conf_ugly_file_from_servers_dir {
   my ($conf_ugly_part) = @_;
   my $conf_ugly_file = "$servers_dir/vhosts/$vcspath/$vhost/$conf_ugly_part.ugly";
   # update the conf/general (or whatever) template in private git repo
-  chdir_verbose(__LINE__, "$servers_dir/vhosts");
-  shell("git", "pull", "-q", "origin");
+  shell("git", "-C", "$servers_dir/vhosts", "pull", "-q", "origin");
   $conf_ugly_file = "$servers_dir/vhosts/$vcspath/$conf_ugly_part.ugly" unless -e $conf_ugly_file;
   $conf_ugly_file = "$servers_dir/vhosts/${vcspath}_$conf_ugly_part.ugly" unless -e $conf_ugly_file;
   return $conf_ugly_file;
@@ -659,7 +654,6 @@ sub update_conf_dir {
             mugly($conf_ugly_file, $conf_file_tmp);
             if ($name_base eq 'general') {
                 # test contents of new configuration file before copying it over
-                chdir_verbose(__LINE__, $mysociety_bin);
                 shell("$mysociety_bin/compareconfig.pl", $conf_file_tmp, $example_file);
             }
             if ($name_base eq 'httpd.conf') {
@@ -676,8 +670,7 @@ sub update_conf_dir {
         } else {
             if ($name_base eq 'general') {
                 # test contents of configuration file before copying it over
-                chdir_verbose(__LINE__, $mysociety_bin);
-                shell("$mysociety_bin/compareconfig.pl", "$conf_file", $example_file);
+                shell("$mysociety_bin/compareconfig.pl", $conf_file, $example_file);
             }
         }
         # clear up temporary example file in git case
@@ -705,8 +698,7 @@ sub update_conf_dir {
 
                 my $tmp_psql_schema = mktemp("/tmp/deploy-vhost-psql-schema-XXXXXXXX");
                 git("show $git_ref:$psql_schema", { out => $tmp_psql_schema });
-                chdir_verbose(__LINE__, $mysociety_bin);
-                shell("./psql-schema-compare", $tmp_psql_schema, $conf->{'user'}, $psql_name, $psql_user, $psql_host, $psql_port);
+                shell("$mysociety_bin/psql-schema-compare", $tmp_psql_schema, $conf->{'user'}, $psql_name, $psql_user, $psql_host, $psql_port);
                 unlink $tmp_psql_schema;
 
             }
@@ -733,8 +725,7 @@ sub update_conf_dir {
 
                 # It isn't safe to pass the password over the command line or in the
                 # environment as that can be seen by other processes.
-                chdir_verbose(__LINE__, $mysociety_bin);
-                shell("./mysql-schema-compare", $schema_full_path, $conf->{'user'}, $mysql_name, $mysql_user, $mysql_host, $mysql_port);
+                shell("$mysociety_bin/mysql-schema-compare", $schema_full_path, $conf->{'user'}, $mysql_name, $mysql_user, $mysql_host, $mysql_port);
                 unlink($schema_full_path);
             }
         }
@@ -783,8 +774,7 @@ sub _run_sub_tasks_from_config {
         shell("su", "-l", $conf->{'user'}, "-c cd \"$vhost_dir/$vcspath_install\" && $exec_extra");
     }
     foreach my $exec_extra (@{$exec_extras->{root}}) {
-        chdir_verbose(__LINE__, "$vhost_dir/$vcspath_install");
-        shell("$exec_extra");
+        shell("cd '$vhost_dir/$vcspath_install' && $exec_extra");
     }
 }
 
@@ -921,19 +911,19 @@ sub install_or_remove_crontab {
     }
 
     if ($ok) {
-        chdir_verbose(__LINE__, "$vhost_dir/$vcspath_install");
         my $setup_git_cron = sub {
             my ( $conf_dir, $git_ref ) = @_;
             # if a crontab exists in the conf directory in source control, or has been created there
             # in the update_conf_dir function, just install it
             my $crontab = "$conf_dir/crontab";
+            my $crontab_path = "$vhost_dir/$vcspath_install/$crontab";
             my $tmp_crontab = mktemp("/tmp/deploy-vhost-crontab-XXXXXXXX");
-            if (-e $crontab) {
-                copy($crontab, $tmp_crontab);
+            if (-e $crontab_path) {
+                copy($crontab_path, $tmp_crontab);
             } else {
                 my $tmp_crontab_ugly = mktemp("/tmp/deploy-vhost-crontab.ugly-XXXXXXXX");
-                return unless -e "$conf_dir/crontab.ugly";
-                git("show $git_ref:$conf_dir/crontab.ugly", { out => $tmp_crontab_ugly });
+                return unless -e "$crontab_path.ugly";
+                git("show $git_ref:$crontab.ugly", { out => $tmp_crontab_ugly });
                 mugly($tmp_crontab_ugly, $tmp_crontab);
                 unlink $tmp_crontab_ugly;
             }
@@ -1007,7 +997,7 @@ sub start_site {
 
 sub check_for_unpushed {
     my ($git_repository) = @_;
-    my $unpushed_command = "cd \"$vhost_dir/$git_repository\" && git log --branches --not --remotes --simplify-by-decoration --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative";
+    my $unpushed_command = "git -C \"$vhost_dir/$git_repository\" log --branches --not --remotes --simplify-by-decoration --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit --date=relative";
     my $unpushed = `$unpushed_command`;
     print "\nThe following branches are unpushed:\n$unpushed\n" if $unpushed;
 }
@@ -1096,14 +1086,6 @@ sub pgpw {
     die "pgpw failed with error code $?" if $? > 0;
     s/\s+$//;
     return $_;
-}
-
-sub chdir_verbose {
-    my ($line, $dir) = @_;
-    if ($verbose) {
-        print STDERR "Changing directory (at line $line) to $dir\n";
-    }
-    chdir $dir;
 }
 
 sub mugly {
