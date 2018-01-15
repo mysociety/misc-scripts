@@ -24,7 +24,7 @@ use Time::Piece;
 use File::Path qw(make_path);
 use File::Copy;
 use File::Copy::Recursive qw(dircopy);
-use File::Temp qw(tempfile mktemp);
+use File::Temp qw(mktemp);
 
 our $verbose = $ENV{VERBOSE} ? 1 : 0;
 
@@ -360,14 +360,13 @@ sub create_daemons {
     # See if there's an ugly file in the servers dir
     $daemon_mugly_file  =~ m#^(.*?).ugly$#;
     my $name_part = $1;
-    my $daemon_mugly = mktemp("/tmp/daemon-mugly-file-XXXXXXXX");
+    my $daemon_mugly;
     my $servers_dir_ugly_file = get_conf_ugly_file_from_servers_dir($name_part);
 
     if (-e $servers_dir_ugly_file) {
-      shell("cat $servers_dir_ugly_file >$daemon_mugly");
+      $daemon_mugly = $servers_dir_ugly_file;
     } else {
-      my $git_ref;
-      my $conf_dir;
+      my ($git_ref, $conf_dir);
       if ( $conf->{git_ref} ) {
           $git_ref = $conf->{git_ref};
           $conf_dir = $conf->{conf_dir}->[0]
@@ -375,19 +374,14 @@ sub create_daemons {
           $git_ref = $conf->{private_git_ref};
           $conf_dir = $conf->{private_conf_dir}->[0]
       }
-
-      git("show $git_ref:$conf_dir/$daemon_mugly_file", { out => $daemon_mugly });
+      $daemon_mugly = git("show $git_ref:$conf_dir/$daemon_mugly_file");
     }
 
-    my ($fh, $filename) = tempfile();
+    my $fh = File::Temp->new;
     print $fh "\$daemon_name = '$daemon';\n";
-    close $fh;
-    mugly($daemon_mugly, "/etc/init.d/$daemon", $filename);
-    unlink($filename);
+    mugly($daemon_mugly, "/etc/init.d/$daemon", $fh->filename);
     chmod 0755, "/etc/init.d/$daemon";
     system("update-rc.d $daemon defaults | grep -v \"System startup links for .* already exist\"");
-
-    unlink($daemon_mugly);
   }
 }
 
@@ -522,10 +516,11 @@ sub check_package_file {
         } else {
             $tree = 'packages';
         }
-        my $tmp_packages = mktemp("/tmp/deploy-vhost-packages-XXXXXXXX");
-        git("show $git_ref:$conf_dir/$tree", { out => $tmp_packages });
-        shell("/data/mysociety/bin/check-packages-installed", $tmp_packages);
-        unlink $tmp_packages;
+        my $tmp_packages = git("show $git_ref:$conf_dir/$tree");
+        local $SIG{PIPE} = 'IGNORE';
+        open(CHECK, "|/data/mysociety/bin/check-packages-installed");
+        print CHECK $tmp_packages;
+        close CHECK;
     }
 }
 
@@ -921,11 +916,9 @@ sub install_or_remove_crontab {
             if (-e $crontab_path) {
                 copy($crontab_path, $tmp_crontab);
             } else {
-                my $tmp_crontab_ugly = mktemp("/tmp/deploy-vhost-crontab.ugly-XXXXXXXX");
                 return unless -e "$crontab_path.ugly";
-                git("show $git_ref:$crontab.ugly", { out => $tmp_crontab_ugly });
+                my $tmp_crontab_ugly = git("show $git_ref:$crontab.ugly");
                 mugly($tmp_crontab_ugly, $tmp_crontab);
-                unlink $tmp_crontab_ugly;
             }
 
             # Check that MAILTO is valid
@@ -1090,9 +1083,16 @@ sub pgpw {
 
 sub mugly {
     my ($in, $out, $extra_settings) = @_;
-    shell("$mysociety_bin/mugly", "-O", $out, "-p", $settings_file,
-        $extra_settings ? ("-p", $extra_settings) : (),
-        $in);
+    my @args = ("$mysociety_bin/mugly", "-O", $out, "-p", $settings_file);
+    push @args, "-p", $extra_settings if $extra_settings;
+    if ($in =~ m{^/}) {
+        shell(@args, $in);
+    } else {
+        local $SIG{PIPE} = 'IGNORE';
+        open(MUGLY, "|-", @args) or die $!;
+        print MUGLY $in;
+        close MUGLY;
+    }
 }
 
 sub git {
