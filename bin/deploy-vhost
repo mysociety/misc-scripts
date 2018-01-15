@@ -521,15 +521,9 @@ if ($action eq "stop") {
 }
 
 sub check_package_file {
-    my ($conf_dir, $public) = @_;
+    my ($conf_dir, $git_ref) = @_;
     my $tmp_packages = mktemp("/tmp/deploy-vhost-packages-XXXXXXXX");
-    my $git_ref;
     chdir_verbose(__LINE__, "$vhost_dir/$vcspath_install");
-    if ($public) {
-        $git_ref = $conf->{'git_ref'};
-    } else {
-        $git_ref = $conf->{'private_git_ref'};
-    }
     if (-e "$conf_dir/packages") {
         my $tree = `git ls-tree $git_ref $conf_dir/packages`;
         if ($tree =~ /^120000/) {
@@ -546,10 +540,10 @@ sub check_package_file {
 sub check_packages {
     # Check Debian packages are all installed, if there is a conf/packages file
     foreach my $conf_dir (@{$conf->{conf_dir}}) {
-        check_package_file($conf_dir, 1);
+        check_package_file($conf_dir, $conf->{git_ref});
     }
     foreach my $conf_dir (@{$conf->{private_conf_dir}}) {
-        check_package_file($conf_dir, 0);
+        check_package_file($conf_dir, $conf->{private_git_ref});
     }
 }
 
@@ -630,8 +624,7 @@ sub get_conf_ugly_file_from_servers_dir {
 
 # Update a config dir
 sub update_conf_dir {
-    my ($conf_dir, $public, $unchecked_schemas) = @_;
-    my $git_ref = $public ? $conf->{git_ref} : $conf->{private_git_ref};
+    my ($conf_dir, $git_ref, $unchecked_schemas) = @_;
 
     foreach my $glob (glob "$vhost_dir/$vcspath_install/$conf_dir/*-example") {
        $glob =~ m#^.*/(.*?)-example$#;
@@ -782,10 +775,10 @@ sub update_config_and_schemas {
 
     # Generate all conf files from conf/*-example template files e.g. conf/general
     foreach my $conf_dir (@{$conf->{conf_dir}}) {
-        update_conf_dir($conf_dir, 1, \%unchecked_schemas);
+        update_conf_dir($conf_dir, $conf->{git_ref}, \%unchecked_schemas);
     }
     foreach my $conf_dir(@{$conf->{private_conf_dir}}){
-        update_conf_dir($conf_dir, 0, \%unchecked_schemas);
+        update_conf_dir($conf_dir, $conf->{private_git_ref}, \%unchecked_schemas);
     }
 
     # exit if there are any schemas not covered by a config
