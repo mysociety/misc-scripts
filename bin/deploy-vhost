@@ -299,18 +299,17 @@ sub _make_git_repository {
            shell("su", "-", $conf->{'user'}, "-c $submodule_command") if $submodule_command;
        }
    } else {
-       chdir_verbose(__LINE__, "$vhost_dir/$vcspath_to_use");
        if (!$bare && $timestamped_deploy) {
            # Make sure we're using local copy
-           `git config remote.origin.url $git_url`;
+           git("config remote.origin.url $git_url", { dir => "$vhost_dir/$vcspath_to_use" });
        } else {
-           my $current_url = `git config --get remote.origin.url`;
+           my $current_url = git("config --get remote.origin.url", { dir => "$vhost_dir/$vcspath_to_use" });
            $current_url =~ s/\s*$//;
            die "git remote.origin.url in $git_dir is \n\t$current_url\nwhen config says\n\t$git_url\n" if ($current_url ne $git_url);
        }
 
        # get new stuff so various other parts of script can compare before deploying to working directory
-       my $fetch_command = "cd \"$vhost_dir/$vcspath_to_use\" && git fetch origin";
+       my $fetch_command = "git -C \"$vhost_dir/$vcspath_to_use\" fetch origin";
        if ($git_user eq 'root') {
            shell("$fetch_command && chown -R ".$conf->{'user'}.":".$conf->{'user'}." ../");
        } else {
@@ -320,7 +319,6 @@ sub _make_git_repository {
            shell("su", "-", $conf->{'user'}, "-c cd \"$vhost_dir/$vcspath_to_use\" && $mysociety_bin/git-safe-to-checkout . $git_ref")
        }
    }
-   chdir_verbose(__LINE__, $vhost_dir);
 }
 
 sub update_git {
@@ -372,7 +370,6 @@ sub create_daemons {
     if (-e $servers_dir_ugly_file) {
       shell("cat $servers_dir_ugly_file >$daemon_mugly");
     } else {
-      chdir_verbose(__LINE__, "$vhost_dir/$vcspath_install");
       my $git_ref;
       my $conf_dir;
       if ( $conf->{git_ref} ) {
@@ -383,7 +380,7 @@ sub create_daemons {
           $conf_dir = $conf->{private_conf_dir}->[0]
       }
 
-      shell("git show $git_ref:" . $conf_dir . "/$daemon_mugly_file >$daemon_mugly");
+      git("show $git_ref:$conf_dir/$daemon_mugly_file", { out => $daemon_mugly });
     }
 
     my ($fh, $filename) = tempfile();
@@ -522,17 +519,16 @@ if ($action eq "stop") {
 
 sub check_package_file {
     my ($conf_dir, $git_ref) = @_;
-    my $tmp_packages = mktemp("/tmp/deploy-vhost-packages-XXXXXXXX");
-    chdir_verbose(__LINE__, "$vhost_dir/$vcspath_install");
-    if (-e "$conf_dir/packages") {
-        my $tree = `git ls-tree $git_ref $conf_dir/packages`;
+    if (-e "$vhost_dir/$vcspath_install/$conf_dir/packages") {
+        my $tree = git("ls-tree $git_ref $conf_dir/packages");
         if ($tree =~ /^120000/) {
-            $tree = `git show $git_ref:$conf_dir/packages`;
-            shell("git show $git_ref:$conf_dir/$tree >$tmp_packages");
+            $tree = git("show $git_ref:$conf_dir/packages");
         } else {
-            shell("git show $git_ref:$conf_dir/packages >$tmp_packages");
+            $tree = 'packages';
         }
-        shell("/data/mysociety/bin/check-packages-installed", "$tmp_packages");
+        my $tmp_packages = mktemp("/tmp/deploy-vhost-packages-XXXXXXXX");
+        git("show $git_ref:$conf_dir/$tree", { out => $tmp_packages });
+        shell("/data/mysociety/bin/check-packages-installed", $tmp_packages);
         unlink $tmp_packages;
     }
 }
@@ -644,12 +640,9 @@ sub update_conf_dir {
         # update example we'll be comparing against, to make sure no missing entries.
         # For public conf files, use the example in the main public checkout. For
         # private, use the example in the vhost conf dir.
-        my $example_file;
-        $example_file = mktemp("/tmp/deploy-vhost-$name_part-example-XXXXXXXX");
-        chdir_verbose(__LINE__, "$vhost_dir/$vcspath_install");
-        shell("git show $git_ref:$conf_dir/$name_part-example >$example_file");
+        my $example_file = mktemp("/tmp/deploy-vhost-$name_part-example-XXXXXXXX");
+        git("show $git_ref:$conf_dir/$name_part-example", { out => $example_file });
         # check destination file hasn't been separately modified
-        chdir_verbose(__LINE__, $mysociety_dir);
         my $make_conf = 1;
         if (-e $conf_file) {
             # XXX detect errors
@@ -711,8 +704,7 @@ sub update_conf_dir {
                 my $psql_user = mySociety::Config::get($psql_conf_prefix.'_DB_USER');
 
                 my $tmp_psql_schema = mktemp("/tmp/deploy-vhost-psql-schema-XXXXXXXX");
-                chdir_verbose(__LINE__, "$vhost_dir/$vcspath_install");
-                shell("git show $git_ref:$psql_schema >$tmp_psql_schema");
+                git("show $git_ref:$psql_schema", { out => $tmp_psql_schema });
                 chdir_verbose(__LINE__, $mysociety_bin);
                 shell("./psql-schema-compare", $tmp_psql_schema, $conf->{'user'}, $psql_name, $psql_user, $psql_host, $psql_port);
                 unlink $tmp_psql_schema;
@@ -736,10 +728,8 @@ sub update_conf_dir {
                 my $mysql_port = mySociety::Config::get($mysql_conf_prefix.'_DB_PORT', 3306);
                 my $mysql_user = mySociety::Config::get($mysql_conf_prefix.'_DB_USER');
 
-                my $schema_full_path;
-                $schema_full_path = mktemp("/tmp/deploy-vhost-mysociety-schema.sql-XXXXXXXX");
-                chdir_verbose(__LINE__, "$vhost_dir/$vcspath_install");
-                shell("git show $git_ref:$mysql_schema >$schema_full_path");
+                my $schema_full_path = mktemp("/tmp/deploy-vhost-mysociety-schema.sql-XXXXXXXX");
+                git("show $git_ref:$mysql_schema", { out => $schema_full_path });
 
                 # It isn't safe to pass the password over the command line or in the
                 # environment as that can be seen by other processes.
@@ -943,7 +933,7 @@ sub install_or_remove_crontab {
             } else {
                 my $tmp_crontab_ugly = mktemp("/tmp/deploy-vhost-crontab.ugly-XXXXXXXX");
                 return unless -e "$conf_dir/crontab.ugly";
-                shell("git show $git_ref:$conf_dir/crontab.ugly >$tmp_crontab_ugly");
+                git("show $git_ref:$conf_dir/crontab.ugly", { out => $tmp_crontab_ugly });
                 mugly($tmp_crontab_ugly, $tmp_crontab);
                 unlink $tmp_crontab_ugly;
             }
@@ -1121,4 +1111,14 @@ sub mugly {
     shell("$mysociety_bin/mugly", "-O", $out, "-p", $settings_file,
         $extra_settings ? ("-p", $extra_settings) : (),
         $in);
+}
+
+sub git {
+    my ($command, $args) = @_;
+    my $dir = $args->{dir} || "$vhost_dir/$vcspath_install";
+    if ($args->{out}) {
+        shell("git -C '$dir' $command > $args->{out}");
+    } else {
+        return `git -C '$dir' $command`;
+    }
 }
