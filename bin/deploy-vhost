@@ -1045,7 +1045,7 @@ sub remove_site {
     nginx_graceful();
 
     # Remove vhost user's logrotate cron job
-    unlink("/etc/cron.d/".$cron_name."-logrotate");
+    unlink("$cron_name-logrotate");
 
     if ($conf->{'sphinx'}) {
         sphinx_restart();
