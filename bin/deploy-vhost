@@ -917,10 +917,8 @@ sub install_or_remove_crontab {
                 copy($crontab_path, $tmp_crontab);
             } else {
                 return unless -e "$crontab_path.ugly";
-                my $tmp_crontab_ugly = mktemp("/tmp/deploy-vhost-crontab.ugly-XXXXXXXX");
-                git("show $git_ref:$crontab.ugly", { out => $tmp_crontab_ugly });
+                my $tmp_crontab_ugly = git("show $git_ref:$crontab.ugly");
                 mugly($tmp_crontab_ugly, $tmp_crontab);
-                unlink $tmp_crontab_ugly;
             }
 
             # Check that MAILTO is valid
@@ -1091,7 +1089,7 @@ sub mugly {
         shell(@args, $in);
     } else {
         local $SIG{PIPE} = 'IGNORE';
-        open(MUGLY, "|-", @args) or die $!;
+        open(MUGLY, "|-", @args, '-') or die $!;
         print MUGLY $in;
         close MUGLY;
     }
