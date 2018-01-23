@@ -3,13 +3,11 @@
 # generate-mypass:
 # Creates ~/.my.cnf files for users to whom it is convenient to give access to
 # databases. Overwrites any existing ~/.my.cnf file for the specified users.
-# Sets the root password to something good.
 #
 # Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
-# Email: francis@mysociety.org; WWW: http://www.mysociety.org/
-# 
-
-my $rcsid = ''; $rcsid .= '$Id: generate-mypass,v 1.30 2012-10-23 12:08:54 matthew Exp $';
+#
+# http://www.mysociety.org/
+#
 
 use strict;
 require 5.8.0;
@@ -31,7 +29,6 @@ our ($vhosts, $sites, $databases);
 my %perms = (
     buffalo => {
         matthew => 'twfy',
-        debbi => 'twfy',
     },
 );
 
@@ -49,7 +46,6 @@ foreach (values %$vhosts) {
             } else {
                 $perms{$host}{$user} = [ $_, $databases->{$_}{host} ];
             }
-            $perms{$host}{'root'} = 'root';
         }
     }
 }
@@ -69,13 +65,10 @@ foreach my $user (keys %$database_permissions) {
     my $database = $database_permissions->{$user};
     my $host;
     if (ref $database) {
-        $host = $database->[1] . '.int.ukcod.org.uk' if $database->[1];
+        $host = $database->[1] . '.ukcod.org.uk' if $database->[1];
         $database = $database->[0];
     }
     my $user = $database;
-    if ($database eq "root") {
-        $database = "mysql";
-    }
     my $password;
     if ($databases->{$database}{new_pgpw}) {
         $password = `$FindBin::Bin/pgpw -n $user`;
@@ -90,7 +83,7 @@ password = $password
 ; database = $database ; this upsets lots of the MySQL commands e.g. mysqladmin, mysqldump
 END
     $text .= "host = $host\n" if $host;
-    $tmph->print($text) || throw Oops("$tmpn: write: $!"); 
+    $tmph->print($text) || throw Oops("$tmpn: write: $!");
     $tmph->close();
 
     chmod 0400, $tmpn;
@@ -99,21 +92,3 @@ END
     my $dest = "$user_home/.my.cnf";
     rename($tmpn, $dest);
 }
-
-# Connect as root to db, and set root password. Debian defaults to not having one.
-my $password = `$FindBin::Bin/pgpw root`;
-chomp $password;
-my $db = DBI->connect("dbi:mysql:database=mysql;host=localhost", "root", $password, 
-    { RaiseError => 0, AutoCommit => 1 });
-if (!$db) {
-    print "Ignore the warning above - happens first time run on a new machine, before mysql root password is set";
-    # Default debian root user has no password
-    $db = DBI->connect("dbi:mysql:database=mysql;host=localhost", "root", "",
-        { RaiseError => 0, AutoCommit => 1 });
-}
-if (!$db) {
-    die "failed to connect as root to db"
-}
-$db->do("update user set Password = PASSWORD(?) where User = 'root'", {}, $password);
-$db->do("flush privileges");
-
