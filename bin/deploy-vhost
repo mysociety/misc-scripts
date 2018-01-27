@@ -124,6 +124,12 @@ sub get_db_host {
     }
 }
 
+# Check to see whether we should be using the new secret for db passwords
+sub get_pgpw_string {
+    my ($params, $database) = @_;
+    return $params->{new_pgpw} ? "-n $database" : $database;
+}
+
 sub one_db_conf_php {
     my ($params, $database, $internal) = @_;
     my $port_line = '';
@@ -131,13 +137,14 @@ sub one_db_conf_php {
         $port_line = "define('OPTION_$params->{prefix}_DB_PORT', $params->{port});";
     }
     my $db_host = get_db_host($params, $internal);
+    my $pgpw_string = get_pgpw_string($params, $database);
 
     my $conf = <<END;
 define('OPTION_$params->{prefix}_DB_HOST', '$db_host');
 $port_line
 define('OPTION_$params->{prefix}_DB_NAME', '$database');
 define('OPTION_$params->{prefix}_DB_USER', '$database');
-define('OPTION_$params->{prefix}_DB_PASS', '\${\\(pgpw('$database'))}');
+define('OPTION_$params->{prefix}_DB_PASS', '\${\\(pgpw('$pgpw_string'))}');
 END
     return $conf;
 
@@ -150,13 +157,14 @@ sub one_db_conf_yml {
         $port_line = "$params->{prefix}_DB_PORT: $params->{port}";
     }
     my $db_host = get_db_host($params, $internal);
+    my $pgpw_string = get_pgpw_string($params, $database);
 
     my $conf = <<END;
 $params->{prefix}_DB_HOST: '$db_host'
 $port_line
 $params->{prefix}_DB_NAME: '$database'
 $params->{prefix}_DB_USER: '$database'
-$params->{prefix}_DB_PASS: '\${\\(pgpw('$database'))}'
+$params->{prefix}_DB_PASS: '\${\\(pgpw('$pgpw_string'))}'
 END
     return $conf;
 
@@ -176,6 +184,8 @@ sub db_conf {
     $conf->{database_configs}{yaml} .= one_db_conf_yml($params, $database, 1);
     $conf->{database_configs}{external_yaml} .= one_db_conf_yml($params, $database, 0);
 
+    my $pgpw_string = get_pgpw_string($params, $database);
+
     # Strings for Rails configuration
     if ($params->{type} eq 'psql') {
             # XXX doesn't cope with multiple Rails database configs (as you
@@ -187,7 +197,7 @@ sub db_conf {
     adapter: postgresql
     database: $database
     username: $database
-    password: \${\\(pgpw('$database'))}
+    password: \${\\(pgpw('$pgpw_string'))}
     host: $db_host
     port: $params->{port}
 END
@@ -201,7 +211,7 @@ END
     adapter: mysql2
     database: $database
     username: $database
-    password: \${\\(pgpw('$database'))}
+    password: \${\\(pgpw('$pgpw_string'))}
     host: $db_host
     port: $port
 END
@@ -216,7 +226,7 @@ END
         port => $params->{port},
         name => $database,
         username => $database,
-        password => "\${\\(pgpw('$database'))}",
+        password => "\${\\(pgpw('$pgpw_string'))}",
     };
     push @{$conf->{struct_database_configs}{external}}, {
         prefix => $params->{prefix},
@@ -224,7 +234,7 @@ END
         port => $params->{port},
         name => $database,
         username => $database,
-        password => "\${\\(pgpw('$database'))}",
+        password => "\${\\(pgpw('$pgpw_string'))}",
     };
 
 }

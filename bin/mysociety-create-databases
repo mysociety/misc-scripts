@@ -87,7 +87,7 @@ foreach my $database (keys %{$databases}) {
 
             # Create user with same name as database
             if (!$dbh->selectrow_array("select count(*) from pg_catalog.pg_user where usename = '$database'")) {
-                my $password = pgpw($database);
+                my $password = $params->{new_pgpw} ? pgpw("-n $database") : pgpw($database);
                 push @out, "creating user";
                 $dbh->do("create user \"$database\" with password '$password'");
             }
@@ -141,7 +141,7 @@ foreach my $database (keys %{$databases}) {
             $dbh->do("create database if not exists `$database`");
 
             # Create user with same name as database
-            my $password = pgpw($database);
+            my $password = $params->{new_pgpw} ? pgpw("-n $database") : pgpw($database);
             $dbh->do("grant all on `$database`.* to `$database` identified by '$password'");
         }
     } elsif ($params->{type} eq 'mongo') {
@@ -159,5 +159,3 @@ if (getpwuid($>) eq 'root') {
     chmod(0755, '/data/mysociety/bin/pgpw');
     exit system("su postgres -c \"$0\"") >> 8;
 }
-
-
