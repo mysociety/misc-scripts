@@ -155,7 +155,7 @@ sub write_settings_file {
     my $vhost_rest = $2;
 
     my $global_settings_file = "/etc/mysociety/config-settings.pl";
-    my $global_settings = read_file($global_settings_file) or die "failed to read /etc/mysociety/config-settings.pl, which is made by deploy-configuration";
+    my $global_settings = read_file($global_settings_file) or die "failed to read /etc/mysociety/config-settings.pl, which is managed by Puppet.";
     my $old_umask = umask(0077);
     open(FH, ">", $settings_file) or die "failed to open $settings_file for write";
     print FH <<END;
