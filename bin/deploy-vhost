@@ -19,6 +19,7 @@ use mySociety::Config;
 use mySociety::Deploy;
 
 use Cwd;
+use DBI;
 use Errno;
 use Time::Piece;
 use File::Path qw(make_path);
@@ -89,6 +90,7 @@ if (defined $conf->{'databases'}) {
     foreach my $database (@{$conf->{'databases'}}) {
         my $params = $mySociety::Deploy::databases->{$database};
         db_conf($params, $database);
+        upgrade_db_password($params, $database) if ($params->{new_pgpw});
     }
 }
 
@@ -1054,6 +1056,43 @@ sub remove_site {
     }
 
 
+}
+
+# Upgrade database password on the fly
+sub upgrade_db_password {
+    my ($params, $database) = @_;
+
+    my $db_host = get_db_host($params, 0);
+
+    if ($params->{type} eq 'psql') {
+        # Try to connect with the old password.  If we can't, assume upgrade already done.
+        my $dbh = DBI->connect("dbi:Pg:dbname=$database;host=$db_host;port=$params->{port}", $database, pgpw($database), { PrintError => 0, RaiseError => 0 });
+        if ($dbh) {
+            # Set password to the new type
+            if (!($dbh->do("ALTER ROLE \"$database\" PASSWORD \"".pgpw("-n $database")."\";"))) {
+                warn "unable to upgrade password for postgres database $database";
+            }
+            $dbh->disconnect();
+        } else {
+            if (DBI->errstr() !~ /password authentication failed/) {
+                warn "unexpected error trying to connect to $database: ".DBI->errstr();
+            }
+        }
+    } elsif ($params->{type} eq 'mysql') {
+        # Try to connect with the old password.  If we can't, assume upgrade already done.
+        my $dbh = DBI->connect("dbi:mysql:dbname=$database;host=$db_host", $database, pgpw($database), { PrintError => 0, RaiseError => 0 });
+        if ($dbh) {
+            # Set password to the new type
+            if (!($dbh->do("SET PASSWORD = PASSWORD('".pgpw("-n $database")."');"))) {
+                warn "unable to upgrade password for postgres database $database";
+            }
+            $dbh->disconnect();
+        } else {
+            if (DBI->err != 1045) { # 1045 = authentication failure
+                warn "unexpected error trying to connect to $database: ".DBI->errstr();
+            }
+        }
+    }
 }
 
 #####################################################################
