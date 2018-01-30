@@ -1069,7 +1069,7 @@ sub upgrade_db_password {
         my $dbh = DBI->connect("dbi:Pg:dbname=$database;host=$db_host;port=$params->{port}", $database, pgpw($database), { PrintError => 0, RaiseError => 0 });
         if ($dbh) {
             # Set password to the new type
-            if (!($dbh->do("ALTER ROLE \"$database\" PASSWORD \"".pgpw("-n $database")."\";"))) {
+            if (!($dbh->do("ALTER ROLE \"$database\" WITH PASSWORD '".pgpw("-n $database")."';"))) {
                 warn "unable to upgrade password for postgres database $database";
             }
             $dbh->disconnect();
