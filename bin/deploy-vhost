@@ -458,8 +458,13 @@ sub update_system_config {
         copy($temp_file, $apache_file);
     }
 
-    mugly("$servers_dir/vhosts/single-vhost-nginx-https-proxy.conf.ugly", "/etc/nginx/$vhost_file")
-        if $conf->{https} eq 'nginx';
+    my $nginx_file = "/etc/nginx/$vhost_file";
+    if ($conf->{https} eq 'nginx') {
+        mugly("$servers_dir/vhosts/single-vhost-nginx-https-proxy.conf.ugly", $nginx_file);
+    } elsif (-e $nginx_file) {
+        unlink($nginx_file);
+        nginx_graceful();
+    }
 
     # Update NRPE's sudo and config files so that it can call monitoring scripts as the vhost user
     system("/data/mysociety/bin/update-vhost-monitoring");
