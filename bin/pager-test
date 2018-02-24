@@ -3,7 +3,7 @@
 # Send a test page so an on-call person can be confident that everything's working.
 #
 
-NAGIOS_SERVERS='ocelot panther kingfisher'
+NAGIOS_SERVERS='kingfisher panther'
 NAGIOS_CHECK='Pager test'
 
 for i in $NAGIOS_SERVERS
