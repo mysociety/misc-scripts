@@ -6,7 +6,7 @@
 set -x
 
 CVS_SERVER=leopard # Probably could be read from vhosts.pl
-BACKUP_CVS_SERVER=ocelot # Hardcoded in CVS post-commit
+BACKUP_CVS_SERVER=kingfisher # Hardcoded in CVS post-commit
 
 if [ ! -e ~/.ssh/id_rsa.pub ]
 then
