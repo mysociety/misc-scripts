@@ -783,9 +783,11 @@ sub update_config_and_schemas {
 sub _run_sub_tasks_from_config {
     my $exec_extras = shift;
     foreach my $exec_extra (@{$exec_extras->{user}}) {
+        print "\n\033[34m[user] $exec_extra\033[0m\n";
         shell("su", "-l", $conf->{'user'}, "-c cd \"$vhost_dir/$vcspath_install\" && $exec_extra");
     }
     foreach my $exec_extra (@{$exec_extras->{root}}) {
+        print "\n\033[34m[root] $exec_extra\033[0m\n";
         shell("cd '$vhost_dir/$vcspath_install' && $exec_extra");
     }
 }
