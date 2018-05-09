@@ -53,6 +53,7 @@ chomp($hostname);
 my $debian_version = `lsb_release -rs`;
 chomp($debian_version);
 my ($debian_version_major, $debian_version_minor) = split /\./, $debian_version;
+my $init_system = $debian_version_major =~ /8|9/ ? 'systemd' : 'sysv';
 
 my $conf = mySociety::Deploy::setup_conf($vhost);
 my $vhost_dir = $conf->{vhost_dir};
@@ -246,7 +247,12 @@ sub apache_graceful {
 }
 
 sub nginx_graceful {
-    shell("/etc/init.d/nginx", "reload") if -e "/etc/init.d/nginx";
+    if ($init_system eq "systemd") {
+        shell("/bin/systemctl", "reload", "nginx");
+    }
+    elsif (-e "/etc/init.d/nginx") {
+        shell("/etc/init.d/nginx", "reload");
+    }
 }
 
 sub graceful {
@@ -370,8 +376,9 @@ sub create_daemons {
   foreach my $daemon (keys %{$conf->{'daemons'}}) {
     my $daemon_mugly_file = $conf->{'daemons'}->{$daemon};
     # See if there's an ugly file in the servers dir
-    $daemon_mugly_file  =~ m#^(.*?).ugly$#;
+    $daemon_mugly_file =~ m#^(.*?).ugly$#;
     my $name_part = $1;
+    my $systemd = $name_part =~ /\.service$/ ? 1 : '';
     my $daemon_mugly;
     my $servers_dir_ugly_file = get_conf_ugly_file_from_servers_dir($name_part);
 
@@ -391,9 +398,16 @@ sub create_daemons {
 
     my $fh = File::Temp->new;
     print $fh "\$daemon_name = '$daemon';\n";
-    mugly($daemon_mugly, "/etc/init.d/$daemon", $fh->filename);
-    chmod 0755, "/etc/init.d/$daemon";
-    system("update-rc.d $daemon defaults | grep -v \"System startup links for .* already exist\"");
+    if ($systemd) {
+        mugly($daemon_mugly, "/etc/systemd/system/${daemon}.service", $fh->filename);
+        shell("/bin/systemctl", "daemon-reload");
+        shell("/bin/systemctl", "enable", "$daemon");
+    }
+    else {
+        mugly($daemon_mugly, "/etc/init.d/$daemon", $fh->filename);
+        chmod 0755, "/etc/init.d/$daemon";
+        system("update-rc.d $daemon defaults | grep -v \"System startup links for .* already exist\"");
+    }
   }
 }
 
@@ -555,7 +569,12 @@ sub check_packages {
 sub stop_site {
     # Stop daemons
     foreach my $daemon (keys %{$conf->{'daemons'}}) {
-        shell("/etc/init.d/$daemon", "stop");
+        if ($init_system eq "systemd") {
+            shell("/bin/systemctl", "stop", "$daemon");
+        }
+        else {
+            shell("/etc/init.d/$daemon", "stop");
+        }
     }
 
     # Stop crontab
@@ -982,7 +1001,12 @@ sub start_site {
 
     # Start daemons
     foreach my $daemon (keys %{$conf->{'daemons'}}) {
-        shell("/etc/init.d/$daemon", "start");
+        if ($init_system eq "systemd") {
+            shell("/bin/systemctl", "start", "$daemon");
+        }
+        else {
+            shell("/etc/init.d/$daemon", "start");
+        }
     }
 
     # Crontab
@@ -1017,9 +1041,19 @@ sub check_for_unpushed {
 # Remove crontabs, vhost config etc.
 sub remove_site {
     # Remove daemons
+    my $daemon_reload = 0;
     foreach my $daemon (keys %{$conf->{'daemons'}}) {
-        unlink("/etc/init.d/$daemon");
+        if (-e "/etc/init.d/$daemon") {
+            unlink("/etc/init.d/$daemon")
+        }
+        if (-e "/etc/systemd/system/${daemon}.service") {
+            shell("/bin/systemctl", "disable", "$daemon");
+            unlink("/etc/systemd/system/${daemon}.service");
+            $daemon_reload = 1;
+        }
     }
+
+    shell("/bin/systemctl", "daemon-reload") if $daemon_reload;
 
     # Remove crontab
     unlink($cron_name);
