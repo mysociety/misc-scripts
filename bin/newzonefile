@@ -7,8 +7,6 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: newzonefile,v 1.18 2013-03-07 10:23:33 ian Exp $';
-
 use strict;
 
 use IO::File;
@@ -38,7 +36,6 @@ Usage: newzonefile DOMAIN [ALIAS ...]
 Create a new template zonefile for DOMAIN, and save it in a file with the same
 name; also create .symlink files linking any specified ALIASes to it.
 
-$rcsid
 EOF
     exit(0);
 }
@@ -63,9 +60,7 @@ if (!$f) {
     exit(1);
 }
 
-my $descr = scalar(@aliases) ? $domain : "$domain; also " . join(', ', @aliases);
-
-my $kw = '$'; $kw .= 'Id:'; $kw .= '$';
+my $descr = @aliases ? "$domain; also " . join(', ', @aliases) : $domain;
 
 $f->print(<<EOF);
 \$TTL 1H;
@@ -74,11 +69,9 @@ $f->print(<<EOF);
 ; $domain:
 ; DNS records for $descr.
 ;
-; $kw
-;
 
 @               SOA     ns0.ukcod.org.uk.   hostmaster.ukcod.org.uk. (
-                $serial             ; Serial
+                $serial          ; Serial
                 10800               ; Refresh
                 3600                ; Retry
                 604800              ; Expire
@@ -101,14 +94,13 @@ $f->print(<<EOF);
                 MX      10          mx1.ukcod.org.uk.
 
 ; Address of $domain itself.
-                IN      A           89.238.145.xx       ; change me (see intranet)
+;                IN      A           46.43.39.xx       ; change me (see wiki)
 
 localhost       IN      A           127.0.0.1
 
 ; Physical web servers for this domain.
-web             IN      A           89.238.145.xx       ; changeme (see intranet)
-
-www             CNAME               web
+;web             IN      A           46.43.39.xx       ; changeme (see wiki)
+;www             CNAME               web
 
 ; Add further web servers etc. below this point.
 
@@ -129,5 +121,5 @@ foreach (@aliases) {
 }
 
 system("git", "add", @gitfiles);
-system("git", "commit", "-m", "Created new zone file for $descr", @gitfiles);
+system("git", "commit", "-m", "[DNS] Created new zone file for $descr", @gitfiles);
 system("git", "push", "origin", "master");
