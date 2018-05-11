@@ -7,8 +7,6 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: newaliasfile,v 1.4 2013-09-04 09:55:38 ian Exp $';
-
 use strict;
 
 use IO::File;
@@ -27,7 +25,6 @@ Usage: newaliasfile DOMAIN [ALIAS ...]
 Create a new template email alias file for DOMAIN, and save it in a file with
 the same name; also create .symlink files linking any specified ALIASes to it.
 
-$rcsid
 EOF
     exit(0);
 }
@@ -50,16 +47,12 @@ if (!$f) {
     exit(1);
 }
 
-my $descr = scalar(@aliases) ? $domain : "$domain; also " . join(', ', @aliases);
-
-my $kw = '$'; $kw .= 'Id:'; $kw .= '$';
+my $descr = @aliases ? "$domain; also " . join(', ', @aliases) : $domain;
 
 $f->print(<<EOF);
 #
 # $domain:
 #     Email alias file for addresses in \@$domain
-#
-# $kw
 #
 
 # Required by RFC
@@ -86,6 +79,6 @@ foreach (@aliases) {
     }
 }
 
-system("git", "add", "-m", "Created new alias file for $descr", @gitfiles);
-system("git", "commit", "-m", "Created new alias file for $descr", @gitfiles);
+system("git", "add", @gitfiles);
+system("git", "commit", "-m", "[Email] Created new alias file for $descr", @gitfiles);
 system("git", "push", "origin", "master");
