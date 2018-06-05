@@ -225,6 +225,7 @@ END
     print FH "\$admin_group = '$conf->{admin_group}';\n" if $conf->{admin_group};
     print FH "\$admin_uri = '$conf->{admin_uri}';\n" if $conf->{admin_uri};
     print FH "\$internal_access_only = '$conf->{internal_access_only}';\n" if $conf->{internal_access_only};
+    print FH "\$prometheus_service_health = '$conf->{prometheus_service_health}';\n" if $conf->{prometheus_service_health};
     print FH Dumper($conf->{public_dirs});
     print FH "\$public_dirs = \$VAR1;\n";
     print FH "\$server_name = '$conf->{server_name}';\n";
