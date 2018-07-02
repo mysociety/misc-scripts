@@ -1,0 +1,169 @@
+#!/usr/bin/perl -w
+#
+# clean-deploys: Check and clean-up the local repositories for deployed vhosts
+#
+
+use strict;
+use File::Path qw(rmtree);
+use Getopt::Long;
+use Pod::Usage;
+use Sys::Hostname;
+my $host = hostname;
+use FindBin;
+use lib "$FindBin::Bin/../perllib";
+use mySociety::VHosts;
+my $vhosts = mySociety::VHosts->new();
+
+my $verbose = 0;
+my $delete = 0;
+my $help = 0;
+my @vhosts_to_check = ();
+my @ignore_vhosts = ( "default.ukcod.org.uk", "${host}.ukcod.org.uk", "debian.mysociety.org" );
+my $vhosts_dir = "/data/vhost";
+my $deployed_vhosts_state = "/data/state/${host}/vhost-list";
+
+# Options
+GetOptions(
+    'verbose' => \$verbose,
+    'delete'  => \$delete,
+    'help'    => \$help,
+    'vhost=s' => \@vhosts_to_check,
+);
+
+if ($help) {
+    pod2usage(-exitval => 0, -verbose => 2);
+    exit(0);
+}
+
+# Unless provided with some on the commandline get a list of deployed
+# vhosts from the local state file.
+unless ( @vhosts_to_check ) {
+    open FH, $deployed_vhosts_state or die "$deployed_vhosts_state not found";
+    STATE: while ( my $v = <FH>) {
+        $v =~ s/^\s+|\s+$//g;
+        foreach ( @ignore_vhosts ) {
+            if ( "$_" eq "$v" ) {
+                print "${v}: skipping - hardcoded exception.\n" if $verbose;
+                next STATE;
+            }
+        }
+        push @vhosts_to_check, $v;
+    }
+}
+
+# Go through our list of vhosts to check.
+foreach my $vhost ( @vhosts_to_check ) {
+
+    # Get and merge vhost and site data from the JSON.
+    my $vhost_conf;
+    if ( $vhosts->{vhosts}{$vhost} ) {
+        $vhost_conf = $vhosts->vhost($vhost);
+    } else {
+        print "$vhost: skipping - not in JSON.\n" if $verbose;
+        next;
+    }
+    my $site_conf  = $vhosts->site($vhost_conf->{site});
+    my $conf;
+    foreach my $key ( keys %$site_conf ) { $conf->{$key} = $site_conf->{$key}; }
+    foreach my $key ( keys %$vhost_conf ) { $conf->{$key} = $vhost_conf->{$key}; }
+
+    # Skip Redirect Sites.
+    if ( $conf->{redirects_only} ) {
+        print "$vhost: skipping - redirects only.\n" if $verbose;
+        next;
+    }
+
+    # Prepare to check for modified or untracked things in the working copies
+    my $repo = $conf->{git_repository} || $conf->{private_git_repository};
+    my $git_status;
+
+    # Are we dealing with a timestamped deploy?
+    if ( $conf->{timestamped_deploy} ) {
+        my $live_deploy = readlink("${vhosts_dir}/${vhost}/${repo}");
+        my @deploys = glob "${vhosts_dir}/${vhost}/${repo}-????-??-?????-??-??";
+        my $num_deploys =  @deploys;
+        my $c = 0;
+        foreach my $deploy ( sort @deploys ) {
+            $c++;
+            $git_status = qx(git -C $deploy status --porcelain);
+            if ($git_status) {
+                print "$vhost: timestamped deploy $deploy repo isn't clean.\n";
+                print "$git_status\n" if $verbose;
+            } elsif ( $c <= $num_deploys - 5 && $deploy ne $live_deploy ) {
+                # Let's just delete any older timestamped deploys, keeping around the most
+                # recent five. Note we're basing this on the order returned by sort() on
+                # the list of timestamped deploy directories, which should be fine as they
+                # contain sortable timestamps.
+                if ( $delete ) {
+                    rmtree( [ $deploy] );
+                    print "$vhost: deleted $deploy\n" if $verbose;
+                } else {
+                    print "$vhost: would delete $deploy\n" if $verbose;
+                }
+            }
+        }
+    } else {
+        $git_status = qx(git -C ${vhosts_dir}/${vhost}/${repo} status --porcelain);
+        if ($git_status) {
+            print "$vhost: repo isn't clean.\n";
+            print "$git_status\n" if $verbose;
+        } else {
+            print "$vhost: repo is clean.\n" if $verbose;
+        }
+    }
+}
+
+__END__
+
+=head1 NAME
+
+clean-deploys
+
+=head1 SYNOPSIS
+
+clean-deploys --help | [OPTIONS]
+
+=head1 DESCRIPTION
+
+Checks deployed vhosts for untracked or changed files the local working
+copies of their repositories. In the case of timestamped deploys,
+optionally removes all but the most recent five deploys (always checking
+for the current live copy).
+
+By default B<clean-deploys> will look at all vhosts listed in the
+current state file for the server in question. The B<--vhost> option
+(q.v.) can be used to specify particular vhosts to check.
+
+=head1 OPTIONS
+
+=over 4
+
+=item --help
+
+Displays this help message.
+
+=item --verbose
+
+Provides more detailed information on untracked and changed files
+and reports on vhosts skipped where they are missing from the
+deployment JSON, configured only for redirects or are hardcoded as
+exceptions.
+
+=item --delete
+
+This will cause all but the most recent 5 timestamped deploys that do
+not have any untracked or changed files to be deleted without further
+notice. Recentness is simply determined using a sort on the directory
+names of the timestamped deploys. The current live deploy, as
+determined by the target of the symlink to the bare repository name,
+will not be deleted regardless of its place in the sort order.
+
+=item --vhost
+
+This option is used to check specifc vhosts rather than checking all
+deployed vhosts and should be specified once for each vhost that needs
+checking and/or cleaning.
+
+=back
+
+=cut
