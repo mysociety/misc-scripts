@@ -8,7 +8,7 @@ from apiclient.discovery import build
 from httplib2 import Http
 
 
-client_id = '975835307765-3kutvru2fg13jvjj38mrst5r0iilt9od@developer.gserviceaccount.com'
+client_id = 'email-lookup-service@internal-179008.iam.gserviceaccount.com'
 sub_user = 'api-target-user@mysociety.org'
 api_key_file = '/etc/mysociety/google_apps_api_key.p12'
 
