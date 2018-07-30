@@ -1,13 +1,7 @@
 #!/bin/bash
 #
-# Update the local copy of puppet manifests whenever new stuff is pushed.
+# Deploy Puppet changes whenever new stuff is pushed.
 #
-
-# Location of our Puppet repo
-export MY_REPO=ssh://git.mysociety.org/data/git/private/mysociety-puppet.git
-
-# Do we want to run librarian-puppet?
-RUN_LIBRARIAN='yes'
 
 # Reset environment so we can use git
 unset GIT_INDEX_FILE
@@ -17,66 +11,32 @@ unset GIT_DIR
 # The default umask is 0022 and we can't be sure how users may have set theirs.
 umask 0002
 
-cd /etc/puppetlabs/code/environments
-
 while read oldref newref name
 do
-    # Check the branch name used. We need to map "master" to "production"
-    # and ensure that only characters permitted in Puppet environment names are used.
+    # Check the branch name used.
+    # Ensure that only characters permitted in Puppet environment names are used.
     # See: https://docs.puppet.com/puppet/3.8/reference/lang_reserved.html#environments
     branch=${name##refs/heads/}
-    if [ "${branch}" == 'master' ]; then
-      directory='production'
-    elif [[ ${branch} =~ ^[a-z0-9_]+$ ]]; then
-      directory=${branch}
-    else
+    # This is checked in deploy-puppet-environment, but we might as well check here too.
+    if ! [[ ${branch} =~ ^[a-z0-9_]+$ ]]; then
       echo "Branch names in this repo should be valid Puppet Environment names."
       echo "Valid names match the regex ^[a-z0-9_]+$."
       echo "We won't create an environment from this branch."
       exit 1
     fi
 
-    # Loction of the relevant working copy:
-    export envdir=/etc/puppetlabs/code/environments/${directory}
-
     # Cater for branch removal, with a sanity check for master
     # a newref of 0000000000000000000000000000000000000000 indicates branch deletion
     if [[ ${newref} =~ ^0+$ ]]; then
+      # This is checked in deploy-puppet-environment, but we might as well check here too.
       if [[ "${branch}" == "master" ]]; then
         echo "Looks like you're trying to delete the master branch - not going to do that."
         echo "You might want to check what has happened."
         exit 1
       else
-        echo "Removing environment at ${envdir}"
-        rm -fr ${envdir}
+        sudo /data/mysociety/bin/deploy-puppet-environment -d -b $branch
       fi
     else
-      # We're either creating or updating an environment.
-      if [ -d ${envdir} ]; then
-        # Our branch environment already exists.
-        cd ${envdir}
-        git fetch --all
-        # There shouldn't be any local changes in this working copy!
-        if [[ -n $( git status --porcelain ) ]]; then
-          echo "There appear to be local changes in ${envdir}."
-          echo "Not updating, please check and fix manually."
-          RUN_LIBRARIAN='no'
-        else
-          echo "Updating existing environment in ${envdir}"
-          git reset --hard ${newref}
-        fi
-      else
-        # We should be able to just clone out the new branch directly
-        echo "Creating new environment in ${envdir}"
-        git clone ${MY_REPO} ${envdir} --branch ${branch}
-      fi
-      if [[ ${RUN_LIBRARIAN} == 'yes' ]] &&  [[ -f ${envdir}/Puppetfile ]]; then
-        cd ${envdir}
-        echo "Running librarian-puppet"
-        librarian-puppet install
-        # Fix permissions.
-        find ${envdir}/modules -user ${USER} -exec chmod ug+w {} \; -exec chown :privatecvs {} \; 2>/dev/null
-        find ${envdir}/modules -user ${USER} -a -type d -exec chmod g+s {} \; 2>/dev/null
-      fi
+      sudo /data/mysociety/bin/deploy-puppet-environment -b $branch -r $newref
     fi
 done
