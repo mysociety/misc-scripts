@@ -1,0 +1,146 @@
+#!/usr/bin/env bash
+#
+# deploy-puppet-environment: deploys a puppet environment
+#
+
+umask 0002
+
+PUPPET_REPO=ssh://git.mysociety.org/data/git/private/mysociety-puppet.git
+PUPPET_ENVDIR="${PUPPET_ENVDIR:-/etc/puppetlabs/code/environments}"
+BRANCH=testing
+REF=
+DELETE=
+PUPPET_MASTER="${PUPPET_MASTER:-$(dig +short -x $(dig +short puppet.ukcod.org.uk | tail -1) | sed -e 's/\.$//')}"
+PUPPET_ENV=
+
+# Functions
+print_usage() {
+  cat <<'END_OF_HELP'
+Usage: deploy-puppet-environment [ -d ] [ -b <branch> ] [ -r <ref> ] [ -e <envdir> ] [ -p <puppet_master> ] | [ -h ]
+
+Options:
+   -h                 : print usage
+   -d                 : delete the environment specified by the -b option
+   -b <branch>        : deploy <branch>
+                        default: testing
+   -r <ref>           : a specific git ref to deploy
+                        default: origin/$BRANCH
+   -e <envdir>        : path to location to create environment
+                        default: /etc/puppetlabs/code/environments or PUPPET_ENVDIR
+   -p <puppet_master> : FQDN of server to deploy to
+                        default: Reverse lookup of puppet.ukcod.org.uk or PUPPET_MASTER
+
+Note that `-e` and `-p` can be specified using the PUPPET_ENVDIR and PUPPET_MASTER environment variables if desired.
+
+If you pass `-d -b master`, you'll get an error - the script won't delete the production environment.
+
+By default, the script will only run locally if the FQDN of the host you are running it on matches PUPPET_MASTER.
+If these are different, the script will call itself over SSH on the PUPPET_MASTER with the same arguments. In order
+to do this, it needs to be run as root to ensure the correct access, SSH keys, etc.
+
+END_OF_HELP
+}
+
+# Work out our local hostname, catering for MacOS for testing purposes.
+case $(uname -s) in
+  "Darwin")
+    HOSTNAME=$(hostname -f)
+    ;;
+  "Linux")
+    HOSTNAME=$(hostname --fqdn)
+    ;;
+  *)
+    echo "==> Platform $(uname -s) not supported."
+    exit 1
+    ;;
+esac
+
+# We'll need to do some options processing here to cater for requests for help and bad options.
+while getopts ":hdb:r:e:p:" opt; do
+  case $opt in
+    h)
+      print_usage
+      exit 0
+      ;;
+    b)
+      BRANCH=$OPTARG
+      ;;
+    r)
+      REF=$OPTARG
+      ;;
+    e)
+      PUPPET_ENVDIR=$OPTARG
+      ;;
+    p)
+      PUPPET_MASTER=$OPTARG
+      ;;
+    d)
+      DELETE=true
+      ;;
+    :)
+      echo "Option -$OPTARG requires an argument." >&2
+      exit 1
+      ;;
+    *)
+      print_usage
+      exit 1
+      ;;
+  esac
+done
+
+# Where should I be running?
+if [ "$HOSTNAME" != "$PUPPET_MASTER" ]; then
+  echo "==> Deploying ${BRANCH} to ${PUPPET_ENVDIR} on ${PUPPET_MASTER}"
+  ssh $PUPPET_MASTER "/data/mysociety/bin/deploy-puppet-environment $@"
+else
+  # Check that our target location exists.
+  if [ ! -d $PUPPET_ENVDIR ]; then
+    echo "$PUPPET_ENVDIR not present, is this the Puppet Master?"
+    exit 1
+  fi
+
+  # Map the master branch to the production environment.
+  if [ "$BRANCH" == "master" ]; then
+    PUPPET_ENV=production
+  else
+    PUPPET_ENV=$BRANCH
+  fi
+
+  # Check for a REF, or just set to the branch.
+  if [ -z "$REF" ]; then
+    REF="origin/${BRANCH}"
+  fi
+
+  # Are we being asked to delete?
+  if [ -n "$DELETE" ]; then
+    if [ "$BRANCH" == "master" ]; then
+      echo "==> You asked me to delete the production environment. I won't do that, sorry."
+    else
+      echo "==> Deleting ${PUPPET_ENVDIR}/${PUPPET_ENV}..."
+      rm -fr ${PUPPET_ENVDIR}/${PUPPET_ENV}
+    fi
+
+  # Is the environment already present?
+  elif [ -d ${PUPPET_ENVDIR}/${PUPPET_ENV} ]; then
+    echo "==> Environment $PUPPET_ENV present - fetching changes"
+    cd ${PUPPET_ENVDIR}/${PUPPET_ENV}
+    git fetch --all
+    if [ -n "$(git status --porcelain)" ]; then
+      echo "==> There appear to be local changes in ${PUPPET_ENVDIR}/${PUPPET_ENV}, not updating."
+    else
+      echo "==> Resetting ${PUPPET_ENVDIR}/${PUPPET_ENV} to $REF and updating"
+      git reset --hard $REF
+      script/update
+    fi
+    
+  # We're creating a new environment - is the name valid?
+  elif [[ ${BRANCH} =~ ^[a-z0-9_]+$ ]]; then
+    echo "==> Creating new environment in ${PUPPET_ENVDIR}/${PUPPET_ENV}"
+    git clone $PUPPET_REPO ${PUPPET_ENVDIR}/${PUPPET_ENV} --branch $BRANCH
+    cd ${PUPPET_ENVDIR}/${PUPPET_ENV}
+    echo "==> Running local setup..."
+    script/setup
+  else
+    echo "==> Illegal branch name $BRANCH, valid names match the regex ^[a-z0-9_]+$ - doing nothing."
+  fi
+fi
