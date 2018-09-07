@@ -6,20 +6,23 @@
 
 use strict;
 use warnings;
-
 use Sys::Hostname;
+use Socket;
 
-my $REPO_HOST='leopard';
+#Sanity check - are we on the right host?
+my $REPO_URL='debian.mysociety.org';
+my $ip = gethostbyname($REPO_URL) || die "Can't find $REPO_URL in DNS\n";
+my $REPO_HOST = gethostbyaddr($ip, &AF_INET) || die "Can't find $ip in DNS\n";
+$REPO_HOST =~  s/([^.]+)\..*/$1/;
+die "Run on $REPO_HOST only" if(hostname() ne $REPO_HOST);
+
 my $REPO_BASE='/data/vhost/debian.mysociety.org/docs';
+chdir $REPO_BASE or die $!;
+
 my $DATE=`date -R -u`;
 chomp $DATE;
 
-die "Run on $REPO_HOST only" if(hostname() ne $REPO_HOST);
-
-chdir $REPO_BASE or die $!;
-
 my %releases;
-
 
 foreach my $i (glob 'dists/*/*/binary-*') {
     print "Generating Packages files for: $i\n";
