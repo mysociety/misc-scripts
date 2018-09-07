@@ -7,8 +7,6 @@
 # Email: chris@mysociety.org; WWW: http://www.mysociety.org/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: deploy-dns,v 1.53 2013-05-09 10:05:40 ian Exp $';
-
 use strict;
 
 package Oops;
@@ -38,21 +36,6 @@ use Pod::Usage;
 use POSIX qw(strftime);
 use Regexp::Common qw(dns);
 use Socket;
-
-# These are the nameservers we list.
-my @nameservers = qw(
-        ns0.ukcod.org.uk
-        ns1.ukcod.org.uk
-        ns2.ukcod.org.uk
-        ns0.flirble.org.uk
-        ns2.flirble.org.uk
-        ns3.flirble.org.uk
-    );
-
-# these domains can be dynamically updated with the key given here
-my %allow_ddns = (
-        'ec2.mysociety.org' => 'domains.mysociety.org.',
-);
 
 my $be_verbose = 0;
 my $be_quiet = 0;
@@ -179,13 +162,13 @@ try {
     my %files = ();
     while (<GIT>) {
         chop;
-	unless (/^(?:_perm|\.cvsignore|README)$/) {
+        unless (/^(?:_perm|\.cvsignore|README)$/) {
             $files{$_} = 0;
-	}
+        }
     }
     close GIT;
 
-    verbose("done; found " . scalar(keys(%files)) . " domains");
+    verbose("done; found " . scalar(keys(%files)) . " domains\n");
 
     my $errors = 0;
     my @domains = ();
@@ -259,55 +242,8 @@ try {
  */
 
 EOF
-
-    foreach my $ddns_domain (keys %allow_ddns) {
-        if(!grep(/^$ddns_domain$/, @domains)) {
-	    push @domains, $ddns_domain;
-	}
-    }
-
     foreach my $domain (@domains) {
-	if(defined $allow_ddns{$domain}) {
-	    if(hostname() eq 'ocelot') { # DDNS domains have a single master
-                $h->printf(<<EOF,
-zone "%s" {
-    type master;
-    file "master/%s";
-    allow-query { any; };
-    allow-transfer { allow_xfer_list; };
-    allow-update { key %s; };
-    also-notify { 46.43.39.75; };
-};
-EOF
-		    $domain, $domain, $allow_ddns{$domain})
-                        || throw Oops("$name: $!");
-	    } elsif(hostname() eq 'leopard') {
-                $h->printf(<<EOF,
-zone "%s" {
-    type slave;
-    file "slave/%s";
-    allow-query { any; };
-    allow-transfer { allow_xfer_list; };
-    masters { 46.43.39.78; };
-};
-EOF
-		    $domain, $domain)
-                        || throw Oops("$name: $!");
-	    }
-    } elsif(hostname() eq 'kingfisher') {
-            $h->printf(<<EOF,
-zone "%s" {
-    type slave;
-    file "slave/%s";
-    allow-query { any; };
-    allow-transfer { allow_xfer_list; };
-    masters { 46.43.39.75; 46.43.39.78; };
-};
-EOF
-                $domain, $domain)
-                    || throw Oops("$name: $!");
-    } else {
-            $h->printf(<<EOF,
+        $h->printf(<<EOF,
 zone "%s" {
     type master;
     file "master/%s";
@@ -315,9 +251,7 @@ zone "%s" {
     allow-transfer { allow_xfer_list; };
 };
 EOF
-                $domain, $domain)
-                    || throw Oops("$name: $!");
-    }
+        $domain, $domain) || throw Oops("$name: $!");
     }
 
     $h->close() || throw Oops("$name: $!");
@@ -351,7 +285,7 @@ EOF
 
     # and before that's all banged out, log
     shell('/data/mysociety/bin/deploy-logger', 'Deployed DNS')
-        unless $be_quiet; 
+        unless $be_quiet;
 done:
     $ret = 0;
 
