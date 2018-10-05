@@ -6,10 +6,8 @@
 # Sets the root password to something good.
 #
 # Copyright (c) 2005 UK Citizens Online Democracy. All rights reserved.
-# Email: francis@mysociety.org; WWW: http://www.mysociety.org/
-# 
-
-my $rcsid = ''; $rcsid .= '$Id: generate-mypass,v 1.30 2012-10-23 12:08:54 matthew Exp $';
+# Email: sysadmin@mysociety.org; WWW: http://www.mysociety.org/
+#
 
 use strict;
 require 5.8.0;
@@ -31,7 +29,6 @@ our ($vhosts, $sites, $databases);
 my %perms = (
     buffalo => {
         matthew => 'twfy',
-        debbi => 'twfy',
     },
 );
 
@@ -69,7 +66,7 @@ foreach my $user (keys %$database_permissions) {
     my $database = $database_permissions->{$user};
     my $host;
     if (ref $database) {
-        $host = $database->[1] . '.int.ukcod.org.uk' if $database->[1];
+        $host = $database->[1] . '.ukcod.org.uk' if $database->[1];
         $database = $database->[0];
     }
     my $user = $database;
@@ -90,7 +87,7 @@ password = $password
 ; database = $database ; this upsets lots of the MySQL commands e.g. mysqladmin, mysqldump
 END
     $text .= "host = $host\n" if $host;
-    $tmph->print($text) || throw Oops("$tmpn: write: $!"); 
+    $tmph->print($text) || throw Oops("$tmpn: write: $!");
     $tmph->close();
 
     chmod 0400, $tmpn;
@@ -103,7 +100,7 @@ END
 # Connect as root to db, and set root password. Debian defaults to not having one.
 my $password = `$FindBin::Bin/pgpw root`;
 chomp $password;
-my $db = DBI->connect("dbi:mysql:database=mysql;host=localhost", "root", $password, 
+my $db = DBI->connect("dbi:mysql:database=mysql;host=localhost", "root", $password,
     { RaiseError => 0, AutoCommit => 1 });
 if (!$db) {
     print "Ignore the warning above - happens first time run on a new machine, before mysql root password is set";
@@ -116,4 +113,3 @@ if (!$db) {
 }
 $db->do("update user set Password = PASSWORD(?) where User = 'root'", {}, $password);
 $db->do("flush privileges");
-
