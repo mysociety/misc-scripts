@@ -580,20 +580,13 @@ sub stop_site {
     # Stop crontab
     unlink($cron_name);
 
-    # Stop email forwarding
-    # XXX hmmm, maybe not such a good idea to stop this, as emails to, say
-    # WhatDoTheyknow, would then not be delivered while deploying new version
-    # of it. Really should replace with something that gets exim to try
-    # redelivery?
-    #
-    # XXXX Note that this commented-out code was written before support was
-    # added for .forward-foo files, and does not support them; so do not just
-    # blindly uncomment it.
-    #if ($conf->{'email'}) {
-    #    foreach my $email_user (keys %{$conf->{'email'}}) {
-    #        unlink("/home/$email_user/.forward");
-    #    }
-    #}
+    # Stop email forwarding - calls the disable-email script for each
+    # user specified in the $conf->{'email'} hash.
+    if ($conf->{'email'}) {
+        foreach my $email_user (keys %{$conf->{'email'}}) {
+            shell("su", "-", $email_user, "-c /data/mysociety/bin/disable-email activate");
+        }
+    }
 
     if (-d "$vhost_dir/docs") {
         if (-s "$servers_dir/vhosts/downs/${vhost}.html") {
@@ -924,11 +917,17 @@ sub make_dot_forward {
     my ($email_user, $script, $suffix) = @_;
     my $forward_file_name = defined($suffix) ? ".forward-$suffix" : ".forward";
 
+    # remove any backup files created by the disable-email script.
+    my $backup_file = glob("~${email_user}/${forward_file_name}.bak");
+    unlink $backup_file if -e $backup_file;
+
+    # Create new version.
     if ($conf->{ruby_version}){
         shell("su", "-", $email_user, "-c echo \"|/home/$conf->{'user'}/run-with-rbenv-path $vhost_dir/$vcspath/$script\" >~$email_user/$forward_file_name");
     } else {
         shell("su", "-", $email_user, "-c echo \"|$vhost_dir/$vcspath/$script\" >~$email_user/$forward_file_name");
     }
+
 }
 
 sub install_or_remove_crontab {
