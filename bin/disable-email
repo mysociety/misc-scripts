@@ -27,18 +27,27 @@ EOF
 }
 
 function move_files {
-  echo Changing pwd to $HOME
   cd $HOME
   if stat -t .forward*.bak >/dev/null 2>&1 ; then
-    echo Looks like there are some backup files already present \($( ls .forward*.bak )\), aborting.
-    exit 75
-  else
-    for forward_file in .forward* ; do
-      echo Moving ${forward_file} to ${forward_file}.bak
-      mv ${forward_file} ${forward_file}.bak
-      echo Echoing '|/data/mysociety/bin/disable-email fail' to ${forward_file}
-      echo '|/data/mysociety/bin/disable-email fail' > ${forward_file}
+    for backup_file in .forward*.bak ; do
+      actual_file=$( echo $backup_file | sed -e 's/\.bak$//')
+      if grep -q '|/data/mysociety/bin/disable-email fail' $actual_file ; then
+        echo "==> disable-email: Forwarding already disabled for $actual_file, skipping."
+      else
+        echo "==> disable-email: Backup file $backup_file present but $actual_file active - aborting."
+        exit 75
+      fi
     done
+  else
+    if stat -t .forward* >/dev/null 2>&1 ; then
+      for forward_file in .forward* ; do
+        echo "==> disable-email: Moving ${forward_file} to ${forward_file}.bak"
+        mv ${forward_file} ${forward_file}.bak
+        echo '|/data/mysociety/bin/disable-email fail' > ${forward_file}
+      done
+    else
+      echo "==> disable-email: Cannot see any .forward files to disable."
+    fi
   fi
 }
 
@@ -48,11 +57,11 @@ function restore_files {
   if stat -t .forward*.bak >/dev/null 2>&1 ; then
     for forward_file in .forward*.bak ; do
       original_file=$( echo $forward_file | sed -e 's/.bak$//' )
-      echo Moving mv $forward_file to $original_file
+      echo "==> disable-email: Moving mv $forward_file to $original_file"
       mv $forward_file $original_file
     done
   else
-    echo Cannot see any backup files to restore.
+    echo "==> disable-email: Cannot see any backup files to restore."
     exit 75
   fi
 }
