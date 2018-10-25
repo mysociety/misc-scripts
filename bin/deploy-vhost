@@ -918,8 +918,9 @@ sub make_dot_forward {
     my $forward_file_name = defined($suffix) ? ".forward-$suffix" : ".forward";
 
     # remove any backup files created by the disable-email script.
-    my $backup_file = glob("~${email_user}/${forward_file_name}.bak");
-    unlink $backup_file if -e $backup_file;
+    if ( -e "/home/${email_user}/${forward_file_name}.bak" ) {
+        unlink "/home/${email_user}/${forward_file_name}.bak";
+    }
 
     # Create new version.
     if ($conf->{ruby_version}){
