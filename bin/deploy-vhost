@@ -102,14 +102,14 @@ my $restart_apache = 0;
 # Helper functions
 
 sub get_db_host {
-    my ($params) = @_;
-    if ($params->{host} eq 'localhost') {
+    my $host = shift;
+    if ($host eq 'localhost') {
         # If the host is localhost, then it shouldn't be suffixed with
         # a domain:
-        return $params->{host};
+        return $host;
     } else {
         # Otherwise suffix it with a ukcod domain:
-        return "$params->{host}.ukcod.org.uk";
+        return "${host}.ukcod.org.uk";
     }
 }
 
@@ -131,7 +131,7 @@ sub db_conf {
 
     my $db_config = {
         prefix   => $params->{prefix},
-        host     => get_db_host($params),
+        host     => get_db_host($params->{host}),
         name     => $database,
         username => $database,
         password => "\${\\(pgpw('$pgpw_string'))}",
@@ -145,6 +145,13 @@ sub db_conf {
         $db_config->{port} = '3306';
     }
 
+    # Replica information.
+    if ($params->{replica}) {
+        $db_config->{replica_host} = get_db_host($params->{replica});
+        $db_config->{replica_port} = mySociety::Deploy::get_replica_port($db_config->{port});
+    }
+
+    # Adapter used by Rails configuration
     if ($params->{type} eq 'mysql') {
         $db_config->{adapter} = 'mysql2';
     }
@@ -1018,7 +1025,7 @@ sub remove_site {
 sub upgrade_db_password {
     my ($params, $database) = @_;
 
-    my $db_host = get_db_host($params);
+    my $db_host = get_db_host($params->{host});
 
     if ($params->{type} eq 'psql') {
         # Try to connect with the old password.  If we can't, assume upgrade already done.
