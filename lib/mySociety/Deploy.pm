@@ -122,9 +122,7 @@ sub setup_conf {
     $conf->{rbenv_global} = 0 if !exists($conf->{rbenv_global});
     $conf->{database_configs} = {
         default => '',
-        external => '',
         yaml => '',
-        external_yaml => '',
         rails => '',
     };
     return $conf;
@@ -193,28 +191,14 @@ DONE_DATABASE_CONFIGS_YML
 \$rails_database_config = <<DONE_RAILS_DATABASE_CONFIG;
 $conf->{database_configs}{rails}
 DONE_RAILS_DATABASE_CONFIG
-\$external_database_configs = <<DONE_EXTERNAL_DATABASE_CONFIGS;
-$conf->{database_configs}{external}
-DONE_EXTERNAL_DATABASE_CONFIGS
-\$external_database_configs_yml = <<DONE_EXTERNAL_DATABASE_CONFIGS_YML;
-$conf->{database_configs}{external_yaml}
-DONE_EXTERNAL_DATABASE_CONFIGS_YML
 END
 
-    foreach my $db (@{$conf->{struct_database_configs}{internal}}) {
+    foreach my $db (@{$conf->{struct_database_configs}) {
         print FH "\$db_config_$db->{prefix}_host = '$db->{host}';\n";
         print FH "\$db_config_$db->{prefix}_port = $db->{port};\n" if $db->{port};
         print FH "\$db_config_$db->{prefix}_name = '$db->{name}';\n";
         print FH "\$db_config_$db->{prefix}_username = '$db->{username}';\n";
         print FH "\$db_config_$db->{prefix}_password = $db->{password};\n";
-    }
-
-    foreach my $db (@{$conf->{struct_database_configs}{external}}) {
-        print FH "\$db_config_$db->{prefix}_external_host = '$db->{host}';\n";
-        print FH "\$db_config_$db->{prefix}_external_port = $db->{port};\n" if $db->{port};
-        print FH "\$db_config_$db->{prefix}_external_name = '$db->{name}';\n";
-        print FH "\$db_config_$db->{prefix}_external_username = '$db->{username}';\n";
-        print FH "\$db_config_$db->{prefix}_external_password = $db->{password};\n";
     }
 
     print FH Dumper($conf->{conf_dir});
