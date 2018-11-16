@@ -120,11 +120,7 @@ sub setup_conf {
     $conf->{request_timeout} = '' if !exists($conf->{request_timeout});
     $conf->{ruby_version} = '' if !exists($conf->{ruby_version});
     $conf->{rbenv_global} = 0 if !exists($conf->{rbenv_global});
-    $conf->{database_configs} = {
-        default => '',
-        yaml => '',
-        rails => '',
-    };
+    $conf->{database_configs} = [];
     return $conf;
 }
 
@@ -182,23 +178,58 @@ sub write_settings_file {
 \$randomly = '/data/mysociety/bin/randomly -p 0.5'; # for crontab
 \$ruby_version = '$conf->{ruby_version}';
 \$rbenv_global = '$conf->{rbenv_global}';
-\$database_configs = <<DONE_DATABASE_CONFIGS;
-$conf->{database_configs}{default}
-DONE_DATABASE_CONFIGS
-\$database_configs_yml = <<DONE_DATABASE_CONFIGS_YML;
-$conf->{database_configs}{yaml}
-DONE_DATABASE_CONFIGS_YML
-\$rails_database_config = <<DONE_RAILS_DATABASE_CONFIG;
-$conf->{database_configs}{rails}
-DONE_RAILS_DATABASE_CONFIG
 END
 
-    foreach my $db (@{$conf->{struct_database_configs}) {
-        print FH "\$db_config_$db->{prefix}_host = '$db->{host}';\n";
-        print FH "\$db_config_$db->{prefix}_port = $db->{port};\n" if $db->{port};
-        print FH "\$db_config_$db->{prefix}_name = '$db->{name}';\n";
-        print FH "\$db_config_$db->{prefix}_username = '$db->{username}';\n";
-        print FH "\$db_config_$db->{prefix}_password = $db->{password};\n";
+    # If there is database config, write it out in the various supported formats.
+    if ($conf->{database_configs}) {
+        # PHP Config
+        print FH "\$database_configs = <<DONE_DATABASE_CONFIGS;\n";
+        foreach my $db (@{$conf->{database_configs}}) {
+            print FH "define('OPTION_$db->{prefix}_DB_HOST', '$db->{host}');\n";
+            print FH "define('OPTION_$db->{prefix}_DB_PORT', $db->{port};\n" if $db->{port};
+            print FH "define('OPTION_$db->{prefix}_DB_NAME', '$db->{name}');\n";
+            print FH "define('OPTION_$db->{prefix}_DB_USER', '$db->{username}');\n";
+            print FH "define('OPTION_$db->{prefix}_DB_PASS', '$db->{password}');\n";
+        }
+        print FH "DONE_DATABASE_CONFIGS\n";
+
+        # YAML Config
+        print FH "\$database_configs_yml = <<DONE_DATABASE_CONFIGS_YML;\n";
+        foreach my $db (@{$conf->{database_configs}}) {
+            print FH "$db->{prefix}_DB_HOST: '$db->{host}'\n";
+            print FH "$db->{prefix}_DB_PORT: $db->{port}\n" if $db->{port};
+            print FH "$db->{prefix}_DB_NAME: '$db->{name}'\n";
+            print FH "$db->{prefix}_DB_USER: '$db->{username}'\n";
+            print FH "$db->{prefix}_DB_PASS: '$db->{password}'\n";
+        }
+        print FH "DONE_DATABASE_CONFIGS_YML\n";
+
+        # Rails config
+        # This doesn't cope with multiple Rails database configs (as you
+        # have to list them in the yml file in right place, so one text
+        # option can't). If you need to connect to multiple databases from
+        # Rails, you'll need to template the configuration using the
+        # individual variables generated in the next step.
+        if (scalar(@{$conf->{database_configs}}) == 1) {
+            my $db = ${$conf->{database_configs}}[0];
+            print FH "\$rails_database_config = <<DONE_RAILS_DATABASE_CONFIG;\n";
+            print FH "    adapter: $db->{adapter}\n";
+            print FH "    database: $db->{name}\n";
+            print FH "    username: $db->{username}\n";
+            print FH "    password: $db->{password}\n";
+            print FH "    host: $db->{host}\n";
+            print FH "    port: $db->{port}\n";
+            print FH "DONE_RAILS_DATABASE_CONFIG\n";
+        }
+
+        # Individual Variables for use with arbitrary formats.
+        foreach my $db (@{$conf->{database_configs}}) {
+            print FH "\$db_config_$db->{prefix}_host = '$db->{host}';\n";
+            print FH "\$db_config_$db->{prefix}_port = $db->{port};\n" if $db->{port};
+            print FH "\$db_config_$db->{prefix}_name = '$db->{name}';\n";
+            print FH "\$db_config_$db->{prefix}_username = '$db->{username}';\n";
+            print FH "\$db_config_$db->{prefix}_password = $db->{password};\n";
+        }
     }
 
     print FH Dumper($conf->{conf_dir});

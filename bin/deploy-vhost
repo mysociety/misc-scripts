@@ -119,102 +119,41 @@ sub get_pgpw_string {
     return $params->{new_pgpw} ? "-n $database" : $database;
 }
 
-sub one_db_conf_php {
-    my ($params, $database) = @_;
-    my $port_line = '';
-    if ($params->{type} eq 'psql') {
-        $port_line = "define('OPTION_$params->{prefix}_DB_PORT', $params->{port});";
-    }
-    my $db_host = get_db_host($params);
-    my $pgpw_string = get_pgpw_string($params, $database);
-
-    my $conf = <<END;
-define('OPTION_$params->{prefix}_DB_HOST', '$db_host');
-$port_line
-define('OPTION_$params->{prefix}_DB_NAME', '$database');
-define('OPTION_$params->{prefix}_DB_USER', '$database');
-define('OPTION_$params->{prefix}_DB_PASS', '\${\\(pgpw('$pgpw_string'))}');
-END
-    return $conf;
-
-}
-
-sub one_db_conf_yml {
-    my ($params, $database) = @_;
-    my $port_line = '';
-    if ($params->{type} eq 'psql') {
-        $port_line = "$params->{prefix}_DB_PORT: $params->{port}";
-    }
-    my $db_host = get_db_host($params);
-    my $pgpw_string = get_pgpw_string($params, $database);
-
-    my $conf = <<END;
-$params->{prefix}_DB_HOST: '$db_host'
-$port_line
-$params->{prefix}_DB_NAME: '$database'
-$params->{prefix}_DB_USER: '$database'
-$params->{prefix}_DB_PASS: '\${\\(pgpw('$pgpw_string'))}'
-END
-    return $conf;
-
-}
-
+# For each database, pull in information from the JSON and derive some
+# further data as required. Store this in $conf->{database_configs}
 sub db_conf {
     my ($params, $database) = @_;
     if ($params->{type} ne 'mysql' && $params->{type} ne 'psql' && $params->{type} ne 'mongo'){
         die "unknown database type '$params->{type}'";
     }
 
-    # Strings for PHP configuration
-    $conf->{database_configs}{default} .= one_db_conf_php($params, $database);
-
-    # Strings for YAML configuration
-    $conf->{database_configs}{yaml} .= one_db_conf_yml($params, $database);
-
     my $pgpw_string = get_pgpw_string($params, $database);
 
-    # Strings for Rails configuration
-    if ($params->{type} eq 'psql') {
-            # XXX doesn't cope with multiple Rails database configs (as you
-            # have to list them in the yml file in right place, so one text
-            # option can't), oh well
-            if (scalar(@{$conf->{'databases'}}) == 1) {
-                my $db_host = get_db_host($params);
-                $conf->{database_configs}{rails} = <<END;
-    adapter: postgresql
-    database: $database
-    username: $database
-    password: \${\\(pgpw('$pgpw_string'))}
-    host: $db_host
-    port: $params->{port}
-END
-            }
-    }
-    elsif ($params->{type} eq 'mysql') {
-            if (scalar(@{$conf->{'databases'}}) == 1) {
-                my $port = $params->{port} || 3306;
-                my $db_host = get_db_host($params);
-                $conf->{database_configs}{rails} = <<END;
-    adapter: mysql2
-    database: $database
-    username: $database
-    password: \${\\(pgpw('$pgpw_string'))}
-    host: $db_host
-    port: $port
-END
-            }
-    }
-
-    # Add all the parameters as structured data
-
-    push @{$conf->{struct_database_configs}}, {
-        prefix => $params->{prefix},
-        host => get_db_host($params, 0),
-        port => $params->{port},
-        name => $database,
+    my $db_config = {
+        prefix   => $params->{prefix},
+        host     => get_db_host($params),
+        name     => $database,
         username => $database,
         password => "\${\\(pgpw('$pgpw_string'))}",
     };
+
+    # All psql databases should have a port, MySQL often don't.
+    if ($params->{port}) {
+        $db_config->{port} = $params->{port};
+    }
+    elsif ($params->{type} eq 'mysql') {
+        $db_config->{port} = '3306';
+    }
+
+    if ($params->{type} eq 'mysql') {
+        $db_config->{adapter} = 'mysql2';
+    }
+    elsif ($params->{type} eq 'psql') {
+        $db_config->{adapter} = 'postgres'
+    }
+
+    # Add all the parameters as structured data to $conf.
+    push @{$conf->{database_configs}}, $db_config;
 
 }
 
