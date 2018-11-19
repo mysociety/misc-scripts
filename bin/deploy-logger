@@ -34,8 +34,7 @@ fi
 # Add new entry to end of log file
 echo "$DATELOG $WHO-" "$@" >>$LOGFILE
 
-# Post notice to IRC about log entry.
-# Backgrounded due to ident delay
+# Post notice to Slack about log entry.
 if [[ ! "$@" =~ "Deployed vhost" || ! "$@" =~ "test.mysociety.org" ]]
 then
 SLACK=`cat /etc/mysociety/slack.webhook`
