@@ -198,7 +198,7 @@ END
         print FH "\$database_configs = <<DONE_DATABASE_CONFIGS;\n";
         foreach my $db (@{$conf->{database_configs}}) {
             print FH "define('OPTION_$db->{prefix}_DB_HOST', '$db->{host}');\n";
-            print FH "define('OPTION_$db->{prefix}_DB_PORT', $db->{port};\n"               if $db->{port};
+            print FH "define('OPTION_$db->{prefix}_DB_PORT', $db->{port});\n"              if $db->{port};
             print FH "define('OPTION_$db->{prefix}_DB_RO_HOST', '$db->{replica_host}');\n" if $db->{replica_host};
             print FH "define('OPTION_$db->{prefix}_DB_RO_PORT', $db->{replica_port});\n"   if $db->{replica_port};
             print FH "define('OPTION_$db->{prefix}_DB_NAME', '$db->{name}');\n";
