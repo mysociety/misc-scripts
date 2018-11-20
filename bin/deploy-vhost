@@ -156,7 +156,7 @@ sub db_conf {
         $db_config->{adapter} = 'mysql2';
     }
     elsif ($params->{type} eq 'psql') {
-        $db_config->{adapter} = 'postgres'
+        $db_config->{adapter} = 'postgresql'
     }
 
     # Add all the parameters as structured data to $conf.
