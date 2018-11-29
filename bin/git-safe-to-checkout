@@ -68,7 +68,7 @@ then
     echo
     git log HEAD --not --remotes --tags --oneline
     echo
-    die "You should resolve this manually."
+    die "You should resolve this manually, or run deploy with --force if you are sure."
 fi
 
 # Go through each submodule, from:
