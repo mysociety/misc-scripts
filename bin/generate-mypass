@@ -27,7 +27,7 @@ our ($vhosts, $sites, $databases);
 # Only one database per user for MySQL
 
 my %perms = (
-    buffalo => {
+    pelican => {
         matthew => 'twfy',
     },
 );
