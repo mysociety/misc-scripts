@@ -14,6 +14,16 @@ my $REPOSITORY_NAME = $ARGV[0];
 our ($sites, $vhosts);
 do '/data/vhosts.pl';
 
+### Get pushed branches from the 3rd argument of each line of stdin.
+my @pushed_branches;
+while(<STDIN>) {
+    my ($oldrev, $newrev, $refname) = split /\s+/;
+    my ($ref, $head, $branch) = split /\//, $refname, 3;
+    if(!grep(/^$branch$/, @pushed_branches)) {
+        push @pushed_branches, $branch;
+    }
+}
+
 ### Make a list of things we want to do
 
 my %actions;
@@ -49,16 +59,6 @@ foreach my $vhost (keys %$vhosts) {
 
     ### Ignore if its repo doesn't match the one that was just pushed to
     next if($REPOSITORY_NAME ne $vhost_git_repo);
-
-    ### Get pushed branches from the 3rd argument of each line of stdin.
-    my @pushed_branches;
-    while(<STDIN>) {
-        my ($oldrev, $newrev, $refname) = split /\s+/;
-        my ($ref, $head, $branch) = split /\//, $refname, 3;
-        if(!grep(/^$branch$/, @pushed_branches)) {
-            push @pushed_branches, $branch;
-        }
-    }
 
     ### Ignore if the branch used by this vhost wasn't pushed this time.
     next if(!grep(/^$vhost_git_branch$/, @pushed_branches));
