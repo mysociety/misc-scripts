@@ -3,8 +3,6 @@
 # Look in vhosts.pl for vhosts configured to use this repo.  If any of them have
 # the 'auto_deploy' flag set, try to deploy them.
 #
-# $Id: git-post-receive-hook-auto-deploy,v 1.4 2013-07-11 13:35:05 ian Exp $
-#
 
 use strict;
 use warnings;
