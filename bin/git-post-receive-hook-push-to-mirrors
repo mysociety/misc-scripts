@@ -49,7 +49,7 @@ personal_ssh_alias = 'GitHubAsMe'
 # GitHub account's SSH keys.
 
 ssh_config_filename = File.join(ENV['HOME'], '.ssh', 'config')
-if File.exists? ssh_config_filename
+if File.exist? ssh_config_filename
   open(ssh_config_filename) do |f|
     unless f.grep(/^Host\s+#{Regexp.escape(personal_ssh_alias)}\b/).empty?
       ssh_alias = personal_ssh_alias
