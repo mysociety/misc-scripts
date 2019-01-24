@@ -5,16 +5,10 @@
 
 NAGIOS_SERVERS='kingfisher panther'
 NAGIOS_CHECK='Pager test'
+NAGIOS_CMD_FILE='/var/lib/icinga/rw/icinga.cmd'
 
 for i in $NAGIOS_SERVERS
 do
-
-    if [ "$i" == "kingfisher" ] ; then
-        NAGIOS_CMD_FILE='/var/lib/icinga/rw/icinga.cmd'
-    else
-        NAGIOS_CMD_FILE='/var/lib/nagios3/rw/nagios.cmd'
-    fi
-    
     echo -n "Sending test page from $i... "
     cmd="[`date +%s`] PROCESS_SERVICE_CHECK_RESULT;$i;$NAGIOS_CHECK;1;Test page from $i"
     ssh $i "echo '$cmd' > $NAGIOS_CMD_FILE"
