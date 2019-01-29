@@ -1,0 +1,65 @@
+#!/bin/bash
+#
+# update-wdtk-rejections:
+#
+#  Run WDTK Rake tasks to generate requests to block at MTA layer and
+#  add updated file to Puppet.
+#
+
+WDTK_DIR=${1:-/data/vhost/www.whatdotheyknow.com/alaveteli}
+
+# Are we running as root?
+if [ "$UID" != "0" ]; then
+  echo "This script should be run as root, aborting." >&2
+  exit 1
+fi
+
+# Is WDTK available where we think it is?
+if [ ! -d "$WDTK_DIR" ]; then
+  echo "WDTK doesn't appear to be available in ${WDTK_DIR}, aborting." >&2
+  exit 2
+fi
+
+check_rake () {
+  RAKE_TASK=$1
+  RAKE_EXIT_CODE=$2
+  if [ ${RAKE_EXIT_CODE} -ne 0 ]; then
+    echo "Fatal: ${RAKE_TASK} rake task returned non-zero, aborting." >&2
+    exit 3
+  fi
+}
+
+RAKE_OUTPUT=$(mktemp)
+SORTED_OUTPUT=$(mktemp)
+
+# Update the list of requests to block
+su -l foi -c "cd ${WDTK_DIR} && bundle exec rake config_files:set_reject_incoming_at_mta REJECTED_THRESHOLD=3 AGE_IN_MONTHS=6 DRYRUN=0" > /dev/null
+check_rake "set_reject_incoming_at_mta" $?
+
+# Export the list
+su -l foi -c "cd ${WDTK_DIR} && bundle exec rake config_files:generate_mta_rejection_list MTA=exim" > ${RAKE_OUTPUT}
+check_rake "generate_mta_rejection_list" $?
+
+# Sort the list to ensure consistent comparisons.
+sort ${RAKE_OUTPUT} > ${SORTED_OUTPUT}
+
+# Add to Puppet, if necessary.
+cd /data/puppet
+/data/mysociety/bin/git-safe-to-checkout . master >/dev/null
+if [ $? -eq 0 ]; then
+  git checkout --quiet master
+  git fetch --quiet >/dev/null
+  git rebase --quiet origin/master
+  cmp -s ${SORTED_OUTPUT} ./site/exim/files/etc/exim4/recipient-reject
+  if [ $? -ne 0 ]; then
+    cp ${SORTED_OUTPUT} ./site/exim/files/etc/exim4/recipient-reject
+    git add ./site/exim/files/etc/exim4/recipient-reject
+    git commit --quiet -m "Exim: WDTK requests blocked at MTA updated by update-wdtk-recipients"
+    git push --quiet origin master 2>/dev/null
+  fi
+else
+  echo "Aborting Git update." >&2
+fi
+
+rm ${RAKE_OUTPUT}
+rm ${SORTED_OUTPUT}
