@@ -45,10 +45,10 @@ sort ${RAKE_OUTPUT} > ${SORTED_OUTPUT}
 
 # Add to Puppet, if necessary.
 cd /data/puppet
+git fetch --quiet >/dev/null
 /data/mysociety/bin/git-safe-to-checkout . master >/dev/null
 if [ $? -eq 0 ]; then
   git checkout --quiet master
-  git fetch --quiet >/dev/null
   git rebase --quiet origin/master
   cmp -s ${SORTED_OUTPUT} ./site/exim/files/etc/exim4/recipient-reject
   if [ $? -ne 0 ]; then
