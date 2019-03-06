@@ -115,11 +115,16 @@ foreach my $database (keys %{$databases}) {
                         $dbh_db->disconnect;
                     }
                 }
-		if ($params->{trgm}) {
-		    my $dbh_db = DBI->connect("dbi:Pg:dbname=$database;port=$params->{port}", 'postgres', undef, { PrintWarn => 1, PrintError => 1, RaiseError => 0, AutoCommit => 1 }) || die DBI->errstr();
-		    $dbh_db->do("create extension pg_trgm");
-		    $dbh_db->disconnect;
-		}
+                if ($params->{trgm}) {
+                    my $dbh_db = DBI->connect("dbi:Pg:dbname=$database;port=$params->{port}", 'postgres', undef, { PrintWarn => 1, PrintError => 1, RaiseError => 0, AutoCommit => 1 }) || die DBI->errstr();
+                    $dbh_db->do("create extension pg_trgm");
+                    $dbh_db->disconnect;
+                }
+                if ($params->{unaccent}) {
+                    my $dbh_db = DBI->connect("dbi:Pg:dbname=$database;port=$params->{port}", 'postgres', undef, { PrintWarn => 1, PrintError => 1, RaiseError => 0, AutoCommit => 1 }) || die DBI->errstr();
+                    $dbh_db->do("create extension unaccent");
+                    $dbh_db->disconnect;
+                }
             }
 
             # Give user permissions on database
