@@ -38,8 +38,8 @@ cat ~/.ssh/id_rsa.pub
 echo
 
 echo "Installing Puppet"
-wget https://apt.puppetlabs.com/puppetlabs-release-pc1-$(lsb_release -c | awk '{print $NF}').deb
-dpkg -i puppetlabs-release-pc1-$(lsb_release -c | awk '{print $NF}').deb
+wget https://apt.puppetlabs.com/puppet6-release-$(lsb_release -c | awk '{print $NF}').deb
+dpkg -i puppet6-release-$(lsb_release -c | awk '{print $NF}').deb
 apt-get update
 apt-get install -y puppet-agent >/dev/null
 echo
