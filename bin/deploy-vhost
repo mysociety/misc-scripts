@@ -103,9 +103,9 @@ my $restart_apache = 0;
 
 sub get_db_host {
     my $host = shift;
-    if ($host eq 'localhost') {
-        # If the host is localhost, then it shouldn't be suffixed with
-        # a domain:
+    if ($host eq 'localhost' || $host =~ /\./) {
+        # If the host is localhost or a FQDN, then it
+        # shouldn't be suffixed with a domain:
         return $host;
     } else {
         # Otherwise suffix it with a ukcod domain:
