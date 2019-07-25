@@ -184,9 +184,8 @@ sub graceful {
     } else {
         my $touch = "$vhost_dir/$vcspath/$conf->{touch_to_restart}";
         utime(undef, undef, $touch)
-            || open(TMP, ">>", $touch)
+            || shell("su", "-", $conf->{'user'}, "-c touch $touch")
             || apache_graceful();
-        close TMP;
     }
 
     # ...and nginx
