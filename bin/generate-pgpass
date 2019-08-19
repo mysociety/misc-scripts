@@ -41,7 +41,7 @@ my %extra_perms = (
         'matthew' => [ 'bci-emptyhomes', 'pb', 'ycml' ],
     },
     'firefly' => {
-        'mark' => [ 'mark-za-hansard-tmp', 'pombola-mark-scratch', , 'test_pombola-mark-scratch' ],
+        'graeme' => [ 'foi' ],
     },
     'pelican' => {
         'davea' => [ 'bci' ],
