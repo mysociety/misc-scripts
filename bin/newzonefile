@@ -107,19 +107,15 @@ localhost       IN      A           127.0.0.1
 EOF
 
 $f->close();
-my @gitfiles = ($domain);
 
 foreach (@aliases) {
     my $f = new IO::File("$_.symlink", O_WRONLY | O_CREAT | O_EXCL, 0644);
     if ($f) {
         $f->print("To: $domain\n");
         $f->close();
-        push(@gitfiles, $_);
     } else {
         print STDERR "newzonefile: $_: $!\n";
     }
 }
 
-system("git", "add", @gitfiles);
-system("git", "commit", "-m", "[DNS] Created new zone file for $descr", @gitfiles);
-system("git", "push", "origin", "master");
+print "New DNS zone files created for ${descr}.\nCheck, commit, push then deploy dns to activate.\n";

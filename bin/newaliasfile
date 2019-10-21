@@ -52,7 +52,7 @@ my $descr = @aliases ? "$domain; also " . join(', ', @aliases) : $domain;
 $f->print(<<EOF);
 #
 # $domain:
-#     Email alias file for addresses in \@$domain
+#     Email alias file for addresses in $descr
 #
 
 # Required by RFC
@@ -66,19 +66,15 @@ hostmaster:	domains\@mysociety.org
 EOF
 
 $f->close();
-my @gitfiles = ($domain);
 
 foreach (@aliases) {
     my $f = new IO::File("$_.symlink", O_WRONLY | O_CREAT | O_EXCL, 0644);
     if ($f) {
         $f->print("To: $domain\n");
         $f->close();
-        push(@gitfiles, $_);
     } else {
         print STDERR "newaliasfile: $_: $!\n";
     }
 }
 
-system("git", "add", @gitfiles);
-system("git", "commit", "-m", "[Email] Created new alias file for $descr", @gitfiles);
-system("git", "push", "origin", "master");
+print "New email alias files created for ${descr}.\nCheck, commit, push then deploy email to activate.\n";
