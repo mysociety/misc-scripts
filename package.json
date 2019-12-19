@@ -3,6 +3,6 @@
   "description": "Dummy Package to handle NPM dependencies",
   "version": "1.0.1",
   "dependencies": {
-    "jshint": "^2.9.6"
+    "jshint": "^2.10.3"
   }
 }
