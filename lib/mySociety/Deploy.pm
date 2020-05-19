@@ -113,6 +113,7 @@ sub setup_conf {
     $conf->{wildcard_vhost} = 0 if !exists($conf->{wildcard_vhost});
     $conf->{https} = 0 if !exists($conf->{https});
     $conf->{https_only} = 0 if !exists($conf->{https_only});
+    $conf->{https_strict_tls} = 0 if !exists($conf->{https_strict_tls});
     $conf->{fastcgi} = 1 if !exists($conf->{fastcgi});
     $conf->{balancer} = '' if !exists($conf->{balancer});
     $conf->{ipv4addr} = '' if !exists($conf->{ipv4addr});
@@ -182,6 +183,7 @@ sub write_settings_file {
 \$wildcard_vhost = '$conf->{wildcard_vhost}';
 \$https = '$conf->{https}';
 \$https_only = '$conf->{https_only}';
+\$https_strict_tls = '$conf->{https_strict_tls}';
 \$balancer = '$conf->{balancer}';
 \$ipv4addr = '$conf->{ipv4addr}';
 \$ipv6addr = '$conf->{ipv6addr}';
