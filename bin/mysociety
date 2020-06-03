@@ -20,8 +20,9 @@ Usage: mysociety [-u] COMMAND [OPTIONS]
 COMMAND is one of:
     config
         Tell Puppet to pull new manifests and apply them
-    vhost [--server server] VHOST
-        Deploy latest version of VHOST, e.g. www.pledgebank.com, optionally on [server]
+    vhost [--server server] [--all] VHOST
+	Deploy latest version of VHOST, e.g. www.pledgebank.com,
+        optionally on [server] or, with --all, on all VHOST's servers
     vhost stop/update/start [--server server] VHOST
         Stop/update/start VHOST, e.g. www.pledgebank.com
     vhost remove VHOST
@@ -142,6 +143,16 @@ case $COMMAND in
             COMMAND=$VHOST
             VHOST=$1
             shift || die "specify a virtual host"
+        fi
+        if [ "$VHOST" == "--all" ]
+        then
+            VHOST=$1
+            shift || die "specify a vhost"
+            if [ "$COMMAND" == "deploy" ]; then COMMAND=""; fi
+            for s in $(mysociety vhost servers "$VHOST"); do
+                echo ssh -t "$s" sudo mysociety vhost "$COMMAND" "$VHOST"
+            done
+            exit
         fi
         if [ "$VHOST" == "--server" ]
         then
