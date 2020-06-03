@@ -35,12 +35,12 @@ our $verbose = $ENV{VERBOSE} ? 1 : 0;
 mySociety::Deploy::read_conf($servers_dir);
 
 # Check command line parameters, look up in config file
-die "Specify virtual host name as first parameter, deploy/stop/update/start/remove as second parameter" if scalar(@ARGV) < 2;
+die "Specify virtual host name as first parameter, deploy/stop/update/start/remove/servers as second parameter" if scalar(@ARGV) < 2;
 
 my $vhost = $ARGV[0];
 
 my $action = $ARGV[1];
-die "Specify 'deploy', 'stop', 'update', 'start' or 'remove' as second parameter" if $action ne "deploy" && $action ne "stop" && $action ne "update" && $action ne "start" && $action ne 'remove';
+die "Specify 'deploy', 'stop', 'update', 'start', 'servers' or 'remove' as second parameter" if $action ne "deploy" && $action ne "stop" && $action ne "update" && $action ne "start" && $action ne 'remove' && $action ne 'servers';
 
 my $flush = 0;
 $flush = 1 if @ARGV > 2 && $ARGV[2] eq '--flush';
@@ -59,6 +59,11 @@ my $conf = mySociety::Deploy::setup_conf($vhost);
 my $vhost_dir = $conf->{vhost_dir};
 my $timestamped_deploy = $conf->{timestamped_deploy};
 my $vcspath = $conf->{vcspath};
+
+if ($action eq 'servers') {
+    print join("\n", @{$conf->{servers}}) . "\n";
+    exit;
+}
 
 # Verify that this server is listed for this vhost
 die "'$hostname' is not a server for '$vhost'\nValid options: @{$conf->{servers}}\n"

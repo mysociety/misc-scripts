@@ -26,6 +26,8 @@ COMMAND is one of:
         Stop/update/start VHOST, e.g. www.pledgebank.com
     vhost remove VHOST
         Remove crontab, Apache config, email forwards etc. for VHOST
+    vhost servers VHOST
+        Print which servers VHOST is deployed on
     test VHOST
         Deploy, then run test script on VHOST, e.g. testharness.pet.mysociety.org
         It will try VHOST.test.mysociety.org if no "." is present.
@@ -135,7 +137,7 @@ case $COMMAND in
         COMMAND=deploy
         VHOST=$1
         shift || die "specify a command or a virtual host"
-        if [ "$VHOST" == "stop" -o "$VHOST" == "update" -o "$VHOST" == "start" -o "$VHOST" == "remove" ]
+        if [ "$VHOST" == "stop" -o "$VHOST" == "update" -o "$VHOST" == "start" -o "$VHOST" == "remove" -o "$VHOST" == "servers" ]
         then
             COMMAND=$VHOST
             VHOST=$1
