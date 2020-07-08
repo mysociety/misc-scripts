@@ -449,9 +449,21 @@ if ($action eq "stop") {
         print "Note: $vhost is also on " . join (', ', @other_hosts) . "\n";
     }
     if ($flush) {
-        use mySociety::Memcached;
-        mySociety::Memcached::flush_all();
-        print `varnishadm -T localhost:6082 -S /etc/varnish/secret purge req.http.host == "$vhost"`;
+        # Memcache
+        # This doesn't work, leaving it here as a reminder to look in future
+        #use mySociety::Memcached;
+        #mySociety::Memcached::flush_all();
+
+        # Varnish
+        # Ban the main vhost
+        print "Flushing Varnish...\n";
+        print `varnishadm ban "req.http.host == $vhost"`;
+        # And any aliases
+        if ($conf->{aliases}) {
+            foreach my $alias (@{$conf->{aliases}}) {
+                print `varnishadm ban "req.http.host == $alias"`;
+            }
+        }
     }
     if ($conf->{'sphinx'}) {
         sphinx_restart();
