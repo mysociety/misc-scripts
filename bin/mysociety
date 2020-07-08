@@ -152,7 +152,7 @@ case $COMMAND in
             shift || die "specify a vhost"
             if [ "$COMMAND" == "deploy" ]; then COMMAND=""; fi
             for s in $(mysociety vhost servers "$VHOST"); do
-                echo ssh -t "$s" sudo mysociety vhost "$COMMAND" "$VHOST" "$@"
+                ssh -t "$s" sudo mysociety vhost "$COMMAND" "$VHOST" "$@"
             done
             exit
         fi
