@@ -20,10 +20,12 @@ Usage: mysociety [-u] COMMAND [OPTIONS]
 COMMAND is one of:
     config
         Tell Puppet to pull new manifests and apply them
-    vhost [--server server] [--all] VHOST
-	Deploy latest version of VHOST, e.g. www.pledgebank.com,
+    vhost [--server server | --all] VHOST [--force] [--flush]
+	    Deploy latest version of VHOST, e.g. www.pledgebank.com,
         optionally on [server] or, with --all, on all VHOST's servers
-    vhost stop/update/start [--server server] VHOST
+        --force will override any local uncommitted changes
+        --flush will ban VHOST and its aliases from local Varnish
+    vhost stop/update/start [--server server | --all] VHOST
         Stop/update/start VHOST, e.g. www.pledgebank.com
     vhost remove VHOST
         Remove crontab, Apache config, email forwards etc. for VHOST
@@ -150,7 +152,7 @@ case $COMMAND in
             shift || die "specify a vhost"
             if [ "$COMMAND" == "deploy" ]; then COMMAND=""; fi
             for s in $(mysociety vhost servers "$VHOST"); do
-                echo ssh -t "$s" sudo mysociety vhost "$COMMAND" "$VHOST"
+                echo ssh -t "$s" sudo mysociety vhost "$COMMAND" "$VHOST" "$@"
             done
             exit
         fi
@@ -162,7 +164,7 @@ case $COMMAND in
             shift || die "specify a vhost"
             if [ "$COMMAND" == "deploy" ]; then COMMAND=""; fi
             for s in $SERVER; do
-                ssh -t "$s" sudo mysociety vhost "$COMMAND" "$VHOST"
+                ssh -t "$s" sudo mysociety vhost "$COMMAND" "$VHOST" "$@"
             done
             exit
         fi

@@ -37,15 +37,18 @@ mySociety::Deploy::read_conf($servers_dir);
 # Check command line parameters, look up in config file
 die "Specify virtual host name as first parameter, deploy/stop/update/start/remove/servers as second parameter" if scalar(@ARGV) < 2;
 
-my $vhost = $ARGV[0];
+my $vhost = shift @ARGV;
 
-my $action = $ARGV[1];
+my $action = shift @ARGV;
 die "Specify 'deploy', 'stop', 'update', 'start', 'servers' or 'remove' as second parameter" if $action ne "deploy" && $action ne "stop" && $action ne "update" && $action ne "start" && $action ne 'remove' && $action ne 'servers';
 
 my $flush = 0;
-$flush = 1 if @ARGV > 2 && $ARGV[2] eq '--flush';
 my $force = 0;
-$force = 1 if @ARGV > 2 && $ARGV[2] eq '--force';
+
+foreach my $other_arg (@ARGV) {
+    $flush = 1 if $other_arg eq '--flush';
+    $force = 1 if $other_arg eq '--force';
+}
 
 my $hostname = `hostname`;
 chomp($hostname);
