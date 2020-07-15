@@ -40,7 +40,7 @@ die "Specify virtual host name as first parameter, deploy/stop/update/start/remo
 my $vhost = shift @ARGV;
 
 my $action = shift @ARGV;
-die "Specify 'deploy', 'stop', 'update', 'start', 'servers' or 'remove' as second parameter" if $action ne "deploy" && $action ne "stop" && $action ne "update" && $action ne "start" && $action ne 'remove' && $action ne 'servers';
+die "Specify 'deploy', 'stop', 'update', 'start', 'servers', 'balancers' or 'remove' as second parameter" if $action ne "deploy" && $action ne "stop" && $action ne "update" && $action ne "start" && $action ne 'remove' && $action ne 'servers' && $action ne 'balancers';
 
 my $flush = 0;
 my $force = 0;
@@ -65,6 +65,13 @@ my $vcspath = $conf->{vcspath};
 
 if ($action eq 'servers') {
     print join("\n", @{$conf->{servers}}) . "\n";
+    exit;
+}
+
+if ($action eq 'balancers') {
+    if ($conf->{balancers}) {
+        print join("\n", @{$conf->{balancers}}) . "\n";
+    }
     exit;
 }
 

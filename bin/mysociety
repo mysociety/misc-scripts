@@ -140,7 +140,7 @@ case $COMMAND in
         COMMAND=deploy
         VHOST=$1
         shift || die "specify a command or a virtual host"
-        if [ "$VHOST" == "stop" -o "$VHOST" == "update" -o "$VHOST" == "start" -o "$VHOST" == "remove" -o "$VHOST" == "servers" ]
+        if [ "$VHOST" == "stop" -o "$VHOST" == "update" -o "$VHOST" == "start" -o "$VHOST" == "remove" -o "$VHOST" == "servers" -o "$VHOST" == "balancers" ]
         then
             COMMAND=$VHOST
             VHOST=$1
