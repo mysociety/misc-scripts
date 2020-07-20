@@ -151,6 +151,10 @@ case $COMMAND in
             VHOST=$1
             shift || die "specify a vhost"
             if [ "$COMMAND" == "deploy" ]; then COMMAND=""; fi
+            if [ -r /etc/mysociety/slack.webhook ]; then
+                SLACK=`cat /etc/mysociety/slack.webhook`
+                curl --silent -X POST --data-urlencode 'payload={"channel": "#activity", "username": "DeployBot", "text": "'"[$HOST] $(logname) is deploying $VHOST on all servers"'", "icon_emoji": ":ms:"}' $SLACK >/dev/null
+            fi
             BALANCERS=$(mysociety vhost balancers "$VHOST")
             SERVERS=$(mysociety vhost servers "$VHOST")
             VHOST_BACKEND=$(echo $VHOST | sed -e 's/\./_/g')
