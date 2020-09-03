@@ -7,8 +7,8 @@
 # error. 
 #
 # If there are conflicts in other values, such as login shell or full name, it
-# uses the value from the remote machine. This is assuming a model where
-# basically you sync account in a stream, originating in one central server.
+# uses the value from the local machine. This is assuming a model where
+# basically you push changes to clients originating in one central server.
 #
 # For passwords, it uses the when field, so the last changed should win.
 #
@@ -18,8 +18,7 @@
 # Email: chris@ex-parrot.com; WWW: http://www.ex-parrot.com/~chris/
 #
 
-my $rcsid = ''; $rcsid .= '$Id: usersync,v 1.8 2013-03-08 13:44:53 ian Exp $';
-my $VERSION = "0.1";
+my $VERSION = "0.2";
 
 use strict;
 
@@ -188,7 +187,7 @@ Options:
   --slave       Internal use only.
 
 Copyright (c) 2004 Chris Lightfoot. All Rights Reserved.
-usersync version $VERSION; $rcsid
+usersync version $VERSION
 EOF
 }
 
@@ -309,9 +308,9 @@ sub synchronise_passwd ($$$) {
 
     # Reconstruct remainder of two password files.
     foreach (sort keys %ln) {
-        # take remote version for other fields (even if they differ)
-        $newlocal  .= sprintf("%s:%s:%d:%d:%s:%s:%s\n", @{$rn{$_}});
-        $newremote .= sprintf("%s:%s:%d:%d:%s:%s:%s\n", @{$rn{$_}});
+        # take local version for other fields (even if they differ)
+        $newlocal  .= sprintf("%s:%s:%d:%d:%s:%s:%s\n", @{$ln{$_}});
+        $newremote .= sprintf("%s:%s:%d:%d:%s:%s:%s\n", @{$ln{$_}});
     }
 
     return ($newlocal, $newremote);
@@ -377,9 +376,9 @@ sub synchronise_group ($$$) {
 
     # Reconstruct remainder of two group files.
     foreach (sort keys %ln) {
-        # take remote version for other fields (even if they differ)
-        $newlocal  .= sprintf("%s:%s:%d:%s\n", @{$rn{$_}});
-        $newremote .= sprintf("%s:%s:%d:%s\n", @{$rn{$_}});
+        # take local version for other fields (even if they differ)
+        $newlocal  .= sprintf("%s:%s:%d:%s\n", @{$ln{$_}});
+        $newremote .= sprintf("%s:%s:%d:%s\n", @{$ln{$_}});
     }
 
     return ($newlocal, $newremote);
@@ -387,7 +386,7 @@ sub synchronise_group ($$$) {
 
 # synchronise_shadow MINUID LOCAL REMOTE UIDMAP
 # Return synchronised versions of the LOCAL and REMOTE shadow files, altering
-# only records with GID >= MINUID. Return in list context the new LOCAL and
+# only records with UID >= MINUID. Return in list context the new LOCAL and
 # REMOTE data.
 sub synchronise_shadow ($$$$) {
     my ($minuid, $local, $remote, $uidmap) = @_;
@@ -427,14 +426,14 @@ sub synchronise_shadow ($$$$) {
             debug("copying $rn{$_}->[0] shadow entry to local machine");
         } elsif ($ln{$_}->[1] ne $rn{$_}->[1]) {
             debug("password for login $rn{$_}->[0] differs");
-            if ($ln{$_}->[2] > $rn{$_}->[2]) {
-                $rn{$_}->[1] = $ln{$_}->[1];
-                $rn{$_}->[2] = $ln{$_}->[2];
-                debug("copying password for $rn{$_}->[0] to remote machine");
-            } else {
+            if ($rn{$_}->[2] > $ln{$_}->[2]) {
                 $ln{$_}->[1] = $rn{$_}->[1];
                 $ln{$_}->[2] = $rn{$_}->[2];
                 debug("copying password for $rn{$_}->[0] to local machine");
+            } else {
+                $rn{$_}->[1] = $ln{$_}->[1];
+                $rn{$_}->[2] = $ln{$_}->[2];
+                debug("copying password for $rn{$_}->[0] to remote machine");
             }
         }
     }
