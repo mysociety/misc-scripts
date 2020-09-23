@@ -252,6 +252,7 @@ END
         }
     }
 
+    print FH "\$load_balanced_vhost = 1;\n" if $conf->{balancers};
     print FH Dumper($conf->{conf_dir});
     print FH "\$conf_dirs = \$VAR1;\n";
     print FH Dumper($conf->{private_conf_dir});
