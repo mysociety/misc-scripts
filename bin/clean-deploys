@@ -20,7 +20,7 @@ my $help = 0;
 my @vhosts_to_check = ();
 my @ignore_vhosts = ( "default.ukcod.org.uk", "${host}.ukcod.org.uk", "debian.mysociety.org" );
 my $vhosts_dir = "/data/vhost";
-my $deployed_vhosts_state = "/data/state/${host}/vhost-list";
+my $deployed_vhosts_state = "/var/lib/server-state/vhost-list";
 
 # Options
 GetOptions(
