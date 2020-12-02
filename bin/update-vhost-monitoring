@@ -79,4 +79,4 @@ unlink($tmp_sudoers) or warn "can't unlink $tmp_sudoers: $!";
 copy($tmp_nrpe, $NRPE_VHOSTS) or die "can't overwrite $NRPE_VHOSTS: $!";
 unlink($tmp_nrpe) or warn "can't unlink $tmp_nrpe: $!";
 
-system "/etc/init.d/nagios-nrpe-server restart > /dev/null";
+system "/bin/systemctl reload nagios-nrpe-server > /dev/null";
