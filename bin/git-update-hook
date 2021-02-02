@@ -89,7 +89,7 @@ if [[ "`git config --get mysociety.jslint`" != 'true' ]]; then
    exit $exit_status
 fi
 
-syntax_check="/data/mysociety/node_modules/.bin/jshint"
+syntax_check="/usr/bin/jshint"
 # Need to read out .jshintrc and .jshintignore from git to use them!
 
 while read old_mode new_mode old_sha1 new_sha1 status name
