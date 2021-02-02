@@ -38,7 +38,7 @@ my %releases;
 
 foreach my $i (glob 'dists/*/*/binary-*') {
     print "Generating Packages files for: $i\n";
-    system "dpkg-scanpackages $i /dev/null > $i/Packages.new && mv $i/Packages.new $i/Packages || rm $i/Packages.new";
+    system "dpkg-scanpackages $i > $i/Packages.new && mv $i/Packages.new $i/Packages || rm $i/Packages.new";
     system "gzip -9c $i/Packages > $i/Packages.gz.new && mv $i/Packages.gz.new $i/Packages.gz || rm $i/Packages.gz.new";
 
     print "Generating Release file for: $i\n";
@@ -61,7 +61,7 @@ foreach my $i (glob 'dists/*/*/binary-*') {
 
 foreach my $i (glob 'dists/*/*/source') {
 	print "Generating Sources files for: $i\n";
-	system "dpkg-scansources $i /dev/null > $i/Sources.new && mv $i/Sources.new $i/Sources || rm $i/Sources.new";
+	system "dpkg-scansources $i > $i/Sources.new && mv $i/Sources.new $i/Sources || rm $i/Sources.new";
     system "gzip -9c $i/Sources > $i/Sources.gz.new && mv $i/Sources.gz.new $i/Sources.gz || rm $i/Sources.gz.new";
 }
 
