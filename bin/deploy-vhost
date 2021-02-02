@@ -459,10 +459,12 @@ if ($action eq "stop") {
         print "Note: $vhost is also on " . join (', ', @other_hosts) . "\n";
     }
     if ($flush) {
-        # Memcache
-        # This doesn't work, leaving it here as a reminder to look in future
-        #use mySociety::Memcached;
-        #mySociety::Memcached::flush_all();
+        # Memcached
+        # This will flush everything on the host from Memcache
+        print "Flushing Memcached...\n";
+        use mySociety::Memcached;
+        mySociety::Memcached::set_config('localhost');
+        mySociety::Memcached::flush_all();
 
         # Varnish
         # Ban the main vhost
