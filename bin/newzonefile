@@ -94,7 +94,11 @@ $f->print(<<EOF);
                 MX      10          mx1.ukcod.org.uk.
 
 ; Address of $domain itself.
-;                IN      A           46.43.39.xx       ; change me (see wiki)
+;                IN      A           46.43.39.xx             ; change me (see wiki)
+;                IN      AAAA        2001:41c8:20:60e::xx:10 ; change me (see wiki)
+
+; SPF
+;                IN      TXT         "v=spf1 include:_spf.ukcod.org.uk ~all"
 
 localhost       IN      A           127.0.0.1
 
