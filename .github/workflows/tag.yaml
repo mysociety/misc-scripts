@@ -1,17 +1,33 @@
 name: Bump version
+
 on:
   push:
     branches:
       - master
+
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
-    - uses: actions/checkout@v2
+
+    - name: Checkout
+      uses: actions/checkout@v2
       with:
         fetch-depth: '0'
-    - name: Bump version and push tag
+
+    - name: Bump tag
+      id: bump_tag
       uses: anothrNick/github-tag-action@master
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         INITIAL_VERSION: 1.0.0
+
+    - name: Push Tag to mirror
+      id: push_to_mirror
+      uses: mysociety/action-git-pusher@v1.1.0
+      inputs:
+        git_ssh_key: ${{ secrets.PUBLICCVS_GIT_KEY }}
+        ssh_known_hosts: ${{ secrets.GIT_KNOWN_HOSTS }}
+        tag: ${{ steps.bump_tag.outputs.new_tag }}
+        remote: 'ssh://gh-public@git.mysociety.org/data/git/public/misc-scripts.git'
