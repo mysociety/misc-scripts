@@ -70,7 +70,9 @@ unless token
   exit(1)
 end
 
-# Now fetch the list of repositories from the GitHub API:
+# Now fetch the details for the repository in question, which should
+# be present at /repo/<owner>/<repo>, as per:
+# https://docs.github.com/en/rest/reference/repos#get-a-repository
 
 http = Net::HTTP.new('api.github.com', 443)
 http.use_ssl = true
@@ -88,36 +90,11 @@ http.verify_mode = OpenSSL::SSL::VERIFY_PEER
 # http.ca_path = '/etc/ssl/certs'
 http.ca_file = '/etc/ssl/certs/DigiCert_High_Assurance_EV_Root_CA.pem'
 
-all_repositories = []
+response = http.get("/repos/mysociety/#{repository_name}",
+                    'User-Agent' => 'mySociety.org/1.0',
+                    'Authorization' => "bearer #{token}")
 
-api_url = '/orgs/mysociety/repos?per_page=100'
-
-loop do
-
-  response = http.get(api_url,
-                      'User-Agent' => 'mySociety.org/1.0',
-                      'Authorization' => "bearer #{token}")
-
-  if response.code != '200'
-    STDERR.puts "The GitHub API call failed with status #{response.code}: #{response.body}"
-    exit(1)
-  end
-
-  all_repositories += JSON.parse(response.body)
-
-  break unless response.key? 'Link'
-
-  if response['Link'] =~ /<([^>]*)>;\s*rel="next"/
-    api_url = $1
-  else
-    break
-  end
-
-end
-
-matching = all_repositories.select { |r| r['name'] == repository_name }
-
-if matching.empty?
+if response.code == '404'
   STDERR.puts "There was no GitHub repository called '#{repository_name}'"
   STDERR.puts "Please create it on GitHub."
   if repository_type == 'private'
@@ -125,12 +102,12 @@ if matching.empty?
   end
   # As a note, we could use the API to create the repository here.
   exit(1)
-elsif matching.length > 1
-  STDERR.puts "There were multiple mysociety repositories called '#{repository_name}' (!?!)"
+elsif response.code != '200'
+  STDERR.puts "The GitHub API call failed with status #{response.code}: #{response.body}"
   exit(1)
 end
 
-repository_info = matching[0]
+repository_info = JSON.parse(response.body)
 
 github_type = 'public'
 # Make sure that we test for equality with true, since any string
@@ -140,7 +117,7 @@ if repository_info['private'] == true
 end
 
 unless github_type == repository_type
-  STDERR.puts "Refushing to mirror the #{repository_type} repository '#{repository_name}'"
+  STDERR.puts "Refusing to mirror the #{repository_type} repository '#{repository_name}'"
   STDERR.puts "to the #{github_type} repository mysociety/#{repository_name} on GitHub."
   exit(1)
 end
