@@ -77,18 +77,7 @@ end
 http = Net::HTTP.new('api.github.com', 443)
 http.use_ssl = true
 http.verify_mode = OpenSSL::SSL::VERIFY_PEER
-
-# Bizarrely, specifying the path to the certificate directory fails
-# with the version of libruby1.8 on majestic (1.8.7.352-2).  The same
-# code seems to be fine on my laptop with libruby1.8 at version
-# 1.8.7.352-2ubuntu1, with the correct certificate being present on
-# both systems.  However, it seems that specifying the certificate
-# that's required here manually does work.  That's unsatisfying, but
-# it's probably a waste of time trying to track down a bug that's
-# clearly been fixed in some later version...
-
-# http.ca_path = '/etc/ssl/certs'
-http.ca_file = '/etc/ssl/certs/DigiCert_High_Assurance_EV_Root_CA.pem'
+http.ca_path = '/etc/ssl/certs'
 
 response = http.get("/repos/mysociety/#{repository_name}",
                     'User-Agent' => 'mySociety.org/1.0',
