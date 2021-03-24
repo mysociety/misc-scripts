@@ -10,7 +10,7 @@ HOST=$(hostname)
 WHO=$(logname)
 
 # Send information to syslog.
-logger -p user.notice -t deploylogger -- "${WHO} ${@}"
+logger -p local6.notice -t mysociety_deploylogger -- "${WHO} ${@}"
 
 # Post notice to Slack about log entry.
 if [[ ! "$@" =~ "Deployed vhost" || ! "$@" =~ "test.mysociety.org" ]]
