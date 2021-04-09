@@ -174,6 +174,7 @@ sub write_settings_file {
 \$vhost = '$conf->{vhost}';
 \$vhost_dir = '$conf->{vhost_dir}';
 \$vcspath = '$conf->{vcspath}';
+\$vcspath_install = '$conf->{vcspath_install}';
 \$site = '$conf->{site}';
 \$staging = '$conf->{staging}';
 \$vhost_first = '$vhost_first';
