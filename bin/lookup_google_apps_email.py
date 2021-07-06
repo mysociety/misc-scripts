@@ -61,7 +61,7 @@ if len(sys.argv) != 2:
     exit(1)
 
 ### Read private key
-with open(api_key_file) as f:
+with open(api_key_file, 'rb') as f:
     private_key = f.read()
 
 ### Test lookup on known address; if this fails, the API isn't working.
