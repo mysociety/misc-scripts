@@ -19,7 +19,7 @@ if(-e "/opt/puppetlabs/bin/facter") {
     $hardware_tests=`/opt/puppetlabs/bin/facter -p hardware_checks`;
     chop $hardware_tests;
 } else {
-    do "/data/servers/machines/".hostname.".pl" or die "can't read ".hostname.".pl: $!";
+    exit 0;
 }
 
 foreach my $i (split /[, ]/, $hardware_tests) {
