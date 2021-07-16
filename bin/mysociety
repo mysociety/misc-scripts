@@ -15,45 +15,57 @@ fi
 
 show_help () {
 	cat <<END
-Usage: mysociety [-u] COMMAND [OPTIONS]
+Usage: mysociety COMMAND [OPTIONS]
 
 COMMAND is one of:
     config
         Tell Puppet to pull new manifests and apply them
+
     vhost [--server server | --all] VHOST [--force] [--flush]
 	    Deploy latest version of VHOST, e.g. www.pledgebank.com,
         optionally on [server] or, with --all, on all VHOST's servers
         --force will override any local uncommitted changes
         --flush will ban VHOST and its aliases from local Varnish
+
     vhost stop/update/start [--server server | --all] VHOST
         Stop/update/start VHOST, e.g. www.pledgebank.com
+
     vhost remove VHOST
         Remove crontab, Apache config, email forwards etc. for VHOST
+
     vhost servers VHOST
         Print which servers VHOST is deployed on
+
     test VHOST
         Deploy, then run test script on VHOST, e.g. testharness.pet.mysociety.org
         It will try VHOST.test.mysociety.org if no "." is present.
+
     devhost [stop/update/start/remove] SITE
         When run with sudo, same as mysociety vhost <username>.SITE.dev.mysociety.org
 
     dns --all
-        Update the DNS configuration on all hosts in the nameserver archetype
+        Update the DNS configuration on all hosts for which the Puppet
+        fact `is_nameserver` is true.
+
     email
         Update the exim virtual mail configuration on the current host
 
+    email --all
+        Update the exim virtual mail configuration on the all hosts
+        managed by Puppet.
+
     commit
         git commit and git push /data/servers
+
     diff
         diff /data/servers and /data/mysociety
 
     base COMMAND
-        Run a command on all machines (which are in the same base class as this one)
-    archetype/arch <archetype>
-        Run a command on all machine in the given archetype
+        Run a command on all machines known to Puppet
+
     base -l
-    archetype/arch <archetype> -l
-        List machines in the given archetype
+        List all servers known to Puppet
+
     debug
     	Show debugging information for mysociety command
 
@@ -61,11 +73,6 @@ Extra parameters are passed through to underlying deploy-... script.
 
 Set MYSOCIETY_DEBUG=1 to enable extra debugging (currently this just shows "shell"
 commands that the mySociety Perl scripts call).
-
-The "-u" parameter indicates that this instance is running on a
-user-mode linux virtual machine.  The effect of this is to prevent
-the config and vhost from attempting to update anything from the
-private git repository.
 
 END
 	exit
@@ -75,43 +82,14 @@ if [ $1 = "--help" ] ; then
     show_help
 fi
 
-function in_archetype {
-    ARCHETYPE=$1
-    # Obtain list of servers in archetype
-    SERVERS=`echo $ARCHETYPE | cat - /data/servers/serverclass | \
-        sed 's/#.*//' | sed 's/^[A-Z].*//' | awk '
-        BEGIN { ORS=" " } {
-            if (NR == 1) classname = $1; 
-            else if ($2 == classname) print $1
-        }'`
-}
+HOST=$(hostname)
 
-# Obtain hostname, or a generic name if on an EC2 instance
-if [ -f /etc/mysociety/ec2 ] ; then
-    HOST='EC2'
-else
-    HOST=`hostname`
-fi
 if [ x$HOST = x ] ; then
     die "can't establish hostname"
 fi
 
-BASE="base"
-ARCHETYPES_DIR="archetypes"
-
-# Obtain archetype
-cd /data/servers
-if [ ! -e /data/servers/serverclass ] ; then
-    die "/data/servers/serverclass: No such file or directory"
-fi
-ARCHETYPES=`echo $HOST | cat - /data/servers/serverclass | \
-            sed 's/#.*//' | awk '
-            BEGIN { ORS=" " } {
-                if (NR == 1) hostname = $1; 
-                else if ($1 == hostname) print $2
-            }'`
-
 COMMAND=$1
+
 # This should always shift now, as we're checking for empty $1 at the top
 shift || die "specify a command (try --help for help)"
 
@@ -235,7 +213,10 @@ case $COMMAND in
     dns)
         if [ "$1" = "--all" ] ; then
             /data/mysociety/bin/deploy-logger "Deploying DNS on all servers"
-            exec /data/mysociety/bin/mysociety archetype nameserver mysociety dns --quiet
+            for srv in $(puppet query 'nodes [certname] { facts { name = "is_nameserver" and value = true } }' | jq -r .[].certname); do
+                echo " -- on ${srv}..."
+                ssh $srv "/data/mysociety/bin/mysociety dns --quiet" || echo " -- ...failed"
+            done
         else
             exec /data/mysociety/bin/deploy-dns "$@"
         fi
@@ -244,7 +225,10 @@ case $COMMAND in
     email)
         if [ "$1" = "--all" ] ; then
             /data/mysociety/bin/deploy-logger "Deploying email on all servers"
-            exec /data/mysociety/bin/mysociety archetype email mysociety email --quiet
+            for srv in $(puppet query 'nodes [certname] { facts { name = "is_mailserver" and value = true } }' | jq -r .[].certname); do
+                echo " -- on ${srv}..."
+                ssh $srv "/data/mysociety/bin/mysociety email --quiet" || echo " -- ...failed"
+            done
         else
             exec /data/mysociety/bin/deploy-email "$@"
         fi
@@ -264,33 +248,25 @@ case $COMMAND in
         ;;
 
     base)
-        exec /data/mysociety/bin/mysociety archetype $BASE "$@"
+        exec /data/mysociety/bin/mysociety all "$@"
         ;;
 
-    archetype | arch)
-        ARCHETYPE=$1
-        shift || die "specify an archetype (try --help for help)"
-        in_archetype $ARCHETYPE
-        if [ "$1" = '-l' ] ; then
-            echo $SERVERS
-        else
-            for X in $SERVERS
-            do
-                echo " -- on $X..."
-                ssh $X "$@" || echo " -- ...failed"
-            done
-        fi
+    all)
+        for srv in $(/usr/local/bin/get-nodes); do
+            if [ "$1" = '-l' ] ; then
+                echo $srv
+            else
+                echo " -- on ${srv}..."
+                ssh $srv "$@" || echo " -- ...failed"
+            fi
+        done
         ;;
 
     debug)
         echo "HOST: $HOST"
-        echo "ARCHETYPES: $ARCHETYPES"
-        echo "ARCHETYPES_DIR: $ARCHETYPES_DIR"
-        echo "BASE: $BASE"
         ;;
 
     *)
-	show_help
+        show_help
         ;;
 esac
-
