@@ -128,8 +128,8 @@ case $COMMAND in
         then
             VHOST=$1
             shift || die "specify a vhost"
+            /data/mysociety/bin/deploy-logger "Performing ${COMMAND} for ${VHOST} on all servers"
             if [ "$COMMAND" == "deploy" ]; then COMMAND=""; fi
-            /data/mysociety/bin/deploy-logger "Deploying vhost ${VHOST} on all servers"
             BALANCERS=$(mysociety vhost balancers "$VHOST")
             SERVERS=$(mysociety vhost servers "$VHOST")
             VHOST_BACKEND=$(echo $VHOST | sed -e 's/\./_/g')
@@ -141,24 +141,26 @@ case $COMMAND in
                         sudo varnishadm -S /etc/varnish/secret -T ${b}:6082 backend.set_health boot.${VHOST_BACKEND}_${s} sick
                     done
                 fi
-                echo -e "\033[34m[deploy] Deploying ${VHOST} on ${s}...\033[0m"
+                echo -e "\033[34m[deploy] Performing ${COMMAND:-deploy} for ${VHOST} on ${s}...\033[0m"
                 ssh -t "$s" sudo mysociety vhost "$COMMAND" "$VHOST" "$@"
-                # This should provide a bit of time for process manager to start, or at least have the
-                # probe mark the back-end as sick before we switch back to auto - otherwise we sometimes
-                # see a couple of 503 responses before this happens.
-                sleep 10
                 if [ -n "$BALANCERS" ]; then
-                    # add server to balancers and wait until healthy...
+                    # This should provide a bit of time for process manager to start, or at least have the
+                    # probe mark the back-end as sick before we switch back to auto - otherwise we sometimes
+                    # see a couple of 503 responses before this happens.
+                    sleep 10
+                    # Switch back to Auto, and if starting/deploying wait until healthy.
                     for b in $BALANCERS; do
                         echo -e "\033[34m[deploy] Adding ${VHOST} on ${s} to balancer ${b}..."
                         sudo varnishadm -S /etc/varnish/secret -T ${b}:6082 backend.set_health boot.${VHOST_BACKEND}_${s} auto
-                        # This check will ensure we don't start the next leg of the deploy
-                        # until the instance is healthy on both load balancers.
-                        until varnishadm -S /etc/varnish/secret -T ${b}:6082 backend.list boot.${VHOST_BACKEND}_${s} | tail -n +2 | grep -q Healthy
-                        do
-                            echo -n "."
-                            sleep 1
-                        done
+                        if [ "$COMMAND" != "stop" -a "$COMMAND" != "remove" ] ; then
+                            # This check will ensure we don't start the next leg of the deploy
+                            # until the instance is healthy on both load balancers.
+                            until varnishadm -S /etc/varnish/secret -T ${b}:6082 backend.list boot.${VHOST_BACKEND}_${s} | tail -n +2 | grep -q Healthy
+                            do
+                                echo -n "."
+                                sleep 1
+                            done
+                        fi
                         echo -e "[deploy] ${VHOST} on ${s} is healthy - done.\033[0m"
                     done
                 fi
