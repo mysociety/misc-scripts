@@ -139,6 +139,7 @@ case $COMMAND in
                     for b in $BALANCERS; do
                         echo -e "\033[34m[deploy] Removing ${VHOST} on ${s} from balancer ${b}...\033[0m"
                         sudo varnishadm -S /etc/varnish/secret -T ${b}:6082 backend.set_health boot.${VHOST_BACKEND}_${s} sick
+                        sleep 5
                     done
                 fi
                 echo -e "\033[34m[deploy] Performing ${COMMAND:-deploy} for ${VHOST} on ${s}...\033[0m"
