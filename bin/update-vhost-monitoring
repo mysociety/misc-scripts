@@ -5,7 +5,7 @@
 # /etc/sudoers.nrpe -- rules allowing the Nagios daemon
 # to run vhost monitoring scripts as the vhost user.
 #
-# /etc/nagios/nrpe.vhosts -- NRPE rules to call monitoring scripts.
+# /etc/nagios/nrpe.d/vhosts.cfg -- NRPE rules to call monitoring scripts.
 #
 
 
@@ -22,7 +22,7 @@ require "/data/servers/vhosts.pl";
 
 
 my $SUDOERS_NRPE="/etc/sudoers.nrpe";
-my $NRPE_VHOSTS="/etc/nagios/nrpe.vhosts";
+my $NRPE_VHOSTS="/etc/nagios/nrpe.d/vhosts.cfg";
 
 die "must run as root" if($< != 0);
 
