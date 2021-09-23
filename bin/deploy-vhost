@@ -56,7 +56,7 @@ chomp($hostname);
 my $debian_version = `lsb_release -rs`;
 chomp($debian_version);
 my ($debian_version_major, $debian_version_minor) = split /\./, $debian_version;
-my $init_system = $debian_version_major =~ /8|9/ ? 'systemd' : 'sysv';
+my $init_system = $debian_version_major >= 8 ? 'systemd' : 'sysv';
 
 my $conf = mySociety::Deploy::setup_conf($vhost);
 my $vhost_dir = $conf->{vhost_dir};
