@@ -269,6 +269,11 @@ END
     print FH "\$redirects = \$VAR1;\n";
     print FH Dumper($conf->{aliases});
     print FH "\$aliases = \$VAR1;\n";
+    if ($conf->{docker}) {
+        print FH "# Docker configuration\n";
+        print FH Dumper($conf->{docker});
+        print FH "\$docker = \$VAR1;\n";
+    }
     print FH <<END;
 
 # ---------------------------------------------------------
