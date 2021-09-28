@@ -113,6 +113,11 @@ $cron_name = "/etc/cron.d/$cron_name";
 # the touch_to_restart config option (otherwise it always restarts).
 my $restart_apache = 0;
 
+# If we're using Docker, set a suitable stack name
+if ($conf->{docker}) {
+    ($conf->{docker}{stack} = $vhost) =~ s/\./_/g;
+}
+
 #####################################################################
 # Helper functions
 
@@ -193,17 +198,21 @@ sub nginx_graceful {
 }
 
 sub graceful {
-    # Prompt webserver to reread files, on machines which have apache...
-    if (!$conf->{touch_to_restart} || $restart_apache) {
-        apache_graceful();
-    } else {
-        my $touch = "$vhost_dir/$vcspath/$conf->{touch_to_restart}";
-        utime(undef, undef, $touch)
-            || shell("su", "-", $conf->{'user'}, "-c touch $touch")
-            || apache_graceful();
+
+    # Docker doesn't use Apache
+    if (!$conf->{docker}) {
+        # Either gracefully restart Apache, or do a touch-to-restart if supported
+        if (!$conf->{touch_to_restart} || $restart_apache) {
+            apache_graceful();
+        } else {
+            my $touch = "$vhost_dir/$vcspath/$conf->{touch_to_restart}";
+            utime(undef, undef, $touch)
+                || shell("su", "-", $conf->{'user'}, "-c touch $touch")
+                || apache_graceful();
+        }
     }
 
-    # ...and nginx
+    # ...and nginx for everyone who needs it.
     nginx_graceful() if $conf->{'https'} eq 'nginx';
 }
 
@@ -397,17 +406,22 @@ sub update_system_config {
     # Create the daemon
     create_daemons();
 
-    # Create apache/nginx configuration stanzas
+    # Common pathname for Apache and Nginx.
     my $vhost_file = "virtualhosts.d/$vhost.conf";
 
-    my $temp_file = mktemp("/tmp/deploy-vhost-apache-XXXXXXXX");
-    my $apache_file = "/etc/apache2/$vhost_file";
-    mugly("$servers_dir/vhosts/single-vhost.conf.ugly", $temp_file);
-    if (!-e $apache_file || system("diff", "-u", $apache_file, $temp_file) != 0) {
-        $restart_apache = 1;
-        copy($temp_file, $apache_file);
+    # Don't do Apache things with Docker vhosts
+    if (!$conf->{docker}) {
+        # Create apache configuration stanza
+        my $temp_file = mktemp("/tmp/deploy-vhost-apache-XXXXXXXX");
+        my $apache_file = "/etc/apache2/$vhost_file";
+        mugly("$servers_dir/vhosts/single-vhost.conf.ugly", $temp_file);
+        if (!-e $apache_file || system("diff", "-u", $apache_file, $temp_file) != 0) {
+            $restart_apache = 1;
+            copy($temp_file, $apache_file);
+        }
     }
 
+    # Nginx
     my $nginx_file = "/etc/nginx/$vhost_file";
     if ($conf->{https} eq 'nginx') {
         mugly("$servers_dir/vhosts/single-vhost-nginx-https-proxy.conf.ugly", $nginx_file);
@@ -574,6 +588,10 @@ sub stop_site {
                 or die "failed to rename .down.html.new to down.html in $vhost_dir/docs: $!";
             chown($conf->{user_uid}, $conf->{user_gid}, "$vhost_dir/docs/down.html");
         }
+    }
+
+    if ($conf->{docker}) {
+        shell("/usr/local/bin/docker-server", $vhost, "$vcspath_install/$conf->{conf_dir}->[0]", "stop");
     }
 }
 
@@ -943,6 +961,11 @@ sub install_or_remove_crontab {
 }
 
 sub start_site {
+
+    if ($conf->{docker}) {
+        shell("/usr/local/bin/docker-server", $vhost, "$vcspath_install/$conf->{conf_dir}->[0]", "start");
+    }
+
     # Up notice
     unlink("$vhost_dir/docs/down.html") or do {
         # It doesn't matter if down.html has already been removed.
