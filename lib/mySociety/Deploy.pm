@@ -234,7 +234,7 @@ END
             print FH "    adapter: $db->{adapter}\n";
             print FH "    database: $db->{name}\n";
             print FH "    username: $db->{username}\n";
-            print FH "    password: $db->{password}\n";
+            print FH "    password: '$db->{password}'\n";
             print FH "    host: $db->{host}\n";
             print FH "    port: $db->{port}\n";
             print FH "DONE_RAILS_DATABASE_CONFIG\n";
@@ -248,7 +248,8 @@ END
             print FH "\$db_config_$db->{prefix}_ro_port = $db->{replica_port};\n"   if $db->{replica_port};
             print FH "\$db_config_$db->{prefix}_name = '$db->{name}';\n";
             print FH "\$db_config_$db->{prefix}_username = '$db->{username}';\n";
-            print FH "\$db_config_$db->{prefix}_password = $db->{password};\n";
+            print FH "\$db_config_$db->{prefix}_password = '$db->{password}';\n";
+            print FH "\$db_config_$db->{prefix}_password_escaped = '$db->{password_escaped}';\n";
         }
     }
 

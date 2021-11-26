@@ -26,6 +26,7 @@ use File::Path qw(make_path);
 use File::Copy;
 use File::Copy::Recursive qw(dircopy);
 use File::Temp qw(mktemp);
+use URI::Escape;
 
 our $verbose = $ENV{VERBOSE} ? 1 : 0;
 
@@ -150,11 +151,12 @@ sub db_conf {
     my $pgpw_string = get_pgpw_string($params, $database);
 
     my $db_config = {
-        prefix   => $params->{prefix},
-        host     => get_db_host($params->{host}),
-        name     => $database,
-        username => $database,
-        password => "\${\\(pgpw('$pgpw_string'))}",
+        prefix           => $params->{prefix},
+        host             => get_db_host($params->{host}),
+        name             => $database,
+        username         => $database,
+        password         => pgpw($pgpw_string),
+        password_escaped => uri_escape(pgpw($pgpw_string)), # RFC3986 escaped version for use in database connection URIs
     };
 
     # All psql databases should have a port, MySQL often don't.
