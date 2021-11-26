@@ -42,7 +42,7 @@ def main():
         u'sites': collect_json(u"sites"),
         u'vhosts': collect_json(u"vhosts", add_site_key=True)
     }
-    with open(OUTPUT_PATH, "wb") as f:
+    with open(OUTPUT_PATH, "w") as f:
         json.dump(output, f)
 
 if __name__ == '__main__':
