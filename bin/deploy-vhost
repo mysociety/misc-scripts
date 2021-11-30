@@ -476,21 +476,29 @@ if ($action eq "stop") {
     }
     if ($flush) {
         # Memcached
-        # This will flush everything on the host from Memcache
-        print "Flushing Memcached...\n";
-        use mySociety::Memcached;
-        mySociety::Memcached::set_config('localhost');
-        mySociety::Memcached::flush_all();
+        if (-e "/usr/bin/memcached") {
+            # This will flush everything on the host from Memcache
+            print "Flushing Memcached...\n";
+            use mySociety::Memcached;
+            mySociety::Memcached::set_config('localhost');
+            mySociety::Memcached::flush_all();
+        } else {
+            print "No local Memcached to flush, skipping."
+        }
 
         # Varnish
-        # Ban the main vhost
-        print "Flushing Varnish...\n";
-        print `varnishadm ban "req.http.host == $vhost"`;
-        # And any aliases
-        if ($conf->{aliases}) {
-            foreach my $alias (@{$conf->{aliases}}) {
-                print `varnishadm ban "req.http.host == $alias"`;
+        if (-e "/usr/bin/varnishadm") {
+            # Ban the main vhost
+            print "Flushing Varnish...\n";
+            print `varnishadm ban "req.http.host == $vhost"`;
+            # And any aliases
+            if ($conf->{aliases}) {
+                foreach my $alias (@{$conf->{aliases}}) {
+                    print `varnishadm ban "req.http.host == $alias"`;
+                }
             }
+        } else {
+            print "No local Varnish to flush, skipping. You could run 'ban-vhost' from a management node instead.\n";
         }
     }
     if ($conf->{'sphinx'}) {
