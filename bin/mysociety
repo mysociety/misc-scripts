@@ -156,7 +156,7 @@ case $COMMAND in
                         if [ "$COMMAND" != "stop" -a "$COMMAND" != "remove" ] ; then
                             # This check will ensure we don't start the next leg of the deploy
                             # until the instance is healthy on both load balancers.
-                            until varnishadm -S /etc/varnish/secret -T ${b}:6082 backend.list boot.${VHOST_BACKEND} | tail -n +2 | grep -q Healthy
+                            until varnishadm -S /etc/varnish/secret -T ${b}:6082 backend.list boot.${VHOST_BACKEND} | tail -n +2 | grep -iq Healthy
                             do
                                 echo -n "."
                                 sleep 1
