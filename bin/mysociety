@@ -132,13 +132,13 @@ case $COMMAND in
             if [ "$COMMAND" == "deploy" ]; then COMMAND=""; fi
             BALANCERS=$(mysociety vhost balancers "$VHOST")
             SERVERS=$(mysociety vhost servers "$VHOST")
-            VHOST_BACKEND=$(echo $VHOST | sed -e 's/\./_/g')
             for s in $SERVERS; do
+                VHOST_BACKEND=$(echo "${VHOST}_${s}" | sed -e 's/\./_/g')
                 if [ -n "$BALANCERS" ]; then
                     # remove server from balancers...
                     for b in $BALANCERS; do
                         echo -e "\033[34m[deploy] Removing ${VHOST} on ${s} from balancer ${b}...\033[0m"
-                        sudo varnishadm -S /etc/varnish/secret -T ${b}:6082 backend.set_health boot.${VHOST_BACKEND}_${s} sick
+                        sudo varnishadm -S /etc/varnish/secret -T ${b}:6082 backend.set_health boot.${VHOST_BACKEND} sick
                         sleep 5
                     done
                 fi
@@ -152,11 +152,11 @@ case $COMMAND in
                     # Switch back to Auto, and if starting/deploying wait until healthy.
                     for b in $BALANCERS; do
                         echo -e "\033[34m[deploy] Adding ${VHOST} on ${s} to balancer ${b}..."
-                        sudo varnishadm -S /etc/varnish/secret -T ${b}:6082 backend.set_health boot.${VHOST_BACKEND}_${s} auto
+                        sudo varnishadm -S /etc/varnish/secret -T ${b}:6082 backend.set_health boot.${VHOST_BACKEND} auto
                         if [ "$COMMAND" != "stop" -a "$COMMAND" != "remove" ] ; then
                             # This check will ensure we don't start the next leg of the deploy
                             # until the instance is healthy on both load balancers.
-                            until varnishadm -S /etc/varnish/secret -T ${b}:6082 backend.list boot.${VHOST_BACKEND}_${s} | tail -n +2 | grep -q Healthy
+                            until varnishadm -S /etc/varnish/secret -T ${b}:6082 backend.list boot.${VHOST_BACKEND} | tail -n +2 | grep -q Healthy
                             do
                                 echo -n "."
                                 sleep 1
