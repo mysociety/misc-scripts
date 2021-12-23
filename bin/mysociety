@@ -127,13 +127,20 @@ case $COMMAND in
         if [ "$VHOST" == "--all" ]
         then
             VHOST=$1
+            # Varnish doesn't like backends to start with numbers
+            # So where a vhost starts with a number we prefix a "b".
+            if [[ "$VHOST" =~ ^[0-9] ]]; then
+                START_CHAR="b"
+            else
+                START_CHAR=""
+            fi
             shift || die "specify a vhost"
             /data/mysociety/bin/deploy-logger "Performing ${COMMAND} for ${VHOST} on all servers"
             if [ "$COMMAND" == "deploy" ]; then COMMAND=""; fi
             BALANCERS=$(mysociety vhost balancers "$VHOST")
             SERVERS=$(mysociety vhost servers "$VHOST")
             for s in $SERVERS; do
-                VHOST_BACKEND=$(echo "${VHOST}_${s}" | sed -e 's/\./_/g')
+                VHOST_BACKEND=$(echo "${START_CHAR}${VHOST}_${s}" | sed -e 's/\./_/g')
                 if [ -n "$BALANCERS" ]; then
                     # remove server from balancers...
                     for b in $BALANCERS; do
