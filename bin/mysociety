@@ -141,8 +141,8 @@ case $COMMAND in
             SERVERS=$(mysociety vhost servers "$VHOST")
             for s in $SERVERS; do
                 VHOST_BACKEND=$(echo "${START_CHAR}${VHOST}_${s}" | sed -e 's/\./_/g')
-                if [ -n "$BALANCERS" ]; then
-                    # remove server from balancers...
+                if [ -n "$BALANCERS" ] && [ "$(echo $SERVERS | wc -w)" -gt 1 ]; then
+                    # remove server from balancers if there are balancers and more than one server...
                     for b in $BALANCERS; do
                         echo -e "\033[34m[deploy] Removing ${VHOST} on ${s} from balancer ${b}...\033[0m"
                         sudo varnishadm -S /etc/varnish/secret -T ${b}:6082 backend.set_health boot.${VHOST_BACKEND} sick
@@ -151,7 +151,7 @@ case $COMMAND in
                 fi
                 echo -e "\033[34m[deploy] Performing ${COMMAND:-deploy} for ${VHOST} on ${s}...\033[0m"
                 ssh -t "$s" sudo mysociety vhost "$COMMAND" "$VHOST" "$@"
-                if [ -n "$BALANCERS" ]; then
+                if [ -n "$BALANCERS" ] && [ "$(echo $SERVERS | wc -w)" -gt 1 ]; then
                     # This should provide a bit of time for process manager to start, or at least have the
                     # probe mark the back-end as sick before we switch back to auto - otherwise we sometimes
                     # see a couple of 503 responses before this happens.
