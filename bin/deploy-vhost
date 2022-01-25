@@ -922,53 +922,53 @@ sub install_or_remove_crontab {
         }
     }
 
-    if ($ok) {
-        my $setup_git_cron = sub {
-            my ( $conf_dir, $git_ref ) = @_;
-            # if a crontab exists in the conf directory in source control, or has been created there
-            # in the update_conf_dir function, just install it
-            my $crontab = "$conf_dir/crontab";
-            my $crontab_path = "$vhost_dir/$vcspath_install/$crontab";
-            my $tmp_crontab = mktemp("/tmp/deploy-vhost-crontab-XXXXXXXX");
-            if (-e $crontab_path) {
-                copy($crontab_path, $tmp_crontab);
-            } else {
-                return unless -e "$crontab_path.ugly";
-                my $tmp_crontab_ugly = git("show $git_ref:$crontab.ugly");
-                mugly($tmp_crontab_ugly, $tmp_crontab);
-            }
-
-            # Check that MAILTO is valid
-            open CRON, $tmp_crontab or die "can't open $tmp_crontab: $!";
-            while (<CRON>) {
-                if (/^MAILTO=(.*)$/) {
-                    system("/data/mysociety/bin/lookup_google_apps_email.sh $1");
-                    my $result = $? >> 8;
-                    if ($result == 1) {
-                        unlink $tmp_crontab;
-                        die "MAILTO=$1: not a valid address in crontab";
-                    } elsif ($result == 2) {
-                        warn "Google Apps API not working; can't check MAILTO address";
-                    } elsif ($result != 0) {
-                        warn "unexpected result code $result from lookup_google_apps_email.sh";
-                    }
-
-                    last;
-                }
-            }
-            close CRON;
-
-            # Now copy the file in place
-            copy($tmp_crontab, $cron_name);
-            unlink $tmp_crontab;
-        };
-
-        $setup_git_cron->( $_, $conf->{'git_ref'} )         for @{$conf->{conf_dir}};
-        $setup_git_cron->( $_, $conf->{'private_git_ref'} ) for @{$conf->{private_conf_dir}};
-
-    } else {
+    if (!$ok) {
         unlink($cron_name);
+        return;
     }
+
+    my $setup_git_cron = sub {
+        my ( $conf_dir, $git_ref ) = @_;
+        # if a crontab exists in the conf directory in source control, or has been created there
+        # in the update_conf_dir function, just install it
+        my $crontab = "$conf_dir/crontab";
+        my $crontab_path = "$vhost_dir/$vcspath_install/$crontab";
+        my $tmp_crontab = mktemp("/tmp/deploy-vhost-crontab-XXXXXXXX");
+        if (-e $crontab_path) {
+            copy($crontab_path, $tmp_crontab);
+        } else {
+            return unless -e "$crontab_path.ugly";
+            my $tmp_crontab_ugly = git("show $git_ref:$crontab.ugly");
+            mugly($tmp_crontab_ugly, $tmp_crontab);
+        }
+
+        # Check that MAILTO is valid
+        open CRON, $tmp_crontab or die "can't open $tmp_crontab: $!";
+        while (<CRON>) {
+            if (/^MAILTO=(.*)$/) {
+                system("/data/mysociety/bin/lookup_google_apps_email.sh $1");
+                my $result = $? >> 8;
+                if ($result == 1) {
+                    unlink $tmp_crontab;
+                    die "MAILTO=$1: not a valid address in crontab";
+                } elsif ($result == 2) {
+                    warn "Google Apps API not working; can't check MAILTO address";
+                } elsif ($result != 0) {
+                    warn "unexpected result code $result from lookup_google_apps_email.sh";
+                }
+
+                last;
+            }
+        }
+        close CRON;
+
+        # Now copy the file in place
+        copy($tmp_crontab, $cron_name);
+        unlink $tmp_crontab;
+    };
+
+    $setup_git_cron->( $_, $conf->{'git_ref'} )         for @{$conf->{conf_dir}};
+    $setup_git_cron->( $_, $conf->{'private_git_ref'} ) for @{$conf->{private_conf_dir}};
 }
 
 sub start_site {
