@@ -912,11 +912,15 @@ sub make_dot_forward {
 
 sub install_or_remove_crontab {
     my $ok = 0;
-    if ($conf->{'crontab'}) {
-        if ($conf->{'crontab'} eq '1') {
+    if ($conf->{crontab}) {
+        if ($conf->{crontab} eq '1' || $conf->{crontab} eq 'all') {
             $ok = 1;
+        } elsif ($conf->{crontab} eq 'only-one') {
+            if ($hostname eq $conf->{servers}[0]) {
+                $ok = 1;
+            }
         } else {
-            if ($hostname eq $conf->{'crontab'}) {
+            if ($hostname eq $conf->{crontab}) {
                 $ok = 1;
             }
         }
