@@ -6,10 +6,11 @@ on standard input, and write it to standard output as a series of variable
 assignments in Bourne-shell format.
 """
 
+from __future__ import print_function
 import optparse, sys, re, yaml
 
 def die(message):
-  print >>sys.stderr, "%s: %s" % (sys.argv[0], message)
+  print("%s: %s" % (sys.argv[0], message), file=sys.stderr)
   sys.exit(1)
 
 def is_valid_varname(s):
@@ -26,20 +27,20 @@ def process(fh=None, data=None, prefix=[], output_prefix=""):
   
   if data is None:
     try:
-      data = yaml.load(fh)
-    except ValueError, e:
+      data = yaml.safe_load(fh)
+    except ValueError as e:
       die("Failed to parse YAML: " + e.args[0])
   
   if not isinstance(data, dict):
     die("The YAML file must represent an object (a.k.a. hash, dict, map)")
-  for k, v in data.iteritems():
+  for k, v in data.items():
     if not is_valid_varname(k):
       die("The key '%s' is not a valid shell variable name" % (k,))
     
     if isinstance(v, dict):
       process(data = v, prefix = prefix + [str(k)], output_prefix = output_prefix)
     else:
-      print "%s%s=%s" % (output_prefix, "__".join(prefix + [k]), shell_quote(str(v)))
+      print("%s%s=%s" % (output_prefix, "__".join(prefix + [k]), shell_quote(str(v))))
 
 def main(clargs):
   parser = optparse.OptionParser(usage = "usage: %prog [file.json]")

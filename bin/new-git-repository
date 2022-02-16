@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+from __future__ import print_function
 import argparse
 import json
 import os
@@ -69,10 +70,10 @@ git('config', 'receive.denynonfastforwards', 'false')
 if ARGS.pubpriv == 'public':
     open(os.path.join(repo_path, 'git-daemon-export-ok'), 'a').close()
 
-print "New repository created at /data/git/{0.pubpriv}/{0.name}".format(ARGS)
+print("New repository created at /data/git/{0.pubpriv}/{0.name}".format(ARGS))
 
 if ARGS.github:
-    print "Creating on GitHub..."
+    print("Creating on GitHub...")
     name = ARGS.name[:-4]
 
     j = json.load(open('/etc/mysociety/github-oauth/token.json'))
@@ -95,6 +96,6 @@ if ARGS.github:
     url = 'https://api.github.com/orgs/mysociety/repos'
     req = requests.post(url, headers=headers, data=json.dumps(data))
     if req.status_code == 201:
-        print 'New repo created on GitHub'
+        print('New repo created on GitHub')
     else:
-        print 'Received bad response creating repo: {0.status_code} {0.json}'.format(req)
+        print('Received bad response creating repo: {0.status_code} {0.json}'.format(req))
