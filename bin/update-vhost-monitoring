@@ -39,7 +39,7 @@ my $hostname = hostname();
 $hostname =~ s/\..*$//;
 
 foreach my $vhost (keys %$vhosts) {
-    next if(!grep /^$hostname$/, @{$vhosts->{$vhost}{'servers'}});
+    next if(!grep /^$hostname/, @{$vhosts->{$vhost}{'servers'}});
     next if($vhosts->{$vhost}{'staging'});
     next if(!defined $vhosts->{$vhost}{'monitoring_scripts'});
 
