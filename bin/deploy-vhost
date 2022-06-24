@@ -950,17 +950,22 @@ sub install_or_remove_crontab {
         open CRON, $tmp_crontab or die "can't open $tmp_crontab: $!";
         while (<CRON>) {
             if (/^MAILTO=(.*)$/) {
-                system("/data/mysociety/bin/lookup_google_apps_email.sh $1");
-                my $result = $? >> 8;
-                if ($result == 1) {
-                    unlink $tmp_crontab;
-                    die "MAILTO=$1: not a valid address in crontab";
-                } elsif ($result == 2) {
-                    warn "Google Apps API not working; can't check MAILTO address";
-                } elsif ($result != 0) {
-                    warn "unexpected result code $result from lookup_google_apps_email.sh";
+                my $found_external;
+                foreach my $mailto (split(',', $1)) {
+                    next if $mailto =~ /\@${hostname}/;
+                    $found_external = 1;
+                    system("/data/mysociety/bin/lookup_google_apps_email.sh $mailto");
+                    my $result = $? >> 8;
+                    if ($result == 1) {
+                        unlink $tmp_crontab;
+                        die "MAILTO=$mailto: not a valid address in crontab";
+                    } elsif ($result == 2) {
+                        warn "Google Apps API not working; can't check MAILTO address";
+                    } elsif ($result != 0) {
+                        warn "unexpected result code $result from lookup_google_apps_email.sh";
+                    }
                 }
-
+                warn "No external email found in MAILTO" unless ($found_external);
                 last;
             }
         }
