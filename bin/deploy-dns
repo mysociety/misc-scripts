@@ -153,7 +153,7 @@ try {
     }
 
     chdir("/data/servers/dns") || throw Oops("/data/servers/dns: $!");
-    shell("git", "pull", "-q", "origin");
+    shell("su maint -c 'git -C /data/servers/dns pull -q origin'");
 
     # Get the list of files under git control.
     verbose("getting list of domains...");

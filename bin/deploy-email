@@ -152,7 +152,7 @@ try {
     }
 
     chdir("/data/servers/email") || throw Oops("/data/servers/email: $!");
-    shell("git", "pull", "-q", "origin");
+    shell("su maint -c 'git -C /data/servers/dns pull -q origin'");
 
     # Get the list of alias files.
     verbose("getting list of domains...");
