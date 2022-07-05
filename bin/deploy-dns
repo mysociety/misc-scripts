@@ -246,7 +246,7 @@ EOF
         $h->printf(<<EOF,
 zone "%s" {
     type master;
-    file "master/%s";
+    file "/var/named/master/%s";
     allow-query { any; };
     allow-transfer { allow_xfer_list; };
 };
