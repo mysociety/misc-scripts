@@ -80,6 +80,10 @@ if ($action eq 'balancers') {
 die "'$hostname' is not a server for '$vhost'\nValid options: @{$conf->{servers}}\n"
     if (!grep { m/^$hostname$/ } @{$conf->{servers}}) && $action ne 'remove';
 
+# Bomb out on deploying redirect-only vhosts. These are handled by Puppet.
+die "Don't use this script to deploy redirect-only vhosts: these are now handled by Puppet\n"
+    if $conf->{redirects_only} && $action ne 'remove';
+
 my $vcspath_install = $vcspath;
 my $timestamp = gmtime->strftime('%Y-%m-%dT%H-%M-%S');
 if ($timestamped_deploy && $action eq "deploy") {
