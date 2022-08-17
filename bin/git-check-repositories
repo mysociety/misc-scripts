@@ -11,7 +11,7 @@ GIT_HANG_ERROR="fatal: The remote end hung up unexpectedly"
 
 # Some repositories should not have mailing list notifications
 # or be mirrored to GitHub:
-NO_EMAIL_ALERTS="repdata mysociety-state"
+NO_EMAIL_ALERTS="repdata mysociety-state mysociety-puppet"
 
 OUTPUT=$(mktemp)
 ERROR=0
