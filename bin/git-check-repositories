@@ -207,49 +207,65 @@ function check_post_receive_hook {
 }
 
 function get_expected_private_owner {
-   if [ "$REPOSITORY_NAME" = 'gut' ]
-   then
-       EXPECTED_OWNER="privategit-gut"
-   elif [ "$REPOSITORY_NAME" = 'writetothem_cities' ]
-   then 
-       EXPECTED_OWNER="privategit-cities"
-   elif [ "$REPOSITORY_NAME" = 'c4emptyhomes' ]
+   if [ "$REPOSITORY_NAME" = 'c4emptyhomes' ]
    then 
        EXPECTED_OWNER="privategit-c4eh"
+   elif [ "$REPOSITORY_NAME" = 'clicca-aws' ]
+   then
+       EXPECTED_OWNER="privategit-clicca"
+   elif [ "$REPOSITORY_NAME" = 'elemint' ]
+   then
+       EXPECTED_OWNER="privategit-elemint"
+   elif [ "$REPOSITORY_NAME" = 'fca-investment-tool' ]
+   then
+       EXPECTED_OWNER="privategit-fca"
    elif [ "$REPOSITORY_NAME" = 'fixmystreet_cities' ]
    then 
        EXPECTED_OWNER="privategit-cities"
+   elif [ "$REPOSITORY_NAME" = 'fixmystreet-commercial' ]
+   then
+       EXPECTED_OWNER="privategit-fixmystreet"
+   elif [ "$REPOSITORY_NAME" = 'gut' ]
+   then
+       EXPECTED_OWNER="privategit-gut"
+   elif [ "$REPOSITORY_NAME" = 'keepitinthecommunity' ]
+   then
+       EXPECTED_OWNER="privategit-fixmystreet"
+   elif [ "$REPOSITORY_NAME" = 'mapumental-cluttons' ]
+   then
+       EXPECTED_OWNER="privategit-mapumental"
    elif [ "$REPOSITORY_NAME" = 'mapumental' ]
    then 
        EXPECTED_OWNER="privategit-mapumental"
-   elif [ "$REPOSITORY_NAME" = 'passengerfocus' ]
-   then 
-       EXPECTED_OWNER="privategit-passengerfocus"
-   elif [ "$REPOSITORY_NAME" = 'wtf' ]
-   then
-       EXPECTED_OWNER="privategit-wtf"
    elif [ "$REPOSITORY_NAME" = 'msjob06' ]
    then
        EXPECTED_OWNER="privategit-recruiting"
-   elif [ "$REPOSITORY_NAME" = 'citizenconnect' ]
+   elif [ "$REPOSITORY_NAME" = 'mysociety-puppet' ]
    then
-       EXPECTED_OWNER="privategit-citizenconnect"
-   elif [ "$REPOSITORY_NAME" = 'cpag' ] ||
-        [ "$REPOSITORY_NAME" = 'keys' ] ||
-        [ "$REPOSITORY_NAME" = 'mysociety-servers' ] ||
-        [ "$REPOSITORY_NAME" = 'mysociety-state' ] ||
-        [ "$REPOSITORY_NAME" = 'analysis-tools' ] ||
-        [ "$REPOSITORY_NAME" = 'repdata' ] ||
-        [ "$REPOSITORY_NAME" = 'seesomething' ] ||
-        [ "$REPOSITORY_NAME" = 'britishmuseum' ] ||
-        [ "$REPOSITORY_NAME" = 'car-cost-tool' ] ||
-        [ "$REPOSITORY_NAME" = 'fca-investment-tool' ] ||
-        [ "$REPOSITORY_NAME" = 'simplysecure' ]
+       EXPECTED_OWNER="privategit-puppet"
+   elif [ "$REPOSITORY_NAME" = 'orgsites' ]
    then
-       EXPECTED_OWNER="privatecvs"
+       EXPECTED_OWNER="privategit-orgsites"
+   elif [ "$REPOSITORY_NAME" = 'passengerfocus' ]
+   then 
+       EXPECTED_OWNER="privategit-passengerfocus"
+   elif [ "$REPOSITORY_NAME" = 'politician-data' ]
+   then
+       EXPECTED_OWNER="privategit-politician-data"
+   elif [ "$REPOSITORY_NAME" = 'researchsites' ]
+   then
+       EXPECTED_OWNER="privategit-researchsites"
+   elif [ "$REPOSITORY_NAME" = 'seesomething' ]
+   then
+       EXPECTED_OWNER="privategit-seesomething"
+   elif [ "$REPOSITORY_NAME" = 'writetothem_cities' ]
+   then
+       EXPECTED_OWNER="privategit-cities"
+   elif [ "$REPOSITORY_NAME" = 'wtf' ]
+   then
+       EXPECTED_OWNER="privategit-wtf"
    else
-       echo "Error: there was no EXPECTED_OWNER defined in $BASH_SOURCE for $REPOSITORY_NAME"
-       EXPECTED_OWNER=""
+       EXPECTED_OWNER="privatecvs"
    fi
 }
 
