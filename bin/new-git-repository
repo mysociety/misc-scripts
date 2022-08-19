@@ -94,3 +94,5 @@ if ARGS.github:
         print('New repo created on GitHub')
     else:
         print('Received bad response creating repo: {0.status_code} {0.json}'.format(req))
+else:
+    git('config', 'hooks.nogithubmirror', 'true')
