@@ -8,10 +8,11 @@ GIT_VERSION=$(git --version|sed 's/^git version //')
 MINIMUM_GIT_VERSION=1.6.3.3
 EMAIL_PREFIX="" # we don't really need this prefix, it's kind of obvious
 GIT_HANG_ERROR="fatal: The remote end hung up unexpectedly"
+GIT_DAEMON_ERROR="fatal: remote error: access denied or repository not exported:"
 
 # Some repositories should not have mailing list notifications
 # or be mirrored to GitHub:
-NO_EMAIL_ALERTS="repdata mysociety-state mysociety-puppet"
+NO_EMAIL_ALERTS="repdata mysociety-state mysociety-puppet parldata mypulls"
 
 OUTPUT=$(mktemp)
 ERROR=0
@@ -143,7 +144,7 @@ function check_no_anonymous_access {
     git ls-remote $REPOSITORY_GIT_DAEMON > /dev/null 2> $TMP_ERR
 
     # Produce output for anything but a hang up  from the git daemon repository
-    DIFF=`echo "$GIT_HANG_ERROR" | diff $TMP_ERR -`
+    DIFF=`echo "${GIT_DAEMON_ERROR} /${REPOSITORY_NAME}" | diff $TMP_ERR -`
     if [ -n "$DIFF" ]
     then
         echo "The git daemon repository $REPOSITORY_NAME did not hang up immediately"
@@ -307,9 +308,16 @@ function check_repository {
         check_group_ownership 'publiccvs'
 
         check_anonymous_access
-        check_github
 
         check_license_present
+    fi
+
+    nogithubmirror=$(git config hooks.nogithubmirror)
+    if [ "$nogithubmirror" = "true" ]
+    then
+        check_no_github
+    else
+        check_github
     fi
 
     check_non_fastforward_merges
