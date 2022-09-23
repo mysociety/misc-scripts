@@ -18,7 +18,6 @@ my $mysociety_dir = "$FindBin::RealBin/../../mysociety";
 
 use mySociety::SystemMisc qw(shell);
 use mySociety::Config;
-use mySociety::ServerClass;
 
 use Data::Dumper;
 use Sys::Hostname;
