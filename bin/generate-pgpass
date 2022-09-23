@@ -18,10 +18,21 @@ use lib "$FindBin::Bin/../perllib";
 use POSIX;
 
 use mySociety::TempFiles;
-use mySociety::ServerClass;
 
 my $servers_dir = "$FindBin::Bin/../../servers";
 require "$servers_dir/vhosts.pl";
+
+# Get the local hostname
+my $hostname = (uname())[1];
+
+# Check if we're running on a backup server
+my $is_backupserver;
+if (-x "/opt/puppetlabs/bin/facter") {
+    $is_backupserver = `/opt/puppetlabs/bin/facter -p is_backupserver`;
+    chomp $is_backupserver;
+} else {
+    $is_backupserver = ( -e "/etc/cron.d/run-backup" ? "true" : "false" );
+}
 
 our ($vhosts, $sites, $databases);
 
@@ -79,18 +90,17 @@ foreach my $database_name (keys %$databases) {
 
     # ... on backup hosts, give root access to all databases
     if ($database_info->{backup}) {
-        foreach my $server (mySociety::ServerClass::all_servers_in_class("backups")) {
-            $perms{$server}{'root'}{$database_name} = 1;
-        }
+	if ($is_backupserver eq 'true') {
+	    $perms{$hostname}{'root'}{$database_name} = 1;
+	}
     }
 
     # ... add root access to databases not associated with vhosts
     $perms{$database_info->{host}}{'root'}{$database_name} = 1;
 }
 
-my $server = (uname())[1];
-my $database_permissions = $perms{$server};
-die "generate-pgpass not configured for server $server" unless $database_permissions;
+my $database_permissions = $perms{$hostname};
+die "generate-pgpass not configured for server $hostname" unless $database_permissions;
 
 foreach my $user (sort keys %$database_permissions) {
     my @x = getpwnam($user) or die "$user: getpwnam: $!";
