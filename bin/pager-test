@@ -3,19 +3,41 @@
 # Send a test page so an on-call person can be confident that everything's working.
 #
 
-NAGIOS_SERVERS='kingfisher panther'
+usage() {
+    echo "Usage: $0 -s <hostname>" 1>&2
+}
+
 NAGIOS_CHECK='Pager test'
 NAGIOS_CMD_FILE='/var/lib/icinga/rw/icinga.cmd'
+SERVER=
 
-for i in $NAGIOS_SERVERS
-do
-    echo -n "Sending test page from $i... "
-    cmd="[`date +%s`] PROCESS_SERVICE_CHECK_RESULT;$i;$NAGIOS_CHECK;1;Test page from $i"
-    ssh $i "echo '$cmd' > $NAGIOS_CMD_FILE"
-    echo "done."
-
-    echo -n "Clearing test pager state on $i... "
-    cmd="[`date +%s`] PROCESS_SERVICE_CHECK_RESULT;$i;$NAGIOS_CHECK;0;OK"
-    ssh $i "echo '$cmd' > $NAGIOS_CMD_FILE"
-    echo "done."
+while getopts "hs:" opt; do
+    case "${opt}" in
+        h)
+            usage
+            exit 0
+            ;;
+        s)
+            SERVER=${OPTARG}
+            ;;
+        *)
+            usage
+            exit 1
+            ;;
+    esac
 done
+
+if [ -z "$SERVER" ] ; then
+    usage
+    exit 2
+fi
+
+echo -n "Sending test page from ${SERVER}... "
+cmd="[`date +%s`] PROCESS_SERVICE_CHECK_RESULT;${SERVER};$NAGIOS_CHECK;1;Test page from ${SERVER}"
+ssh $SERVER "echo '$cmd' > $NAGIOS_CMD_FILE"
+echo "done."
+
+echo -n "Clearing test pager state on ${SERVER}... "
+cmd="[`date +%s`] PROCESS_SERVICE_CHECK_RESULT;${SERVER};$NAGIOS_CHECK;0;OK"
+ssh $SERVER "echo '$cmd' > $NAGIOS_CMD_FILE"
+echo "done."
