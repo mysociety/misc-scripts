@@ -39,28 +39,7 @@ our ($vhosts, $sites, $databases);
 # Permissions above the automatic ones, e.g. for people to have access to live
 # databases, or for services that aren't set up as standard.
 # XXX these should be moved into flags in vhosts.pl
-my %extra_perms = (
-    'milo' => {
-        'tilma' => [ 'openstreetmap', 'openstreetmap-gb' ],
-        'msservices' => [ 'mapit', 'mapit-ro' ],
-    },
-    'stork' => {
-        'tilma' => [ 'openstreetmap', 'openstreetmap-gb' ],
-        'msservices' => [ 'mapit', 'mapit-ro' ],
-    },
-    'buffalo' => {
-        'matthew' => [ 'bci-emptyhomes', 'pb', 'ycml' ],
-    },
-    'firefly' => {
-        'graeme' => [ 'foi' ],
-    },
-    'pelican' => {
-        'davea' => [ 'bci' ],
-        'matthew' => [ 'bci', 'fyr', 'openstreetmap', 'openstreetmap-gb' ],
-        'tilma' => [ 'openstreetmap', 'openstreetmap-gb' ],
-    },
-
-);
+my %extra_perms;
 
 # begin with the overrides from above ...
 my %perms;
