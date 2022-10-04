@@ -21,12 +21,7 @@ unless (@ARGV && $ARGV[0] eq "--no-host-check") {
 
 my $DISTRO=qx(/usr/bin/lsb_release -sc);
 chomp $DISTRO;
-my $GPG_OPTS;
-if ( $DISTRO eq "stretch" ) {
-    $GPG_OPTS = "--pinentry-mode loopback";
-} else { 
-    $GPG_OPTS = "--batch";
-}
+my $GPG_OPTS = "--batch --pinentry-mode loopback";
 
 my $REPO_BASE='/data/vhost/debian.mysociety.org/docs';
 chdir $REPO_BASE or die $!;
