@@ -10,7 +10,7 @@ PUPPET_ENVDIR="${PUPPET_ENVDIR:-/etc/puppetlabs/code/environments}"
 BRANCH=testing
 REF=
 DELETE=
-PUPPET_MASTER="${PUPPET_MASTER:-$(dig +short -x $(dig +short puppet.ukcod.org.uk | tail -1) | sed -e 's/\.$//')}"
+PUPPET_MASTER="${PUPPET_MASTER:-$(dig +short puppet.ukcod.org.uk | head -1 | sed -e 's/\.$//')}"
 PUPPET_ENV=
 
 # Functions
