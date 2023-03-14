@@ -10,24 +10,22 @@
 #
 
 import sys
-from oauth2client.client import SignedJwtAssertionCredentials
-from apiclient.discovery import build
-from apiclient import errors
-from httplib2 import Http
+from googleapiclient.discovery import build
+from googleapiclient import errors
+from google.oauth2.service_account import Credentials
 
-client_id = 'email-lookup-service@internal-179008.iam.gserviceaccount.com'
-sub_user = 'api-target-user@mysociety.org'
-api_key_file = '/etc/mysociety/google_apps_api_key.p12'
+SERVICE_ACCOUNT_FILE = '/etc/mysociety/google_apps_api_key.json'
+DELEGATE_USER = 'api-target-user@mysociety.org'
 
 def lookup_user( addr ):
     "Look up a user by one of its email addresses."
 
-    credentials = SignedJwtAssertionCredentials(client_id, private_key,
-        'https://www.googleapis.com/auth/admin.directory.user.readonly',
-        sub=sub_user)
+    credentials = Credentials.from_service_account_file(
+        SERVICE_ACCOUNT_FILE,
+        scopes=['https://www.googleapis.com/auth/admin.directory.user.readonly'],
+        subject=DELEGATE_USER)
 
-    http_auth = credentials.authorize(Http())
-    useradmin = build('admin', 'directory_v1', http=http_auth)
+    useradmin = build('admin', 'directory_v1', credentials=credentials)
 
     try:
         response = useradmin.users().get(userKey=addr).execute()
@@ -40,12 +38,12 @@ def lookup_user( addr ):
 def lookup_group( addr ):
     "Look up a group by one of its email addresses."
 
-    credentials = SignedJwtAssertionCredentials(client_id, private_key,
-        'https://www.googleapis.com/auth/admin.directory.group.readonly',
-        sub=sub_user)
+    credentials = Credentials.from_service_account_file(
+        SERVICE_ACCOUNT_FILE,
+        scopes=['https://www.googleapis.com/auth/admin.directory.group.readonly'],
+        subject=DELEGATE_USER)
 
-    http_auth = credentials.authorize(Http())
-    groupadmin = build('admin', 'directory_v1', http=http_auth)
+    groupadmin = build('admin', 'directory_v1', credentials=credentials)
 
     try:
         response = groupadmin.groups().get(groupKey=addr).execute()
@@ -60,13 +58,9 @@ if len(sys.argv) != 2:
     sys.stderr.write('       Try to find an email address in our Google Apps account.\n')
     exit(1)
 
-### Read private key
-with open(api_key_file, 'rb') as f:
-    private_key = f.read()
-
 ### Test lookup on known address; if this fails, the API isn't working.
 ### We get a 403 both for failed calls and for unknown users >:-|
-if not lookup_user(sub_user):
+if not lookup_user(DELEGATE_USER):
     sys.stderr.write("%s: API not working\n" % sys.argv[0])
     exit(2)
 
