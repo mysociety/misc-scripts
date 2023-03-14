@@ -7,16 +7,10 @@
 use strict;
 use warnings;
 use Sys::Hostname;
-use Socket;
-
-my $REPO_URL='debian.mysociety.org';
 
 unless (@ARGV && $ARGV[0] eq "--no-host-check") {
     # Sanity check - are we on the right host?
-    my $ip = gethostbyname($REPO_URL) || die "Can't find $REPO_URL in DNS\n";
-    my $REPO_HOST = gethostbyaddr($ip, &AF_INET) || die "Can't find $ip in DNS\n";
-    $REPO_HOST =~  s/([^.]+)\..*/$1/;
-    die "Run on $REPO_HOST only" if(hostname() ne $REPO_HOST);
+    die "Run on primary only - this looks like a replica.\n" if (-e "/etc/cron.daily/sync-debian-mysociety-org");
 }
 
 my $DISTRO=qx(/usr/bin/lsb_release -sc);
