@@ -2,26 +2,19 @@
 #
 # Fetch list of email addresses in our Google Apps domain.
 
-from __future__ import print_function
 from collections import defaultdict
-from oauth2client.client import SignedJwtAssertionCredentials
-from apiclient.discovery import build
-from httplib2 import Http
+from googleapiclient.discovery import build
+from google.oauth2.service_account import Credentials
 
+SERVICE_ACCOUNT_FILE = '/etc/mysociety/google_apps_api_key.json'
+DELEGATE_USER = 'api-target-user@mysociety.org'
 
-client_id = 'email-lookup-service@internal-179008.iam.gserviceaccount.com'
-sub_user = 'api-target-user@mysociety.org'
-api_key_file = '/etc/mysociety/google_apps_api_key.p12'
+credentials = Credentials.from_service_account_file(
+        SERVICE_ACCOUNT_FILE,
+        scopes=['https://www.googleapis.com/auth/admin.directory.user.readonly'],
+        subject=DELEGATE_USER)
 
-with open(api_key_file, 'rb') as f:
-    private_key = f.read()
-
-credentials = SignedJwtAssertionCredentials(
-    client_id, private_key,
-    'https://www.googleapis.com/auth/admin.directory.user.readonly',
-    sub=sub_user)
-http_auth = credentials.authorize(Http())
-useradmin = build('admin', 'directory_v1', http=http_auth)
+useradmin = build('admin', 'directory_v1', credentials=credentials)
 
 print('<h2>Users</h2>')
 
@@ -48,13 +41,12 @@ for unit in sorted(x, key=sort_in_order):
         print('<li>%s %s%s' % (r['name']['fullName'], r['primaryEmail'], aliases))
     print('</ul>')
 
-credentials = SignedJwtAssertionCredentials(
-    client_id, private_key,
-    'https://www.googleapis.com/auth/admin.directory.group.readonly',
-    sub=sub_user)
+credentials = Credentials.from_service_account_file(
+        SERVICE_ACCOUNT_FILE,
+        scopes=['https://www.googleapis.com/auth/admin.directory.group.readonly'],
+        subject=DELEGATE_USER)
 
-http_auth = credentials.authorize(Http())
-groupadmin = build('admin', 'directory_v1', http=http_auth)
+groupadmin = build('admin', 'directory_v1', credentials=credentials)
 
 print('<h2>Groups</h2>')
 
