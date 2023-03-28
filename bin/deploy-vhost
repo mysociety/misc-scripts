@@ -218,8 +218,8 @@ sub graceful {
         }
     }
 
-    # ...and nginx for everyone who needs it.
-    nginx_graceful() if $conf->{'https'} eq 'nginx';
+    # ...and nginx
+    nginx_graceful();
 }
 
 sub sphinx_restart {
@@ -429,12 +429,7 @@ sub update_system_config {
 
     # Nginx
     my $nginx_file = "/etc/nginx/$vhost_file";
-    if ($conf->{https} eq 'nginx') {
-        mugly("$servers_dir/vhosts/single-vhost-nginx-https-proxy.conf.ugly", $nginx_file);
-    } elsif (-e $nginx_file) {
-        unlink($nginx_file);
-        nginx_graceful();
-    }
+    mugly("$servers_dir/vhosts/single-vhost-nginx-https-proxy.conf.ugly", $nginx_file);
 
     # Update NRPE's sudo and config files so that it can call monitoring scripts as the vhost user
     system("/data/mysociety/bin/update-vhost-monitoring");
@@ -1067,9 +1062,7 @@ sub remove_site {
     apache_graceful();
 
     # Remove nginx virtual host config
-    if ($conf->{'https'} eq 'nginx') {
-        unlink("/etc/nginx/virtualhosts.d/$vhost.conf");
-    }
+    unlink("/etc/nginx/virtualhosts.d/$vhost.conf");
     nginx_graceful();
 
     # Remove vhost user's logrotate cron job
