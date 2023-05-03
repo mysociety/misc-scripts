@@ -153,8 +153,6 @@ foreach my $database (keys %{$databases}) {
             my $password = $params->{new_pgpw} ? pgpw("-n $database") : pgpw($database);
             $dbh->do("grant all on `$database`.* to `$database` identified by '$password'");
         }
-    } elsif ($params->{type} eq 'mongo') {
-        # Databases are created automatically in mongodb
     } else {
         die "unknown database type '$params->{type}'";
     }

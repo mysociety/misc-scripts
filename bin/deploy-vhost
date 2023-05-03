@@ -148,7 +148,7 @@ sub get_pgpw_string {
 # further data as required. Store this in $conf->{database_configs}
 sub db_conf {
     my ($params, $database) = @_;
-    if ($params->{type} ne 'mysql' && $params->{type} ne 'psql' && $params->{type} ne 'mongo'){
+    if ($params->{type} ne 'mysql' && $params->{type} ne 'psql'){
         die "unknown database type '$params->{type}'";
     }
 
