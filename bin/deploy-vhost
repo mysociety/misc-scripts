@@ -134,7 +134,7 @@ sub get_db_host {
         return $host;
     } else {
         # Otherwise suffix it with a ukcod domain:
-        return "${host}.ukcod.org.uk";
+        return "${host}.srv.mysociety.org";
     }
 }
 
