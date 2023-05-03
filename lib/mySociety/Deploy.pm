@@ -52,25 +52,13 @@ sub setup_conf {
     if (exists($conf->{git_repository})) {
         die "must specify 'git_user' in vhost config" if !exists($conf->{git_user});
         die "can't have blank 'git_user', use 'anon' for anonymous" if $conf->{git_user} eq '';
-        if (exists($conf->{git_ref_server_mapping})) {
-            die "git_ref_server_mapping defined, but no mapping for $hostname"
-                if !exists($conf->{git_ref_server_mapping}{$hostname});
-            $conf->{git_ref} = $conf->{git_ref_server_mapping}{$hostname};
-        } elsif (!exists($conf->{git_ref})) {
-            $conf->{git_ref} = 'origin/master';
-        }
+        $conf->{git_ref} = 'origin/master' if !exists($conf->{git_ref});
         $vcspath = $conf->{git_repository};
     }
 
     if (exists($conf->{private_git_repository})) {
-        if (exists($conf->{private_git_ref_server_mapping})) {
-            die "private_git_ref_server_mapping defined, but no mapping for $hostname"
-                if !exists($conf->{private_git_ref_server_mapping}{$hostname});
-            $conf->{private_git_ref} = $conf->{private_git_ref_server_mapping}{$hostname};
-        } elsif (!exists($conf->{private_git_ref})) {
-            $conf->{private_git_ref} = 'origin/master' if !exists($conf->{private_git_ref});
-        }
-        $vcspath = $conf->{private_git_repository} if !$vcspath;
+        $conf->{private_git_ref} = 'origin/master' if !exists($conf->{private_git_ref});
+        $vcspath = $conf->{private_git_repository};
     }
     $conf->{vcspath} = $vcspath;
 
