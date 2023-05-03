@@ -139,18 +139,6 @@ sub server_name {
     return $server_name;
 }
 
-# Maps database ports to replica ports.
-sub get_replica_port {
-    my $port = shift;
-    my $ports = {
-        5432 => '5433',
-        5433 => '5432',
-        3306 => '3344',
-        3344 => '3306',
-    };
-    return $ports->{$port};
-}
-
 sub write_settings_file {
     my ($settings_file, $conf) = @_;
     my $settings_file_namepart = basename($settings_file);
