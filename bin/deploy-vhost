@@ -164,8 +164,13 @@ sub db_conf {
     };
 
     # All psql databases should have a port, MySQL often don't.
+    # Let's ensure there's a default ready regardless.
+    # TODO: Move all JSON config validation and default setting into Deploy.pm
     if ($params->{port}) {
         $db_config->{port} = $params->{port};
+    }
+    elsif ($params->{type} eq 'psql') {
+        $db_config->{port} = '5432';
     }
     elsif ($params->{type} eq 'mysql') {
         $db_config->{port} = '3306';
@@ -174,7 +179,7 @@ sub db_conf {
     # Replica information.
     if ($params->{replica}) {
         $db_config->{replica_host} = get_db_host($params->{replica});
-        $db_config->{replica_port} = mySociety::Deploy::get_replica_port($db_config->{port});
+        $db_config->{replica_port} = $db_config->{port};
     }
 
     # Adapter used by Rails configuration
