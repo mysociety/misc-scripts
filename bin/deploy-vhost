@@ -33,6 +33,11 @@ our $verbose = $ENV{VERBOSE} ? 1 : 0;
 #####################################################################
 # Main code
 
+# Make sure $servers_dir is up-to-date
+# Do this as the maint user, not as root, to avoid the need for root SSH
+shell("su maint -c 'git -C $servers_dir/vhosts pull -q origin'");
+
+# Now, read in the configuration
 mySociety::Deploy::read_conf($servers_dir);
 
 # Check command line parameters, look up in config file
@@ -612,9 +617,6 @@ sub stop_site {
 sub get_conf_ugly_file_from_servers_dir {
   my ($conf_ugly_part) = @_;
   my $conf_ugly_file = "$servers_dir/vhosts/$vcspath/$vhost/$conf_ugly_part.ugly";
-  # update the conf/general (or whatever) template in private git repo
-  # Do this as the maint user, not as root, to avoid the need for root SSH
-  shell("su maint -c 'git -C $servers_dir/vhosts pull -q origin'");
   $conf_ugly_file = "$servers_dir/vhosts/$vcspath/$conf_ugly_part.ugly" unless -e $conf_ugly_file;
   $conf_ugly_file = "$servers_dir/vhosts/${vcspath}_$conf_ugly_part.ugly" unless -e $conf_ugly_file;
   return $conf_ugly_file;
