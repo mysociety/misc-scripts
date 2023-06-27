@@ -100,10 +100,6 @@ sub setup_conf {
 
     $conf->{wildcard_vhost} = 0 if !exists($conf->{wildcard_vhost});
     $conf->{https_strict_tls} = 0 if !exists($conf->{https_strict_tls});
-    $conf->{fastcgi} = 1 if !exists($conf->{fastcgi});
-    $conf->{balancer} = '' if !exists($conf->{balancer});
-    $conf->{ipv4addr} = '' if !exists($conf->{ipv4addr});
-    $conf->{ipv6addr} = '' if !exists($conf->{ipv6addr});
     $conf->{request_timeout} = '' if !exists($conf->{request_timeout});
     $conf->{ruby_version} = '' if !exists($conf->{ruby_version});
     $conf->{rbenv_global} = 0 if !exists($conf->{rbenv_global});
@@ -156,10 +152,6 @@ sub write_settings_file {
 \$group = '$conf->{group}';
 \$wildcard_vhost = '$conf->{wildcard_vhost}';
 \$https_strict_tls = '$conf->{https_strict_tls}';
-\$balancer = '$conf->{balancer}';
-\$ipv4addr = '$conf->{ipv4addr}';
-\$ipv6addr = '$conf->{ipv6addr}';
-\$fastcgi = '$conf->{fastcgi}';
 \$request_timeout = '$conf->{request_timeout}';
 \$randomly = '/data/mysociety/bin/randomly -p 0.5'; # for crontab
 \$ruby_version = '$conf->{ruby_version}';
