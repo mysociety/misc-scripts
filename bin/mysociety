@@ -149,8 +149,8 @@ case $COMMAND in
                         PORT=$(jq --arg lb "$(echo $b | cut -d. -f1)" -r '.[$lb]' /etc/mysociety/varnishadm.json)
                         echo -e "\033[34m[deploy] Removing ${VHOST} on ${s} from balancer ${b} via localhost:${PORT}...\033[0m"
                         sudo varnishadm -S /etc/varnish/secret -T localhost:${PORT} backend.set_health boot.${VHOST_BACKEND} sick
-                        sleep 5
                     done
+                    sleep 5
                 fi
                 echo -e "\033[34m[deploy] Performing ${COMMAND:-deploy} for ${VHOST} on ${s}...\033[0m"
                 ssh -t "$s" sudo mysociety vhost "$COMMAND" "$VHOST" "$@"
