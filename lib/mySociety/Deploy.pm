@@ -239,6 +239,11 @@ END
         print FH Dumper($conf->{docker});
         print FH "\$docker = \$VAR1;\n";
     }
+    if ($conf->{balancers}) {
+        print FH "# Load Balancers\n";
+        print FH Dumper($conf->{balancers});
+        print FH "\$balancers = \$VAR1;\n";
+    }
     print FH <<END;
 
 # ---------------------------------------------------------
