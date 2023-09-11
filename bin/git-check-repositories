@@ -6,19 +6,17 @@
 
 GIT_VERSION=$(git --version|sed 's/^git version //')
 MINIMUM_GIT_VERSION=1.6.3.3
-EMAIL_PREFIX="" # we don't really need this prefix, it's kind of obvious
 GIT_HANG_ERROR="fatal: The remote end hung up unexpectedly"
 
-# Some repositories should not have mailing list notifications
-# or be mirrored to GitHub:
-NO_EMAIL_ALERTS="repdata mysociety-state"
+# Some repositories should not be mirrored to GitHub:
+NO_MIRRORING="repdata mysociety-state"
 
 OUTPUT=$(mktemp)
 ERROR=0
 trap "rm -f $OUTPUT" EXIT
 
 function should_check_hooks {
-    ! echo $NO_EMAIL_ALERTS | egrep "\b$REPOSITORY_NAME\b" > /dev/null
+    ! echo $NO_MIRRORING | egrep "\b$REPOSITORY_NAME\b" > /dev/null
 }
 
 function check_config_present {
@@ -151,20 +149,6 @@ function check_no_anonymous_access {
     rm -f $TMP_ERR
 }
 
-function check_email_config_vars {
-    # FIXME: find where we should retrieve the mailing list address
-    # from, so that we don't have to store it in the public CVS
-    # repository.  For the moment just check that something is set:
-    test_header "Checking for the mailing list config"
-    check_config_present hooks.mailinglist
-
-    test_header "Checking for the email prefix config"
-    check_config hooks.emailprefix $EMAIL_PREFIX    
-
-    test_header "Checking that diffs are included in emails"
-    check_config hooks.showrev "git show -C %s; echo"
-}
-
 function check_github {
     test_header "Checking that github repository is working"
     if ! git ls-remote $REPOSITORY_GITHUB > /dev/null
@@ -271,11 +255,6 @@ function check_repository {
     check_shared_flag
 
     check_no_working_tree
-
-    if should_check_hooks
-    then
-        check_email_config_vars
-    fi
 
     if [ "$PRIVACY" = 'private' ]
     then

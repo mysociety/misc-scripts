@@ -25,8 +25,7 @@ trap "rm -f $STDIN_CACHE" EXIT
 
 # We take the repository name from the current directory - e.g. if the
 # directory is /data/git/public/whatdotheyknow.git/ then we use
-# 'whatdotheyknow' in the subject line of emails and as the basis for
-# the github repository name.
+# 'whatdotheyknow' as the basis for the github repository name.
 
 REPOSITORY_PATH=$(readlink -f $(pwd))
 REPOSITORY_NAME=$(basename $REPOSITORY_PATH | sed 's/\.git$//')
@@ -47,13 +46,10 @@ then
 fi
 
 A=/data/mysociety/bin/git-post-receive-hook-push-to-mirrors
-B=/data/mysociety/bin/git-post-receive-hook-email
-C=/data/mysociety/bin/git-post-receive-hook-auto-deploy
+B=/data/mysociety/bin/git-post-receive-hook-auto-deploy
 
 if [ "`git config --get mysociety.local-only`" != 'true' ]; then
    $A $REPOSITORY_NAME $REPOSITORY_TYPE < $STDIN_CACHE
-   $B $REPOSITORY_NAME < $STDIN_CACHE
 fi
 
-
-$C $REPOSITORY_NAME < $STDIN_CACHE
+$B $REPOSITORY_NAME < $STDIN_CACHE
