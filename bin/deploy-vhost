@@ -15,7 +15,6 @@ my $mysociety_bin = $FindBin::Bin;
 my $servers_dir = "$FindBin::Bin/../../servers";
 
 use mySociety::SystemMisc qw(shell);
-use mySociety::Config;
 use mySociety::Deploy;
 
 use Cwd;
@@ -443,7 +442,7 @@ if ($action eq "stop") {
     deploy_logger("Stopped vhost $vhost");
 } elsif ($action eq "update") {
     create_or_update_files();
-    update_config_and_schemas();
+    update_config();
     update_system_config();
     my $git_log = update_site();
     graceful();
@@ -453,7 +452,7 @@ if ($action eq "stop") {
     deploy_logger("Started vhost $vhost");
 } elsif ($action eq "deploy") {
     create_or_update_files();
-    update_config_and_schemas();
+    update_config();
     update_system_config();
     my $deploy_log_message;
     if ($timestamped_deploy) {
@@ -606,7 +605,7 @@ sub get_conf_ugly_file_from_servers_dir {
 
 # Update a config dir
 sub update_conf_dir {
-    my ($conf_dir, $git_ref, $unchecked_schemas) = @_;
+    my ($conf_dir, $git_ref) = @_;
 
     foreach my $glob (glob "$vhost_dir/$vcspath_install/$conf_dir/*-example") {
        $glob =~ m#^.*/(.*?)-example$#;
@@ -664,62 +663,9 @@ sub update_conf_dir {
                 shell("$mysociety_bin/compareconfig.pl", $conf_file, $example_file);
             }
         }
-        # clear up temporary example file in git case
+        # clear up temporary example file in git case and reset umask
         unlink($example_file);
-        # now we use this configuration
-        mySociety::Config::set_file($conf_file);
         umask($old_umask);
-
-        # Check pgsql databases are up to date
-        foreach my $psql_conf_prefix (keys %{$conf->{'psql_schemas'}}) {
-            my $psql_schema = $conf->{'psql_schemas'}->{$psql_conf_prefix};
-            my $psql_name = mySociety::Config::get($psql_conf_prefix.'_DB_NAME', 0);
-
-            # It's OK for the configuration info for a DB to be absent from
-            # any given conf file, as long as it's in one of them
-            if ($psql_name) {
-
-                if (exists($unchecked_schemas->{$psql_conf_prefix})) {
-                    delete $unchecked_schemas->{$psql_conf_prefix};
-                }
-
-                my $psql_host = mySociety::Config::get($psql_conf_prefix.'_DB_HOST', 'localhost');
-                my $psql_port = mySociety::Config::get($psql_conf_prefix.'_DB_PORT', 5432);
-                my $psql_user = mySociety::Config::get($psql_conf_prefix.'_DB_USER');
-
-                my $tmp_psql_schema = mktemp("/tmp/deploy-vhost-psql-schema-XXXXXXXX");
-                git("show $git_ref:$psql_schema", { out => $tmp_psql_schema });
-                shell("$mysociety_bin/psql-schema-compare", $tmp_psql_schema, $conf->{'user'}, $psql_name, $psql_user, $psql_host, $psql_port);
-                unlink $tmp_psql_schema;
-
-            }
-        }
-
-        # Check MySQL databases are up to date
-        foreach my $mysql_conf_prefix (keys %{$conf->{'mysql_schemas'}}) {
-            my $mysql_schema = $conf->{'mysql_schemas'}->{$mysql_conf_prefix};
-            my $mysql_name = mySociety::Config::get($mysql_conf_prefix.'_DB_NAME', 0);
-
-           # It's OK for the configuration info for a DB to be absent from
-           # any given conf file, as long as it's in one of them
-           if ($mysql_name) {
-                if (exists($unchecked_schemas->{$mysql_conf_prefix})) {
-                    delete $unchecked_schemas->{$mysql_conf_prefix};
-                }
-
-                my $mysql_host = mySociety::Config::get($mysql_conf_prefix.'_DB_HOST', 'localhost');
-                my $mysql_port = mySociety::Config::get($mysql_conf_prefix.'_DB_PORT', 3306);
-                my $mysql_user = mySociety::Config::get($mysql_conf_prefix.'_DB_USER');
-
-                my $schema_full_path = mktemp("/tmp/deploy-vhost-mysociety-schema.sql-XXXXXXXX");
-                git("show $git_ref:$mysql_schema", { out => $schema_full_path });
-
-                # It isn't safe to pass the password over the command line or in the
-                # environment as that can be seen by other processes.
-                shell("$mysociety_bin/mysql-schema-compare", $schema_full_path, $conf->{'user'}, $mysql_name, $mysql_user, $mysql_host, $mysql_port);
-                unlink($schema_full_path);
-            }
-        }
     }
 
     # Make sure custom logrotate files are called using
@@ -741,21 +687,13 @@ sub update_conf_dir {
 }
 
 # Check that config files and database files have been updated
-sub update_config_and_schemas {
-    # Make a list of all the database schemas to be checked
-    my %unchecked_schemas = map {$_ => 1} keys %{$conf->{'psql_schemas'}}, keys %{$conf->{'mysql_schemas'}};
-
+sub update_config {
     # Generate all conf files from conf/*-example template files e.g. conf/general
     foreach my $conf_dir (@{$conf->{conf_dir}}) {
-        update_conf_dir($conf_dir, $conf->{git_ref}, \%unchecked_schemas);
+        update_conf_dir($conf_dir, $conf->{git_ref});
     }
     foreach my $conf_dir(@{$conf->{private_conf_dir}}){
-        update_conf_dir($conf_dir, $conf->{private_git_ref}, \%unchecked_schemas);
-    }
-
-    # exit if there are any schemas not covered by a config
-    foreach my $unchecked_schema (keys %unchecked_schemas) {
-        die "$unchecked_schema not configured in conf/general file(s)";
+        update_conf_dir($conf_dir, $conf->{private_git_ref});
     }
 }
 
