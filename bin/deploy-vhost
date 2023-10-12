@@ -62,7 +62,6 @@ chomp($hostname);
 my $debian_version = `lsb_release -rs`;
 chomp($debian_version);
 my ($debian_version_major, $debian_version_minor) = split /\./, $debian_version;
-my $init_system = $debian_version_major >= 8 ? 'systemd' : 'sysv';
 
 my $conf = mySociety::Deploy::setup_conf($vhost);
 my $vhost_dir = $conf->{vhost_dir};
@@ -205,12 +204,7 @@ sub apache_graceful {
 }
 
 sub nginx_graceful {
-    if ($init_system eq "systemd") {
-        shell("/bin/systemctl", "reload", "nginx");
-    }
-    elsif (-e "/etc/init.d/nginx") {
-        shell("/etc/init.d/nginx", "reload");
-    }
+    shell("/bin/systemctl", "reload", "nginx");
 }
 
 sub graceful {
@@ -545,12 +539,7 @@ sub check_packages {
 sub stop_site {
     # Stop daemons
     foreach my $daemon (keys %{$conf->{'daemons'}}) {
-        if ($init_system eq "systemd") {
-            shell("/bin/systemctl", "stop", "$daemon");
-        }
-        else {
-            shell("/etc/init.d/$daemon", "stop");
-        }
+        shell("/bin/systemctl", "stop", "$daemon");
     }
 
     # Stop crontab
@@ -988,12 +977,7 @@ sub start_site {
 
     # Start daemons
     foreach my $daemon (keys %{$conf->{'daemons'}}) {
-        if ($init_system eq "systemd") {
-            shell("/bin/systemctl", "start", "$daemon");
-        }
-        else {
-            shell("/etc/init.d/$daemon", "start");
-        }
+        shell("/bin/systemctl", "start", "$daemon");
     }
 
     # Crontab
