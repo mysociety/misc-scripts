@@ -13,6 +13,9 @@ if [ x$1 = x ] ; then
     die "specify a command (try --help for help)"
 fi
 
+# Ensure local /data/vhosts.json is up-to-date
+/data/mysociety/bin/update-vhosts-json
+
 show_help () {
 	cat <<END
 Usage: mysociety COMMAND [OPTIONS]
@@ -142,8 +145,17 @@ case $COMMAND in
             BALANCERS=$(mysociety vhost balancers "$VHOST")
             SERVERS=$(mysociety vhost servers "$VHOST")
             for s in $SERVERS; do
+                DO_VARNISH="yes"
+                SERVERS_INTERNAL=$(jq -r -c .vhosts.\"${VHOST}\".servers_internal[] /data/vhosts.json 2>/dev/null)
+                if [ -n "$SERVERS_INTERNAL" ] ; then
+                    for si in $SERVERS_INTERNAL ; do
+                        if [ "$s" == "$si" ] ; then
+                            DO_VARNISH=no
+                        fi
+                    done
+                fi
                 VHOST_BACKEND=$(echo "${START_CHAR}${VHOST}_${s}" | sed -e 's/\./_/g')
-                if [ -n "$BALANCERS" ] && [ "$(echo $SERVERS | wc -w)" -gt 1 ]; then
+                if [ -n "$BALANCERS" ] && [ "$(echo $SERVERS | wc -w)" -gt 1 ] && [ "$DO_VARNISH" == "yes" ]; then
                     # remove server from balancers if there are balancers and more than one server...
                     for b in $BALANCERS; do
                         PORT=$(jq --arg lb "$(echo $b | cut -d. -f1)" -r '.[$lb]' /etc/mysociety/varnishadm.json)
@@ -155,7 +167,7 @@ case $COMMAND in
                 echo -e "\033[34m[deploy] Performing ${COMMAND:-deploy} for ${VHOST} on ${s}...\033[0m"
                 ssh -t "$s" sudo mysociety vhost "$COMMAND" "$VHOST" "$@"
                 if [ "$COMMAND" != "stop" ] && [ "$COMMAND" != "remove" ]; then
-                    if [ -n "$BALANCERS" ] && [ "$(echo $SERVERS | wc -w)" -gt 1 ]; then
+                    if [ -n "$BALANCERS" ] && [ "$(echo $SERVERS | wc -w)" -gt 1 ] && [ "$DO_VARNISH" == "yes" ]; then
                         # This should provide a bit of time for process manager to start, or at least have the
                         # probe mark the back-end as sick before we switch back to auto - otherwise we sometimes
                         # see a couple of 503 responses before this happens.
