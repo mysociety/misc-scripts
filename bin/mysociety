@@ -146,7 +146,7 @@ case $COMMAND in
             SERVERS=$(mysociety vhost servers "$VHOST")
             for s in $SERVERS; do
                 DO_VARNISH="yes"
-                SERVERS_INTERNAL=$(jq -r -c .vhosts.\"${VHOST}\".servers_internal[] /data/vhosts.json 2>/dev/null)
+                SERVERS_INTERNAL=$(jq -r -c .vhosts.\"${VHOST}\".servers_internal[]? /data/vhosts.json 2>/dev/null)
                 if [ -n "$SERVERS_INTERNAL" ] ; then
                     for si in $SERVERS_INTERNAL ; do
                         if [ "$s" == "$si" ] ; then
