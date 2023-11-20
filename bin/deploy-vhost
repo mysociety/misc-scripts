@@ -371,7 +371,7 @@ sub create_or_update_files {
         # Allow logs to be read on staging hosts so that tests can run
         # Protect logs on production hosts
         $conf->{staging} ? 0755 : 0750,
-        0, scalar(getgrnam('adm')));
+        $conf->{user_uid}, scalar(getgrnam('adm')));
     make_dir("$vhost_dir/applogs", 0750, $conf->{user_uid}, scalar(getgrnam('adm')));
     my $web_dir = $conf->{redirects_only} ?  "$vhost_dir/web" : "$vcspath/" . $conf->{web_dir};
     make_symlink($web_dir, "$vhost_dir/docs");
