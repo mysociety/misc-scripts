@@ -133,14 +133,15 @@ if ($conf->{docker}) {
 # in servers_internal, deploy them anyway.
 my $deploy_daemons = 1;
 if ($conf->{daemons_internal}) {
-  if ($conf->{servers_internal}) {
-    unless (grep { m/^$hostname$/ } @{$conf->{servers_internal}}) {
-        $deploy_daemons = 0;
+    if ($conf->{servers_internal}) {
+        unless (grep { m/^$hostname$/ } @{$conf->{servers_internal}}) {
+            $deploy_daemons = 0;
+        }
+    } else {
+        print "daemons_internal is set, but there are no servers listed in servers_internal, so daemons will be deployed.\n";
     }
-  }
-} else {
-  print "daemons_internal is set, but there are no servers listed in servers_internal, so daemons will be deployed.\n";
 }
+
 
 
 #####################################################################
