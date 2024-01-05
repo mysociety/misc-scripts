@@ -126,6 +126,23 @@ if ($conf->{docker}) {
     ($conf->{docker}{stack} = $vhost) =~ s/\./_/g;
 }
 
+# Check if we should configure and deploy daemons
+# We want to create the daemons if `daemons_internal` isn't set.
+# If it is, and there are some servers listed in servers_internal, then
+# just deploy them there. If it's set and there are no servers listed
+# in servers_internal, deploy them anyway.
+my $deploy_daemons = 1;
+if ($conf->{daemons_internal}) {
+  if ($conf->{servers_internal}) {
+    unless (grep { m/^$hostname$/ } @{$conf->{servers_internal}}) {
+        $deploy_daemons = 0;
+    }
+  }
+} else {
+  print "daemons_internal is set, but there are no servers listed in servers_internal, so daemons will be deployed.\n";
+}
+
+
 #####################################################################
 # Helper functions
 
@@ -321,44 +338,67 @@ sub update_vcspath_symlink {
     shell("ln -snf $vhost_dir/$vcspath_install $vhost_dir/$vcspath");
 }
 
+sub remove_daemons {
+    # Remove daemons
+    my $daemon_reload = 0;
+    foreach my $daemon (keys %{$conf->{'daemons'}}) {
+        if (-e "/etc/init.d/$daemon") {
+            unlink("/etc/init.d/$daemon");
+            $daemon_reload = 1;
+        }
+        if (-e "/etc/systemd/system/${daemon}.service") {
+            shell("/bin/systemctl", "disable", "$daemon");
+            unlink("/etc/systemd/system/${daemon}.service");
+            $daemon_reload = 1;
+        }
+    }
+    shell("/bin/systemctl", "daemon-reload") if $daemon_reload;
+}
+
 # Generate daemon init scripts from templates
 sub create_daemons {
-  foreach my $daemon (keys %{$conf->{'daemons'}}) {
-    my $daemon_mugly_file = $conf->{'daemons'}->{$daemon};
-    # See if there's an ugly file in the servers dir
-    $daemon_mugly_file =~ m#^(.*?).ugly$#;
-    my $name_part = $1;
-    my $systemd = $name_part =~ /\.service$/ ? 1 : '';
-    my $daemon_mugly;
-    my $servers_dir_ugly_file = get_conf_ugly_file_from_servers_dir($name_part);
+    # Check to see if we want daemons to be deployed.
+    if ($deploy_daemons) {
+        foreach my $daemon (keys %{$conf->{'daemons'}}) {
+            my $daemon_mugly_file = $conf->{'daemons'}->{$daemon};
+            # See if there's an ugly file in the servers dir
+            $daemon_mugly_file =~ m#^(.*?).ugly$#;
+            my $name_part = $1;
+            my $systemd = $name_part =~ /\.service$/ ? 1 : '';
+            my $daemon_mugly;
+            my $servers_dir_ugly_file = get_conf_ugly_file_from_servers_dir($name_part);
 
-    if (-e $servers_dir_ugly_file) {
-      $daemon_mugly = $servers_dir_ugly_file;
+            if (-e $servers_dir_ugly_file) {
+                $daemon_mugly = $servers_dir_ugly_file;
+            } else {
+                my ($git_ref, $conf_dir);
+                if ( $conf->{git_ref} ) {
+                    $git_ref = $conf->{git_ref};
+                    $conf_dir = $conf->{conf_dir}->[0]
+                } elsif ( $conf->{private_git_ref} ) {
+                    $git_ref = $conf->{private_git_ref};
+                    $conf_dir = $conf->{private_conf_dir}->[0]
+                }
+                $daemon_mugly = git("show $git_ref:$conf_dir/$daemon_mugly_file");
+            }
+
+            my $fh = File::Temp->new;
+            print $fh "\$daemon_name = '$daemon';\n";
+            if ($systemd) {
+                mugly($daemon_mugly, "/etc/systemd/system/${daemon}.service", $fh->filename);
+                shell("/bin/systemctl", "daemon-reload");
+                shell("/bin/systemctl", "enable", "$daemon");
+            }
+            else {
+                mugly($daemon_mugly, "/etc/init.d/$daemon", $fh->filename);
+                chmod 0755, "/etc/init.d/$daemon";
+                system("update-rc.d $daemon defaults | grep -v \"System startup links for .* already exist\"");
+            }
+        }
     } else {
-      my ($git_ref, $conf_dir);
-      if ( $conf->{git_ref} ) {
-          $git_ref = $conf->{git_ref};
-          $conf_dir = $conf->{conf_dir}->[0]
-      } elsif ( $conf->{private_git_ref} ) {
-          $git_ref = $conf->{private_git_ref};
-          $conf_dir = $conf->{private_conf_dir}->[0]
-      }
-      $daemon_mugly = git("show $git_ref:$conf_dir/$daemon_mugly_file");
+        # They may have been deployed previously, but are no longer needed, so remove them.
+        remove_daemons();
     }
-
-    my $fh = File::Temp->new;
-    print $fh "\$daemon_name = '$daemon';\n";
-    if ($systemd) {
-        mugly($daemon_mugly, "/etc/systemd/system/${daemon}.service", $fh->filename);
-        shell("/bin/systemctl", "daemon-reload");
-        shell("/bin/systemctl", "enable", "$daemon");
-    }
-    else {
-        mugly($daemon_mugly, "/etc/init.d/$daemon", $fh->filename);
-        chmod 0755, "/etc/init.d/$daemon";
-        system("update-rc.d $daemon defaults | grep -v \"System startup links for .* already exist\"");
-    }
-  }
 }
 
 #####################################################################
@@ -536,9 +576,11 @@ sub check_packages {
 
 # Halt any daemons, crontabs, email systems, and the web host itself
 sub stop_site {
-    # Stop daemons
+    # Stop daemons (if present on the system)
     foreach my $daemon (keys %{$conf->{'daemons'}}) {
-        shell("/bin/systemctl", "stop", "$daemon");
+        if (-e "/etc/systemd/system/${daemon}.service" || -e "/etc/init.d/$daemon") {
+            shell("/bin/systemctl", "stop", "$daemon");
+        }
     }
 
     # Stop crontab
@@ -914,8 +956,10 @@ sub start_site {
     };
 
     # Start daemons
-    foreach my $daemon (keys %{$conf->{'daemons'}}) {
-        shell("/bin/systemctl", "start", "$daemon");
+    if ($deploy_daemons) {
+        foreach my $daemon (keys %{$conf->{'daemons'}}) {
+            shell("/bin/systemctl", "start", "$daemon");
+        }
     }
 
     # Crontab
@@ -949,20 +993,8 @@ sub check_for_unpushed {
 
 # Remove crontabs, vhost config etc.
 sub remove_site {
-    # Remove daemons
-    my $daemon_reload = 0;
-    foreach my $daemon (keys %{$conf->{'daemons'}}) {
-        if (-e "/etc/init.d/$daemon") {
-            unlink("/etc/init.d/$daemon")
-        }
-        if (-e "/etc/systemd/system/${daemon}.service") {
-            shell("/bin/systemctl", "disable", "$daemon");
-            unlink("/etc/systemd/system/${daemon}.service");
-            $daemon_reload = 1;
-        }
-    }
-
-    shell("/bin/systemctl", "daemon-reload") if $daemon_reload;
+    # Remove any daemons
+    remove_daemons();
 
     # Remove crontab
     unlink($cron_name);
