@@ -343,12 +343,12 @@ sub remove_daemons {
     # Remove daemons
     my $daemon_reload = 0;
     foreach my $daemon (keys %{$conf->{'daemons'}}) {
+        shell("/bin/systemctl", "disable", "$daemon");
         if (-e "/etc/init.d/$daemon") {
             unlink("/etc/init.d/$daemon");
             $daemon_reload = 1;
         }
         if (-e "/etc/systemd/system/${daemon}.service") {
-            shell("/bin/systemctl", "disable", "$daemon");
             unlink("/etc/systemd/system/${daemon}.service");
             $daemon_reload = 1;
         }
