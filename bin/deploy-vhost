@@ -387,14 +387,13 @@ sub create_daemons {
             print $fh "\$daemon_name = '$daemon';\n";
             if ($systemd) {
                 mugly($daemon_mugly, "/etc/systemd/system/${daemon}.service", $fh->filename);
-                shell("/bin/systemctl", "daemon-reload");
-                shell("/bin/systemctl", "enable", "$daemon");
             }
             else {
                 mugly($daemon_mugly, "/etc/init.d/$daemon", $fh->filename);
                 chmod 0755, "/etc/init.d/$daemon";
-                system("update-rc.d $daemon defaults | grep -v \"System startup links for .* already exist\"");
             }
+            shell("/bin/systemctl", "daemon-reload");
+            shell("/bin/systemctl", "enable", "$daemon");
         }
     } else {
         # They may have been deployed previously, but are no longer needed, so remove them.
