@@ -387,6 +387,8 @@ sub create_daemons {
             print $fh "\$daemon_name = '$daemon';\n";
             if ($systemd) {
                 mugly($daemon_mugly, "/etc/systemd/system/${daemon}.service", $fh->filename);
+                # In case we're transitioning from an older init script, make sure it's been removed.
+                unlink("/etc/init.d/$daemon") if -e "/etc/init.d/$daemon";
             }
             else {
                 mugly($daemon_mugly, "/etc/init.d/$daemon", $fh->filename);
