@@ -96,20 +96,3 @@ END
     my $dest = "$user_home/.my.cnf";
     rename($tmpn, $dest);
 }
-
-# Connect as root to db, and set root password. Debian defaults to not having one.
-my $password = `$FindBin::Bin/pgpw root`;
-chomp $password;
-my $db = DBI->connect("dbi:mysql:database=mysql;host=localhost", "root", $password,
-    { RaiseError => 0, AutoCommit => 1 });
-if (!$db) {
-    print "Ignore the warning above - happens first time run on a new machine, before mysql root password is set";
-    # Default debian root user has no password
-    $db = DBI->connect("dbi:mysql:database=mysql;host=localhost", "root", "",
-        { RaiseError => 0, AutoCommit => 1 });
-}
-if (!$db) {
-    die "failed to connect as root to db"
-}
-$db->do("update user set Password = PASSWORD(?) where User = 'root'", {}, $password);
-$db->do("flush privileges");
