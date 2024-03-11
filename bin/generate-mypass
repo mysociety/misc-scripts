@@ -66,7 +66,7 @@ foreach my $user (keys %$database_permissions) {
     my $database = $database_permissions->{$user};
     my $host;
     if (ref $database) {
-        $host = $database->[1] . '.ukcod.org.uk' if $database->[1];
+        $host = $database->[1] if $database->[1];
         $database = $database->[0];
     }
     my $user = $database;
