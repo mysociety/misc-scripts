@@ -126,20 +126,10 @@ if ($conf->{docker}) {
     ($conf->{docker}{stack} = $vhost) =~ s/\./_/g;
 }
 
-# Check if we should configure and deploy daemons
-# We want to create the daemons if `daemons_internal` isn't set.
-# If it is, and there are some servers listed in servers_internal, then
-# just deploy them there. If it's set and there are no servers listed
-# in servers_internal, deploy them anyway.
-my $deploy_daemons = 1;
-if ($conf->{daemons_internal}) {
-    if ($conf->{servers_internal}) {
-        unless (grep { m/^$hostname$/ } @{$conf->{servers_internal}}) {
-            $deploy_daemons = 0;
-        }
-    } else {
-        print "daemons_internal is set, but there are no servers listed in servers_internal, so daemons will be deployed.\n";
-    }
+# If daemons_internal is set and there are no servers listed
+# in servers_internal, warn about deployment.
+if ($conf->{daemons_internal} && !$conf->{servers_internal}) {
+    print "daemons_internal is set, but there are no servers listed in servers_internal, so daemons will be deployed.\n";
 }
 
 
@@ -339,10 +329,46 @@ sub update_vcspath_symlink {
     shell("ln -snf $vhost_dir/$vcspath_install $vhost_dir/$vcspath");
 }
 
-sub remove_daemons {
-    # Remove daemons
-    my $daemon_reload = 0;
+sub daemons {
+    my $type = shift;
+    my @daemons;
     foreach my $daemon (keys %{$conf->{'daemons'}}) {
+        my $daemon_mugly_file;
+        my $servers;
+        my $config = $conf->{'daemons'}->{$daemon};
+        if (ref $config eq 'HASH') {
+            $daemon_mugly_file = $config->{file};
+            $servers = $config->{servers};
+            $servers = [ $servers ] if $servers && ref $servers ne 'ARRAY';
+        } else {
+            $daemon_mugly_file = $config;
+        }
+        if (!$servers && $conf->{daemons_internal}) {
+            $servers = $conf->{servers_internal};
+        }
+
+        next if $type eq 'banish' && (!$servers || grep { m/^$hostname$/ } @$servers);
+        next if $type eq 'summon' && ($servers && !grep { m/^$hostname$/ } @$servers);
+
+        push @daemons, {
+            name => $daemon,
+            file => $daemon_mugly_file,
+            servers => $servers,
+        };
+    }
+    return @daemons;
+}
+
+sub update_daemons {
+    create_daemons();
+    remove_daemons();
+}
+
+sub remove_daemons {
+    my $all = shift;
+    my $daemon_reload = 0;
+    foreach my $obj (daemons($all ? 'all' : 'banish')) {
+        my $daemon = $obj->{name};
         if (-e "/etc/systemd/system/${daemon}.service" || -e "/etc/init.d/$daemon") {
             shell("/bin/systemctl", "stop", "$daemon");
             shell("/bin/systemctl", "disable", "$daemon");
@@ -357,47 +383,44 @@ sub remove_daemons {
 # Generate daemon init scripts from templates
 sub create_daemons {
     # Check to see if we want daemons to be deployed.
-    if ($deploy_daemons) {
-        foreach my $daemon (keys %{$conf->{'daemons'}}) {
-            my $daemon_mugly_file = $conf->{'daemons'}->{$daemon};
-            # See if there's an ugly file in the servers dir
-            $daemon_mugly_file =~ m#^(.*?).ugly$#;
-            my $name_part = $1;
-            my $systemd = $name_part =~ /\.service$/ ? 1 : '';
-            my $daemon_mugly;
-            my $servers_dir_ugly_file = get_conf_ugly_file_from_servers_dir($name_part);
+    foreach my $obj (daemons('summon')) {
+        my $daemon = $obj->{name};
+        my $daemon_mugly_file = $obj->{file};
 
-            if (-e $servers_dir_ugly_file) {
-                $daemon_mugly = $servers_dir_ugly_file;
-            } else {
-                my ($git_ref, $conf_dir);
-                if ( $conf->{git_ref} ) {
-                    $git_ref = $conf->{git_ref};
-                    $conf_dir = $conf->{conf_dir}->[0]
-                } elsif ( $conf->{private_git_ref} ) {
-                    $git_ref = $conf->{private_git_ref};
-                    $conf_dir = $conf->{private_conf_dir}->[0]
-                }
-                $daemon_mugly = git("show $git_ref:$conf_dir/$daemon_mugly_file");
-            }
+        # See if there's an ugly file in the servers dir
+        $daemon_mugly_file =~ m#^(.*?).ugly$#;
+        my $name_part = $1;
+        my $systemd = $name_part =~ /\.service$/ ? 1 : '';
+        my $daemon_mugly;
+        my $servers_dir_ugly_file = get_conf_ugly_file_from_servers_dir($name_part);
 
-            my $fh = File::Temp->new;
-            print $fh "\$daemon_name = '$daemon';\n";
-            if ($systemd) {
-                mugly($daemon_mugly, "/etc/systemd/system/${daemon}.service", $fh->filename);
-                # In case we're transitioning from an older init script, make sure it's been removed.
-                unlink("/etc/init.d/$daemon") if -e "/etc/init.d/$daemon";
+        if (-e $servers_dir_ugly_file) {
+            $daemon_mugly = $servers_dir_ugly_file;
+        } else {
+            my ($git_ref, $conf_dir);
+            if ( $conf->{git_ref} ) {
+                $git_ref = $conf->{git_ref};
+                $conf_dir = $conf->{conf_dir}->[0]
+            } elsif ( $conf->{private_git_ref} ) {
+                $git_ref = $conf->{private_git_ref};
+                $conf_dir = $conf->{private_conf_dir}->[0]
             }
-            else {
-                mugly($daemon_mugly, "/etc/init.d/$daemon", $fh->filename);
-                chmod 0755, "/etc/init.d/$daemon";
-            }
-            shell("/bin/systemctl", "daemon-reload");
-            shell("/bin/systemctl", "enable", "$daemon");
+            $daemon_mugly = git("show $git_ref:$conf_dir/$daemon_mugly_file");
         }
-    } else {
-        # They may have been deployed previously, but are no longer needed, so remove them.
-        remove_daemons();
+
+        my $fh = File::Temp->new;
+        print $fh "\$daemon_name = '$daemon';\n";
+        if ($systemd) {
+            mugly($daemon_mugly, "/etc/systemd/system/${daemon}.service", $fh->filename);
+            # In case we're transitioning from an older init script, make sure it's been removed.
+            unlink("/etc/init.d/$daemon") if -e "/etc/init.d/$daemon";
+        }
+        else {
+            mugly($daemon_mugly, "/etc/init.d/$daemon", $fh->filename);
+            chmod 0755, "/etc/init.d/$daemon";
+        }
+        shell("/bin/systemctl", "daemon-reload");
+        shell("/bin/systemctl", "enable", "$daemon");
     }
 }
 
@@ -449,7 +472,7 @@ sub create_or_update_files {
 
 sub update_system_config {
     # Create the daemon
-    create_daemons();
+    update_daemons();
 
     # Common pathname for Apache and Nginx.
     my $vhost_file = "virtualhosts.d/$vhost.conf";
@@ -956,10 +979,9 @@ sub start_site {
     };
 
     # Start daemons
-    if ($deploy_daemons) {
-        foreach my $daemon (keys %{$conf->{'daemons'}}) {
-            shell("/bin/systemctl", "start", "$daemon");
-        }
+    foreach my $obj (daemons('summon')) {
+        my $daemon = $obj->{name};
+        shell("/bin/systemctl", "start", "$daemon");
     }
 
     # Crontab
@@ -994,7 +1016,7 @@ sub check_for_unpushed {
 # Remove crontabs, vhost config etc.
 sub remove_site {
     # Remove any daemons
-    remove_daemons();
+    remove_daemons(1);
 
     # Remove crontab
     unlink($cron_name);
