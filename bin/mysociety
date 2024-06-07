@@ -144,10 +144,17 @@ case $COMMAND in
             if [ "$COMMAND" == "deploy" ]; then COMMAND=""; fi
             BALANCERS=$(mysociety vhost balancers "$VHOST")
             SERVERS=$(mysociety vhost servers "$VHOST")
+            SERVERS_INTERNAL=$(jq -r -c .vhosts.\"${VHOST}\".servers_internal[]? /data/vhosts.json 2>/dev/null)
+            NUM_INTERNAL_SERVERS=$(echo $SERVERS_INTERNAL | wc -w)
+            NUM_WEB_SERVERS=$(($(echo $SERVERS | wc -w) - $NUM_INTERNAL_SERVERS))
             for s in $SERVERS; do
+                # Work out if we want to remove this server from the load balancers.
+                # We only want to do this is there is more than one public-facing
+                # web server and this server is one of those systems.
                 DO_VARNISH="yes"
-                SERVERS_INTERNAL=$(jq -r -c .vhosts.\"${VHOST}\".servers_internal[]? /data/vhosts.json 2>/dev/null)
-                if [ -n "$SERVERS_INTERNAL" ] ; then
+                if [ "$NUM_WEB_SERVERS" -eq "1" ]; then
+                    DO_VARNISH='no'
+                elif [ -n "$SERVERS_INTERNAL" ] ; then
                     for si in $SERVERS_INTERNAL ; do
                         if [ "$s" == "$si" ] ; then
                             DO_VARNISH=no
@@ -155,7 +162,7 @@ case $COMMAND in
                     done
                 fi
                 VHOST_BACKEND=$(echo "${START_CHAR}${VHOST}_${s}" | sed -e 's/\./_/g')
-                if [ -n "$BALANCERS" ] && [ "$(echo $SERVERS | wc -w)" -gt 1 ] && [ "$DO_VARNISH" == "yes" ]; then
+                if [ -n "$BALANCERS" ] && [ "$DO_VARNISH" == "yes" ]; then
                     # remove server from balancers if there are balancers and more than one server...
                     for b in $BALANCERS; do
                         PORT=$(jq --arg lb "$(echo $b | cut -d. -f1)" -r '.[$lb]' /etc/mysociety/varnishadm.json)
@@ -167,7 +174,7 @@ case $COMMAND in
                 echo -e "\033[34m[deploy] Performing ${COMMAND:-deploy} for ${VHOST} on ${s}...\033[0m"
                 ssh -t "$s" sudo mysociety vhost "$COMMAND" "$VHOST" "$@"
                 if [ "$COMMAND" != "stop" ] && [ "$COMMAND" != "remove" ]; then
-                    if [ -n "$BALANCERS" ] && [ "$(echo $SERVERS | wc -w)" -gt 1 ] && [ "$DO_VARNISH" == "yes" ]; then
+                    if [ -n "$BALANCERS" ] && [ "$DO_VARNISH" == "yes" ]; then
                         # This should provide a bit of time for process manager to start, or at least have the
                         # probe mark the back-end as sick before we switch back to auto - otherwise we sometimes
                         # see a couple of 503 responses before this happens.
