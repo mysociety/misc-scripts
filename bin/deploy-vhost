@@ -492,9 +492,6 @@ sub update_system_config {
     # Nginx
     my $nginx_file = "/etc/nginx/$vhost_file";
     mugly("$servers_dir/vhosts/single-vhost-nginx-https-proxy.conf.ugly", $nginx_file);
-
-    # Update NRPE's sudo and config files so that it can call monitoring scripts as the vhost user
-    system("/data/mysociety/bin/update-vhost-monitoring");
 }
 
 #####################################################################
