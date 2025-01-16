@@ -18,7 +18,7 @@ my $verbose = 0;
 my $delete = 0;
 my $help = 0;
 my @vhosts_to_check = ();
-my @ignore_vhosts = ( "default.ukcod.org.uk", "${host}.ukcod.org.uk", "debian.mysociety.org" );
+my @ignore_vhosts = ( "${host}", "debian.mysociety.org" );
 my $vhosts_dir = "/data/vhost";
 my $deployed_vhosts_state = "/var/lib/server-state/vhost-list";
 
