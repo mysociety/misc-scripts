@@ -16,6 +16,7 @@ my $vhosts = mySociety::VHosts->new();
 
 my $verbose = 0;
 my $delete = 0;
+my $force = 0;
 my $help = 0;
 my @vhosts_to_check = ();
 my @ignore_vhosts = ( "${host}", "debian.mysociety.org" );
@@ -26,6 +27,7 @@ my $deployed_vhosts_state = "/var/lib/server-state/vhost-list";
 GetOptions(
     'verbose' => \$verbose,
     'delete'  => \$delete,
+    'force'   => \$force,
     'help'    => \$help,
     'vhost=s' => \@vhosts_to_check,
 );
@@ -89,16 +91,19 @@ foreach my $vhost ( @vhosts_to_check ) {
             if ($git_status) {
                 print "$vhost: timestamped deploy $deploy repo isn't clean.\n";
                 print "$git_status\n" if $verbose;
-            } elsif ( $c <= $num_deploys - 5 && $deploy ne $live_deploy ) {
-                # Let's just delete any older timestamped deploys, keeping around the most
-                # recent five. Note we're basing this on the order returned by sort() on
-                # the list of timestamped deploy directories, which should be fine as they
-                # contain sortable timestamps.
-                if ( $delete ) {
-                    rmtree( [ $deploy] );
-                    print "$vhost: deleted $deploy\n" if $verbose;
-                } else {
-                    print "$vhost: would delete $deploy\n" if $verbose;
+            }
+            if ( !$git_status || $force ) {
+                if ( $c <= $num_deploys - 5 && $deploy ne $live_deploy ) {
+                    # Let's just delete any older timestamped deploys, keeping around the most
+                    # recent five. Note we're basing this on the order returned by sort() on
+                    # the list of timestamped deploy directories, which should be fine as they
+                    # contain sortable timestamps.
+                    if ( $delete ) {
+                        rmtree( [ $deploy] );
+                        print "$vhost: deleted $deploy\n" if $verbose;
+                    } else {
+                        print "$vhost: would delete $deploy\n" if $verbose;
+                    }
                 }
             }
         }
@@ -157,6 +162,13 @@ notice. Recentness is simply determined using a sort on the directory
 names of the timestamped deploys. The current live deploy, as
 determined by the target of the symlink to the bare repository name,
 will not be deleted regardless of its place in the sort order.
+
+=item --force
+
+Using this option with B<--delete> will also delete any deploys that
+have untracked or changed files in the working copies. Using the option
+without the B<--delete> flag and without the B<--quiet> flag will add
+output stating which additional deploys would be deleted.
 
 =item --vhost
 
