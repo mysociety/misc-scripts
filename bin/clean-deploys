@@ -87,6 +87,7 @@ foreach my $vhost ( @vhosts_to_check ) {
         my $c = 0;
         foreach my $deploy ( sort @deploys ) {
             $c++;
+            print "$vhost: working on the live deploy - ${deploy}\n" if ($verbose && $deploy eq $live_deploy);
             $git_status = qx(git -C $deploy status --porcelain);
             if ($git_status) {
                 print "$vhost: timestamped deploy $deploy repo isn't clean.\n" if $verbose;
