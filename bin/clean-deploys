@@ -89,7 +89,7 @@ foreach my $vhost ( @vhosts_to_check ) {
             $c++;
             $git_status = qx(git -C $deploy status --porcelain);
             if ($git_status) {
-                print "$vhost: timestamped deploy $deploy repo isn't clean.\n";
+                print "$vhost: timestamped deploy $deploy repo isn't clean.\n" if $verbose;
                 print "$git_status\n" if $verbose;
             }
             if ( !$git_status || $force ) {
@@ -110,7 +110,7 @@ foreach my $vhost ( @vhosts_to_check ) {
     } else {
         $git_status = qx(git -C ${vhosts_dir}/${vhost}/${repo} status --porcelain);
         if ($git_status) {
-            print "$vhost: repo isn't clean.\n";
+            print "$vhost: repo isn't clean.\n" if $verbose;
             print "$git_status\n" if $verbose;
         } else {
             print "$vhost: repo is clean.\n" if $verbose;
