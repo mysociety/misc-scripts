@@ -12,7 +12,6 @@ my $host = hostname;
 use FindBin;
 use lib "$FindBin::Bin/../perllib";
 use mySociety::VHosts;
-my $vhosts = mySociety::VHosts->new();
 
 my $verbose = 0;
 my $delete = 0;
@@ -36,6 +35,8 @@ if ($help) {
     pod2usage(-exitval => 0, -verbose => 2);
     exit(0);
 }
+
+my $vhosts = mySociety::VHosts->new();
 
 # Unless provided with some on the commandline get a list of deployed
 # vhosts from the local state file.
@@ -139,6 +140,9 @@ for the current live copy).
 By default B<clean-deploys> will look at all vhosts listed in the
 current state file for the server in question. The B<--vhost> option
 (q.v.) can be used to specify particular vhosts to check.
+
+Note that aside from B<--help> all other operations expect a copy of
+`/data/servers/vhosts.pl` to be present on the system.
 
 =head1 OPTIONS
 
