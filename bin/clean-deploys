@@ -13,7 +13,7 @@ use FindBin;
 use lib "$FindBin::Bin/../perllib";
 use mySociety::VHosts;
 
-my $verbose = 0;
+my $quiet = 0;
 my $delete = 0;
 my $force = 0;
 my $help = 0;
@@ -24,7 +24,7 @@ my $deployed_vhosts_state = "/var/lib/server-state/vhost-list";
 
 # Options
 GetOptions(
-    'verbose' => \$verbose,
+    'quiet' => \$quiet,
     'delete'  => \$delete,
     'force'   => \$force,
     'help'    => \$help,
@@ -46,7 +46,7 @@ unless ( @vhosts_to_check ) {
         $v =~ s/^\s+|\s+$//g;
         foreach ( @ignore_vhosts ) {
             if ( "$_" eq "$v" ) {
-                print "${v}: skipping - hardcoded exception.\n" if $verbose;
+                print "${v}: skipping - hardcoded exception.\n" unless $quiet;
                 next STATE;
             }
         }
@@ -62,7 +62,7 @@ foreach my $vhost ( @vhosts_to_check ) {
     if ( $vhosts->{vhosts}{$vhost} ) {
         $vhost_conf = $vhosts->vhost($vhost);
     } else {
-        print "$vhost: skipping - not in JSON.\n" if $verbose;
+        print "$vhost: skipping - not in JSON.\n" unless $quiet;
         next;
     }
     my $site_conf  = $vhosts->site($vhost_conf->{site});
@@ -72,7 +72,7 @@ foreach my $vhost ( @vhosts_to_check ) {
 
     # Skip Redirect Sites.
     if ( $conf->{redirects_only} ) {
-        print "$vhost: skipping - redirects only.\n" if $verbose;
+        print "$vhost: skipping - redirects only.\n" unless $quiet;
         next;
     }
 
@@ -88,11 +88,11 @@ foreach my $vhost ( @vhosts_to_check ) {
         my $c = 0;
         foreach my $deploy ( sort @deploys ) {
             $c++;
-            print "$vhost: working on the live deploy - ${deploy}\n" if ($verbose && $deploy eq $live_deploy);
+            print "$vhost: working on the live deploy - ${deploy}\n" if (!$quiet && $deploy eq $live_deploy);
             $git_status = qx(git -C $deploy status --porcelain);
             if ($git_status) {
-                print "$vhost: timestamped deploy $deploy repo isn't clean.\n" if $verbose;
-                print "$git_status\n" if $verbose;
+                print "$vhost: timestamped deploy $deploy repo isn't clean.\n" unless $quiet;
+                print "$git_status\n" unless $quiet;
             }
             if ( !$git_status || $force ) {
                 if ( $c <= $num_deploys - 5 && $deploy ne $live_deploy ) {
@@ -102,9 +102,9 @@ foreach my $vhost ( @vhosts_to_check ) {
                     # contain sortable timestamps.
                     if ( $delete ) {
                         rmtree( [ $deploy] );
-                        print "$vhost: deleted $deploy\n" if $verbose;
+                        print "$vhost: deleted $deploy\n" unless $quiet;
                     } else {
-                        print "$vhost: would delete $deploy\n" if $verbose;
+                        print "$vhost: would delete $deploy\n" unless $quiet;
                     }
                 }
             }
@@ -112,10 +112,10 @@ foreach my $vhost ( @vhosts_to_check ) {
     } else {
         $git_status = qx(git -C ${vhosts_dir}/${vhost}/${repo} status --porcelain);
         if ($git_status) {
-            print "$vhost: repo isn't clean.\n" if $verbose;
-            print "$git_status\n" if $verbose;
+            print "$vhost: repo isn't clean.\n" unless $quiet;
+            print "$git_status\n" unless $quiet;
         } else {
-            print "$vhost: repo is clean.\n" if $verbose;
+            print "$vhost: repo is clean.\n" unless $quiet;
         }
     }
 }
@@ -152,12 +152,10 @@ Note that aside from B<--help> all other operations expect a copy of
 
 Displays this help message.
 
-=item --verbose
+=item --quiet
 
-Provides more detailed information on untracked and changed files
-and reports on vhosts skipped where they are missing from the
-deployment JSON, configured only for redirects or are hardcoded as
-exceptions.
+This options will suppress all output except for errors, for example
+to run under cron.
 
 =item --delete
 
