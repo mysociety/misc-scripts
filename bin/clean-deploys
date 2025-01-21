@@ -17,6 +17,7 @@ my $quiet = 0;
 my $delete = 0;
 my $force = 0;
 my $help = 0;
+my $keep = 5;
 my @vhosts_to_check = ();
 my @ignore_vhosts = ( "${host}", "debian.mysociety.org" );
 my $vhosts_dir = "/data/vhost";
@@ -28,6 +29,7 @@ GetOptions(
     'delete'  => \$delete,
     'force'   => \$force,
     'help'    => \$help,
+    'keep=i'  => \$keep,
     'vhost=s' => \@vhosts_to_check,
 );
 
@@ -95,7 +97,7 @@ foreach my $vhost ( @vhosts_to_check ) {
                 print "$git_status\n" unless $quiet;
             }
             if ( !$git_status || $force ) {
-                if ( $c <= $num_deploys - 5 && $deploy ne $live_deploy ) {
+                if ( $c <= $num_deploys - $keep && $deploy ne $live_deploy ) {
                     # Let's just delete any older timestamped deploys, keeping around the most
                     # recent five. Note we're basing this on the order returned by sort() on
                     # the list of timestamped deploy directories, which should be fine as they
@@ -172,6 +174,10 @@ Using this option with B<--delete> will also delete any deploys that
 have untracked or changed files in the working copies. Using the option
 without the B<--delete> flag and without the B<--quiet> flag will add
 output stating which additional deploys would be deleted.
+
+=item --keep
+
+The number of old timestamped deploys to keep around. The default is 5.
 
 =item --vhost
 
