@@ -94,7 +94,7 @@ foreach my $vhost ( @vhosts_to_check ) {
             $git_status = qx(git -C $deploy status --porcelain);
             if ($git_status) {
                 print "$vhost: timestamped deploy $deploy repo isn't clean.\n" unless $quiet;
-                print "$git_status\n" unless $quiet;
+                print "$git_status" unless $quiet;
             }
             if ( !$git_status || $force ) {
                 if ( $c <= $num_deploys - $keep && $deploy ne $live_deploy ) {
@@ -106,7 +106,7 @@ foreach my $vhost ( @vhosts_to_check ) {
                         rmtree( [ $deploy] );
                         print "$vhost: deleted $deploy\n" unless $quiet;
                     } else {
-                        print "$vhost: would delete $deploy\n" unless $quiet;
+                        print "$vhost: would delete $deploy\n\n" unless $quiet;
                     }
                 }
             }
