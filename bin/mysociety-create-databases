@@ -132,6 +132,13 @@ foreach my $database (keys %{$databases}) {
                 $dbh->do("alter user \"$database\" with createdb");
             }
 
+            # Give user permissions on public schema on PostgreSQL 15+
+            if ($pg_version >= 15) {
+                my $dbh_db = DBI->connect("dbi:Pg:dbname=$database;port=$params->{port}", 'postgres', undef, { PrintWarn => 1, PrintError => 1, RaiseError => 0, AutoCommit => 1 }) || die DBI->errstr();
+                $dbh_db->do("grant all on schema public to \"$database\" ");
+                $dbh_db->disconnect;
+            }
+
             push @out, "no change" if $::verbose && !@out;
             print "$database (psql", ($params->{port} == 5432 ? "" : " port $params->{port}"), "): ", join('; ', @out), "\n" if @out;
 
