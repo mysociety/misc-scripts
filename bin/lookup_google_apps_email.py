@@ -9,6 +9,7 @@
 # Ian Chard  20/8/2015
 #
 
+import socket
 import sys
 from googleapiclient.discovery import build
 from googleapiclient import errors
@@ -47,6 +48,9 @@ def lookup_group( addr ):
 
     try:
         response = groupadmin.groups().get(groupKey=addr).execute()
+    except socket.timeout:
+        # Assume is okay, to continue deploy
+        return True
     except errors.HttpError:
         return False
 
