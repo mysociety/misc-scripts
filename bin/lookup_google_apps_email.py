@@ -30,6 +30,9 @@ def lookup_user( addr ):
 
     try:
         response = useradmin.users().get(userKey=addr).execute()
+    except socket.timeout:
+        # Assume is okay, to continue deploy
+        return True
     except errors.HttpError:
         return False
 
