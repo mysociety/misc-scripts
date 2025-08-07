@@ -24,11 +24,12 @@ COMMAND is one of:
     config
         Tell Puppet to pull new manifests and apply them
 
-    vhost [--server server | --all] VHOST [--force] [--flush]
+    vhost [--server server | --all] VHOST [--force] [--flush] [--from-package]
 	    Deploy latest version of VHOST, e.g. www.pledgebank.com,
         optionally on [server] or, with --all, on all VHOST's servers
         --force will override any local uncommitted changes
         --flush will ban VHOST and its aliases from local Varnish
+        --from-package will build a vhost package if needed, and use it for the deploy
 
     vhost stop/update/start [--server server | --all] VHOST
         Stop/update/start VHOST, e.g. www.pledgebank.com
@@ -38,6 +39,9 @@ COMMAND is one of:
 
     vhost servers VHOST
         Print which servers VHOST is deployed on
+
+    vhost package VHOST
+        Build a package for the given vhost
 
     test VHOST
         Deploy, then run test script on VHOST, e.g. testharness.pet.mysociety.org
@@ -121,11 +125,26 @@ case $COMMAND in
         COMMAND=deploy
         VHOST=$1
         shift || die "specify a command or a virtual host"
-        if [ "$VHOST" == "stop" -o "$VHOST" == "update" -o "$VHOST" == "start" -o "$VHOST" == "remove" -o "$VHOST" == "servers" -o "$VHOST" == "balancers" ]
+        if [ "$VHOST" == "stop" -o "$VHOST" == "update" -o "$VHOST" == "start" -o "$VHOST" == "remove" -o "$VHOST" == "servers" -o "$VHOST" == "balancers" -o "$VHOST" == "package" ]
         then
             COMMAND=$VHOST
             VHOST=$1
             shift || die "specify a virtual host"
+        fi
+        if [[ "$COMMAND" == "package" || $* == *"--from-package"* ]]
+        then
+            if [ -z "$VHOST_PACKAGE" ]
+            then
+                PACKAGE_DEBIAN_VERSION=${PACKAGE_DEBIAN_VERSION:-bookworm}
+                VHOST_PACKAGE=$(ssh packaging.mysociety.org "sudo su vpackager -c 'vpackager build --vhost $VHOST --debian-version $PACKAGE_DEBIAN_VERSION --vhosts-config /data/vhosts.json --output-dir /data/packages'")
+            else
+                echo "Using vhost package $VHOST_PACKAGE."
+            fi
+            if [ "$COMMAND" == "package" ]
+            then
+                echo "$VHOST_PACKAGE"
+                exit
+            fi
         fi
         if [ "$VHOST" == "--all" ]
         then
@@ -172,7 +191,7 @@ case $COMMAND in
                     sleep 5
                 fi
                 echo -e "\033[34m[deploy] Performing ${COMMAND:-deploy} for ${VHOST} on ${s}...\033[0m"
-                ssh -t "$s" sudo mysociety vhost "$COMMAND" "$VHOST" "$@" --thread $THREAD_ID
+                ssh -t "$s" sudo ${VHOST_PACKAGE:+env VHOST_PACKAGE="$VHOST_PACKAGE"}  mysociety vhost "$COMMAND" "$VHOST" "$@" --thread $THREAD_ID
                 if [ "$COMMAND" != "stop" ] && [ "$COMMAND" != "remove" ]; then
                     if [ -n "$BALANCERS" ] && [ "$DO_VARNISH" == "yes" ]; then
                         # This should provide a bit of time for process manager to start, or at least have the
@@ -206,12 +225,12 @@ case $COMMAND in
             shift || die "specify a vhost"
             if [ "$COMMAND" == "deploy" ]; then COMMAND=""; fi
             for s in $SERVER; do
-                ssh -t "$s" sudo mysociety vhost "$COMMAND" "$VHOST" "$@"
+                ssh -t "$s" sudo ${VHOST_PACKAGE:+env VHOST_PACKAGE="$VHOST_PACKAGE"} mysociety vhost "$COMMAND" "$VHOST" "$@"
             done
             exit
         fi
         # deploy vhost
-        /data/mysociety/bin/deploy-vhost $VHOST $COMMAND "$@"
+        ${VHOST_PACKAGE:+env VHOST_PACKAGE="$VHOST_PACKAGE"} /data/mysociety/bin/deploy-vhost $VHOST $COMMAND "$@"
         ;;
 
     devhost)
