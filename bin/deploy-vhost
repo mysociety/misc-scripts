@@ -45,10 +45,12 @@ die "Specify virtual host name as first parameter, deploy/stop/update/start/remo
 
 my $flush;
 my $force;
+my $from_package;
 my $thread_id = '';
 GetOptions(
     flush => \$flush,
     force => \$force,
+    from_package => \$from_package,
     'thread:s' => \$thread_id,
 );
 
@@ -56,6 +58,14 @@ my $vhost = shift @ARGV;
 
 my $action = shift @ARGV;
 die "Specify 'deploy', 'stop', 'update', 'start', 'servers', 'balancers' or 'remove' as second parameter" if $action ne "deploy" && $action ne "stop" && $action ne "update" && $action ne "start" && $action ne 'remove' && $action ne 'servers' && $action ne 'balancers';
+
+my $vhost_package;
+if ($from_package) {
+    $vhost_package = $ENV{VHOST_PACKAGE};
+    if (!$vhost_package) {
+        die "--from-package was given but VHOST_PACKAGE was not set";
+    }
+}
 
 my $hostname = `hostname`;
 chomp($hostname);
@@ -442,21 +452,53 @@ sub create_or_update_files {
     make_symlink($web_dir, "$vhost_dir/docs");
     shell("chown", "-h", "$conf->{user_uid}:$conf->{user_gid}", "$vhost_dir/docs"); # perl's chown doesn't do symlinks
 
-    # Initial clone, for git repository that don't exist
-    my $git_url_base;
-    if (exists($conf->{git_repository})) {
-        if (exists($conf->{git_url_base})) {
-            $git_url_base = $conf->{git_url_base};
-        } elsif ($conf->{git_user} eq 'anon') {
-            $git_url_base = "git://git.mysociety.org/"
-        } else {
-            $git_url_base = "ssh://" . $conf->{git_user} . '@git.mysociety.org/data/git/public/';
+    if ($from_package) {
+        print "Will deploy from package $vhost_package.";
+        print "Fetching $vhost_package...";
+        shell(
+            "curl",
+            "https://packaging.mysociety.org:49090/$vhost_package",
+            "--output",
+            "/tmp/$vhost_package",
+        );
+        print "Extracting $vhost_package...";
+        shell(
+            "tar",
+            "-xzf",
+            "/tmp/$vhost_package",
+            "-C",
+            "/tmp/",
+        );
+        print "Moving extracted package to $vcspath_install...";
+        shell(
+            "mv",
+            "/tmp/$vhost",
+            "$vhost_dir/$vcspath_install",
+        );
+        print "Fixing file ownership...";
+        shell(
+            "chown",
+            "-R",
+            $conf->{'user'} . ':' . $conf->{'user'},
+            "$vhost_dir/$vcspath_install",
+        );
+    } else {
+        # Initial clone, for git repository that don't exist
+        my $git_url_base;
+        if (exists($conf->{git_repository})) {
+            if (exists($conf->{git_url_base})) {
+                $git_url_base = $conf->{git_url_base};
+            } elsif ($conf->{git_user} eq 'anon') {
+                $git_url_base = "git://git.mysociety.org/"
+            } else {
+                $git_url_base = "ssh://" . $conf->{git_user} . '@git.mysociety.org/data/git/public/';
+            }
+            make_git_repository($git_url_base, $conf->{git_user}, $conf->{git_repository}, $conf->{git_ref});
         }
-        make_git_repository($git_url_base, $conf->{git_user}, $conf->{git_repository}, $conf->{git_ref});
-    }
-    if (exists($conf->{private_git_repository})) {
-        $git_url_base = "ssh://" . $conf->{user} . '@git.mysociety.org/data/git/private/';
-        make_git_repository($git_url_base, $conf->{user}, $conf->{private_git_repository}, $conf->{private_git_ref});
+        if (exists($conf->{private_git_repository})) {
+            $git_url_base = "ssh://" . $conf->{user} . '@git.mysociety.org/data/git/private/';
+            make_git_repository($git_url_base, $conf->{user}, $conf->{private_git_repository}, $conf->{private_git_ref});
+        }
     }
 
     # Make public directories
