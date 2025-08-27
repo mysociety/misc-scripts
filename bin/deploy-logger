@@ -16,5 +16,7 @@ logger -p local6.notice -t mysociety_deploylogger -- "${WHO} ${@}"
 if [[ ! "$@" =~ "Deployed vhost" || ! "$@" =~ "test.mysociety.org" ]]
 then
   SLACK=`cat /etc/mysociety/slack.webhook`
-  curl --silent -X POST --data-urlencode 'payload={"channel": "#activity", "username": "DeployBot", "text": "'"[$HOST] $WHO $@"'", "icon_emoji": ":ms:"}' $SLACK >/dev/null
+  for channel in activity deploys; do
+      curl --silent -X POST --data-urlencode 'payload={"channel": "#'$channel'", "username": "DeployBot", "text": "'"[$HOST] $WHO $@"'", "icon_emoji": ":ms:"}' $SLACK >/dev/null
+  done
 fi
