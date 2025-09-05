@@ -137,12 +137,14 @@ try {
     my $help = 0;
     my $check_only = 0;
     my $no_check_existing = 0;
+    my $thread_id;
     if (!GetOptions(
             'help' =>           \$help,
             'verbose' =>        \$be_verbose,
             'quiet' =>          \$be_quiet,
             'check-only' =>     \$check_only,
             'no-check-existing' =>  \$no_check_existing,
+            'thread:s' => \$thread_id,
         )) {
         throw Oops("bad options; try --help for help");
     }
@@ -284,7 +286,7 @@ EOF
 
 
     # and before that's all banged out, log
-    shell('/data/mysociety/bin/deploy-logger', 'Deployed DNS')
+    shell('/data/mysociety/bin/deploy-logger', 'Deployed DNS', $thread_id)
         unless $be_quiet;
 done:
     $ret = 0;

@@ -137,10 +137,12 @@ my $file_gid;
 try {
     my $help = 0;
     my $check_only = 0;
+    my $thread_id;
     if (!GetOptions(
             'help' =>           \$help,
             'verbose' =>        \$be_verbose,
             'quiet' =>          \$be_quiet,
+            'thread' => \$thread_id,
             'check-only' =>     \$check_only
         )) {
         throw Oops("bad options; try --help for help");
@@ -286,7 +288,7 @@ try {
     verbose("all done");
 
     # in which case, inform or log
-    shell('/data/mysociety/bin/deploy-logger', 'Deployed Email Config')
+    shell('/data/mysociety/bin/deploy-logger', 'Deployed Email Config', $thread_id)
         unless $be_quiet;
 
 done:

@@ -20,6 +20,7 @@ use mySociety::Deploy;
 use Cwd;
 use DBI;
 use Errno;
+use Getopt::Long;
 use Time::Piece;
 use File::Path qw(make_path);
 use File::Copy;
@@ -42,18 +43,19 @@ mySociety::Deploy::read_conf($servers_dir);
 # Check command line parameters, look up in config file
 die "Specify virtual host name as first parameter, deploy/stop/update/start/remove/servers as second parameter" if scalar(@ARGV) < 2;
 
+my $flush;
+my $force;
+my $thread_id;
+GetOptions(
+    flush => \$flush,
+    force => \$force,
+    'thread:s' => \$thread_id,
+);
+
 my $vhost = shift @ARGV;
 
 my $action = shift @ARGV;
 die "Specify 'deploy', 'stop', 'update', 'start', 'servers', 'balancers' or 'remove' as second parameter" if $action ne "deploy" && $action ne "stop" && $action ne "update" && $action ne "start" && $action ne 'remove' && $action ne 'servers' && $action ne 'balancers';
-
-my $flush = 0;
-my $force = 0;
-
-foreach my $other_arg (@ARGV) {
-    $flush = 1 if $other_arg eq '--flush';
-    $force = 1 if $other_arg eq '--force';
-}
 
 my $hostname = `hostname`;
 chomp($hostname);
@@ -1095,7 +1097,7 @@ sub upgrade_db_password {
 
 sub deploy_logger {
     my $message = shift;
-    shell("/data/mysociety/bin/deploy-logger", $message);
+    shell("/data/mysociety/bin/deploy-logger", $message, $thread_id);
 }
 
 sub make_dir {

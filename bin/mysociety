@@ -140,7 +140,7 @@ case $COMMAND in
             shift || die "specify a vhost"
             # Deal with non-sensical commands combined with --all
             if [ "$COMMAND" == "servers" ] || [  "$COMMAND" == "balancers" ]; then die "Using ${COMMAND} with --all makes no sense."; fi
-            /data/mysociety/bin/deploy-logger "Performing ${COMMAND} for ${VHOST} on all servers"
+            THREAD_ID=$(/data/mysociety/bin/deploy-logger "Performing ${COMMAND} for ${VHOST} on all servers")
             if [ "$COMMAND" == "deploy" ]; then COMMAND=""; fi
             BALANCERS=$(mysociety vhost balancers "$VHOST")
             SERVERS=$(mysociety vhost servers "$VHOST")
@@ -172,7 +172,7 @@ case $COMMAND in
                     sleep 5
                 fi
                 echo -e "\033[34m[deploy] Performing ${COMMAND:-deploy} for ${VHOST} on ${s}...\033[0m"
-                ssh -t "$s" sudo mysociety vhost "$COMMAND" "$VHOST" "$@"
+                ssh -t "$s" sudo mysociety vhost "$COMMAND" "$VHOST" "$@" --thread $THREAD_ID
                 if [ "$COMMAND" != "stop" ] && [ "$COMMAND" != "remove" ]; then
                     if [ -n "$BALANCERS" ] && [ "$DO_VARNISH" == "yes" ]; then
                         # This should provide a bit of time for process manager to start, or at least have the
@@ -245,10 +245,10 @@ case $COMMAND in
 
     dns)
         if [ "$1" = "--all" ] ; then
-            /data/mysociety/bin/deploy-logger "Deploying DNS on all servers"
+            THREAD_ID=$(/data/mysociety/bin/deploy-logger "Deploying DNS on all servers")
             for srv in $(puppet query 'nodes [certname] { facts { name = "is_nameserver" and value = true } }' | jq -r .[].certname); do
                 echo " -- on ${srv}..."
-                ssh $srv "/data/mysociety/bin/mysociety dns --quiet" || echo " -- ...failed"
+                ssh $srv "/data/mysociety/bin/mysociety dns --quiet --thread $THREAD_ID" || echo " -- ...failed"
             done
         else
             exec /data/mysociety/bin/deploy-dns "$@"
@@ -257,10 +257,10 @@ case $COMMAND in
 
     email)
         if [ "$1" = "--all" ] ; then
-            /data/mysociety/bin/deploy-logger "Deploying email on all servers"
+            THREAD_ID=$(/data/mysociety/bin/deploy-logger "Deploying email on all servers")
             for srv in $(puppet query 'nodes [certname] { facts { name = "is_mailserver" and value = true } }' | jq -r .[].certname); do
                 echo " -- on ${srv}..."
-                ssh $srv "/data/mysociety/bin/mysociety email --quiet" || echo " -- ...failed"
+                ssh $srv "/data/mysociety/bin/mysociety email --quiet --thread $THREAD_ID" || echo " -- ...failed"
             done
         else
             exec /data/mysociety/bin/deploy-email "$@"

@@ -3,20 +3,28 @@
 # deploy-logger:
 # Call to log whenever a deploy action happens.
 #
-# Arguments are the message to log, as in echo(1).
-#
+# Argument is the message to log, as in echo(1), plus an optional Slack thread ID.
 
 HOST=$(hostname)
 WHO=$(logname)
 
+MESSAGE="$1"
+THREAD="$2"
+
 # Send information to syslog.
-logger -p local6.notice -t mysociety_deploylogger -- "${WHO} ${@}"
+logger -p local6.notice -t mysociety_deploylogger -- "${WHO} ${MESSAGE}"
 
 # Post notice to Slack about log entry.
-if [[ ! "$@" =~ "Deployed vhost" || ! "$@" =~ "test.mysociety.org" ]]
-then
-  SLACK=`cat /etc/mysociety/slack.webhook`
-  for channel in activity deploys; do
-      curl --silent -X POST --data-urlencode 'payload={"channel": "#'$channel'", "username": "DeployBot", "text": "'"[$HOST] $WHO $@"'", "icon_emoji": ":ms:"}' $SLACK >/dev/null
-  done
+SLACK=`cat /etc/mysociety/slack.deploy.token`
+if [[ "$THREAD" ]]; then
+    TEXT="[$HOST] $MESSAGE"
+    curl --silent -d "token=$SLACK" -d "channel=deploys" --data-urlencode "text=$TEXT" -d "thread_ts=$THREAD" https://slack.com/api/chat.postMessage >/dev/null
+elif [[ "$@" =~ "on all servers" ]]; then
+    # We need to extract the thread ID for passing to subcommands
+    TEXT="$WHO $MESSAGE"
+    curl --silent -d "token=$SLACK" -d "channel=deploys" --data-urlencode "text=$TEXT" https://slack.com/api/chat.postMessage | jq .ts
+else
+    TEXT="[$HOST] $WHO $MESSAGE"
+    curl --silent -d "token=$SLACK" -d "channel=deploys" --data-urlencode "text=$TEXT" https://slack.com/api/chat.postMessage >/dev/null
 fi
+curl --silent -d "token=$SLACK" -d "channel=activity" --data-urlencode "text=$TEXT" https://slack.com/api/chat.postMessage >/dev/null
