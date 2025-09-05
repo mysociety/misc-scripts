@@ -137,7 +137,7 @@ try {
     my $help = 0;
     my $check_only = 0;
     my $no_check_existing = 0;
-    my $thread_id;
+    my $thread_id = '';
     if (!GetOptions(
             'help' =>           \$help,
             'verbose' =>        \$be_verbose,

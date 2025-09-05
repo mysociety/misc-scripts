@@ -137,12 +137,12 @@ my $file_gid;
 try {
     my $help = 0;
     my $check_only = 0;
-    my $thread_id;
+    my $thread_id = '';
     if (!GetOptions(
             'help' =>           \$help,
             'verbose' =>        \$be_verbose,
             'quiet' =>          \$be_quiet,
-            'thread' => \$thread_id,
+            'thread:s' => \$thread_id,
             'check-only' =>     \$check_only
         )) {
         throw Oops("bad options; try --help for help");

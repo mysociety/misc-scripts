@@ -45,7 +45,7 @@ die "Specify virtual host name as first parameter, deploy/stop/update/start/remo
 
 my $flush;
 my $force;
-my $thread_id;
+my $thread_id = '';
 GetOptions(
     flush => \$flush,
     force => \$force,
