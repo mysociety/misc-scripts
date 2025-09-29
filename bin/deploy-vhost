@@ -453,15 +453,15 @@ sub create_or_update_files {
     shell("chown", "-h", "$conf->{user_uid}:$conf->{user_gid}", "$vhost_dir/docs"); # perl's chown doesn't do symlinks
 
     if ($from_package) {
-        print "Will deploy from package $vhost_package.";
-        print "Fetching $vhost_package...";
+        print "Will deploy from package $vhost_package.\n";
+        print "Fetching $vhost_package..\n.";
         shell(
             "curl",
             "https://packaging.mysociety.org:49090/$vhost_package",
             "--output",
             "/tmp/$vhost_package",
         );
-        print "Extracting $vhost_package...";
+        print "Extracting $vhost_package...\n";
         shell(
             "tar",
             "-xzf",
@@ -469,13 +469,13 @@ sub create_or_update_files {
             "-C",
             "/tmp/",
         );
-        print "Moving extracted package to $vcspath_install...";
+        print "Moving extracted package to $vcspath_install...\n";
         shell(
             "mv",
             "/tmp/$vhost",
             "$vhost_dir/$vcspath_install",
         );
-        print "Fixing file ownership...";
+        print "Fixing file ownership...\n";
         shell(
             "chown",
             "-R",
