@@ -27,6 +27,7 @@ use File::Copy;
 use File::Copy::Recursive qw(dircopy);
 use File::Temp qw(mktemp);
 use URI::Escape;
+use Data::Dumper;
 
 our $verbose = $ENV{VERBOSE} ? 1 : 0;
 
@@ -469,17 +470,34 @@ sub create_or_update_files {
             "-C",
             "/tmp/",
         );
-        print "Moving extracted package to $vcspath_install...\n";
-        shell(
-            "mv",
-            "/tmp/$vhost",
-            "$vhost_dir/$vcspath_install",
-        );
-        print "Fixing file ownership...\n";
+        print "Changing file ownership to $conf->{'user'}...\n";
         shell(
             "chown",
             "-R",
             $conf->{'user'} . ':' . $conf->{'user'},
+            "/tmp/$vhost",
+        );
+        foreach (@{$conf->{packaging}->{custom_unpackage_locations} || []}) {
+            my $package_path = $_->{package_path};
+            if (!$package_path) {
+                die "Missing 'package_path' in 'custom_unpackage_locations' entry " . Dumper($_);
+            }
+            my $vhost_path = $_->{vhost_path};
+            if (!$vhost_path) {
+                die "Missing 'vhost_path' in 'custom_unpackage_locations' entry " . Dumper($_);
+            }
+            print "Moving $package_path to vhost path $vhost_path...\n";
+            my $source_path = "/tmp/$vhost/$package_path";
+            if (-d $source_path) {
+                $source_path .= "/";
+            }
+            shell("rsync -a --delete $source_path $vhost_dir/$vhost_path");
+            shell("rm -rf $source_path");
+        }
+        print "Moving extracted package to $vcspath_install...\n";
+        shell(
+            "mv",
+            "/tmp/$vhost",
             "$vhost_dir/$vcspath_install",
         );
     } else {
