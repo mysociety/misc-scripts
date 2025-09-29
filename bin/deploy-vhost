@@ -50,7 +50,7 @@ my $thread_id = '';
 GetOptions(
     flush => \$flush,
     force => \$force,
-    from_package => \$from_package,
+    'from-package' => \$from_package,
     'thread:s' => \$thread_id,
 );
 
