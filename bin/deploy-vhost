@@ -46,12 +46,10 @@ die "Specify virtual host name as first parameter, deploy/stop/update/start/remo
 
 my $flush;
 my $force;
-my $from_package;
 my $thread_id = '';
 GetOptions(
     flush => \$flush,
     force => \$force,
-    'from-package' => \$from_package,
     'thread:s' => \$thread_id,
 );
 
@@ -60,13 +58,7 @@ my $vhost = shift @ARGV;
 my $action = shift @ARGV;
 die "Specify 'deploy', 'stop', 'update', 'start', 'servers', 'balancers' or 'remove' as second parameter" if $action ne "deploy" && $action ne "stop" && $action ne "update" && $action ne "start" && $action ne 'remove' && $action ne 'servers' && $action ne 'balancers';
 
-my $vhost_package;
-if ($from_package) {
-    $vhost_package = $ENV{VHOST_PACKAGE};
-    if (!$vhost_package) {
-        die "--from-package was given but VHOST_PACKAGE was not set";
-    }
-}
+my $vhost_package = $ENV{VHOST_PACKAGE};
 
 my $hostname = `hostname`;
 chomp($hostname);
@@ -453,7 +445,7 @@ sub create_or_update_files {
     make_symlink($web_dir, "$vhost_dir/docs");
     shell("chown", "-h", "$conf->{user_uid}:$conf->{user_gid}", "$vhost_dir/docs"); # perl's chown doesn't do symlinks
 
-    if ($from_package) {
+    if ($vhost_package) {
         print "Will deploy from package $vhost_package.\n";
         print "Fetching $vhost_package..\n.";
         shell(
