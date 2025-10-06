@@ -1,0 +1,113 @@
+name: Build Debian package
+
+# Only trigger when tagging workflow completes
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build a package for'
+        required: true
+        type: string
+      iteration:
+        description: 'Iteration (permits rebuilds)'
+        required: true
+        type: string
+        default: ms1
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y ruby ruby-dev rubygems
+        sudo gem install --no-document fpm
+      
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.tag }}
+        submodules: true
+
+    - name: Clean up files not needed in package
+      run: |
+        rm -rf .git* cpan rotatelogs run-with-lockfile package* || true
+        rm -rf commonlib/.git* || true
+
+    - name: Create postinst and postrm scripts
+      run: |
+        # Create debian scripts directory
+        mkdir -p /tmp/debian-scripts
+        
+        # Create postinst script - creates symlinks to /usr/local/bin
+        cat > /tmp/debian-scripts/postinst << 'EOF'
+        #!/bin/sh
+        #
+        # Add symlink to /usr/local/bin
+        #
+        
+        ln -s /data/mysociety/bin/measure-vhost-use /usr/local/bin/measure-vhost-use
+        ln -s /data/mysociety/bin/memshot /usr/local/bin/memshot
+        ln -s /data/mysociety/bin/mugly /usr/local/bin/mugly
+        ln -s /data/mysociety/bin/mysociety-create-databases /usr/local/bin/mysociety-create-databases
+        ln -s /data/mysociety/bin/mysociety /usr/local/bin/mysociety
+        ln -s /data/mysociety/bin/psql-activity  /usr/local/bin/psql-activity
+        ln -s /data/mysociety/bin/psql-in-core /usr/local/bin/psql-in-core
+        ln -s /data/mysociety/bin/retrieve_from_backup /usr/local/bin/retrieve_from_backup
+        EOF
+        
+        # Create postrm script - removes symlinks from /usr/local/bin
+        cat > /tmp/debian-scripts/postrm << 'EOF'
+        #!/bin/sh
+        #
+        # removes symlinks from /usr/local/bin
+        #
+        
+        rm -f /usr/local/bin/measure-vhost-use
+        rm -f /usr/local/bin/memshot
+        rm -f /usr/local/bin/mugly
+        rm -f /usr/local/bin/mysociety-create-databases
+        rm -f /usr/local/bin/mysociety
+        rm -f /usr/local/bin/psql-activity
+        rm -f /usr/local/bin/psql-in-core
+        rm -f /usr/local/bin/retrieve_from_backup
+        EOF
+    
+    - name: Build Debian package with FPM
+      run: |
+        fpm -s dir -t deb \
+          --name "mysociety-misc-scripts" \
+          --vendor "mySociety" \
+          --maintainer "mySociety <sysadmin@mysociety.org>" \
+          --version "${{ inputs.tag }}" \
+          --iteration "${{ inputs.iteration }}" \
+          --architecture "all" \
+          --url "https://github.com/mysociety/misc-scripts" \
+          --description "mySociety's bin directory and other scripts." \
+          --after-install /tmp/debian-scripts/postinst \
+          --after-remove /tmp/debian-scripts/postrm \
+          --depends libcache-memcached-perl \
+          --depends libcrypt-x509-perl \
+          --depends libdbd-pg-perl \
+          --depends liberror-perl \
+          --depends libfile-copy-recursive-perl \
+          --depends libfile-slurp-perl \
+          --depends libfindbin-libs-perl \
+          --depends libjson-perl \
+          --depends libnet-dns-zonefile-fast-perl \
+          --depends libpath-class-perl \
+          --depends libunix-mknod-perl \
+          --depends libyaml-perl \
+          --depends perl-doc \
+          --deb-suggests nodejs \
+          --deb-suggests node-jshint \
+          ./=/data/mysociety/
+    
+    - name: Upload Debian package
+      uses: actions/upload-artifact@v4
+      with:
+        name: mysociety-misc-scripts-${{ inputs.tag }}-${{ inputs.iteration }}
+        path: "*.deb"
+        retention-days: 90
