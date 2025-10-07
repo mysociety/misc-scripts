@@ -1,18 +1,10 @@
 name: Build Debian package
 
-# Only trigger when tagging workflow completes
+# Build a package on a new tag
 on:
-  workflow_dispatch:
-    inputs:
-      tag:
-        description: 'Tag to build a package for'
-        required: true
-        type: string
-      iteration:
-        description: 'Iteration (permits rebuilds)'
-        required: true
-        type: string
-        default: ms1
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
 
 jobs:
   package:
@@ -28,7 +20,7 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v4
       with:
-        ref: ${{ inputs.tag }}
+        ref: ${{ github.ref_name }}
         submodules: true
 
     - name: Clean up files not needed in package
@@ -81,8 +73,8 @@ jobs:
           --name "mysociety-misc-scripts" \
           --vendor "mySociety" \
           --maintainer "mySociety <sysadmin@mysociety.org>" \
-          --version "${{ inputs.tag }}" \
-          --iteration "${{ inputs.iteration }}" \
+          --version "${{ github.ref_name }}" \
+          --iteration "ms1" \
           --architecture "all" \
           --url "https://github.com/mysociety/misc-scripts" \
           --description "mySociety's bin directory and other scripts." \
@@ -108,6 +100,6 @@ jobs:
     - name: Upload Debian package
       uses: actions/upload-artifact@v4
       with:
-        name: mysociety-misc-scripts-${{ inputs.tag }}-${{ inputs.iteration }}
+        name: mysociety-misc-scripts-${{ github.ref_name }}-ms1
         path: "*.deb"
         retention-days: 90
