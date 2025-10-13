@@ -161,7 +161,7 @@ case $COMMAND in
             shift || die "specify a vhost"
             # Deal with non-sensical commands combined with --all
             if [ "$COMMAND" == "servers" ] || [  "$COMMAND" == "balancers" ]; then die "Using ${COMMAND} with --all makes no sense."; fi
-            if pgrep -f "\--all *$VHOST" >/dev/null; then die "Someone is currently already running this."; fi
+            if pgrep -f "\--all[ ]*$VHOST" | grep -v $$ | grep -v $PPID >/dev/null; then die "Someone is currently already running this."; fi
             THREAD_ID=$(/data/mysociety/bin/deploy-logger "Performing ${COMMAND} for ${VHOST} on all servers")
             if [ "$COMMAND" == "deploy" ]; then COMMAND=""; fi
             BALANCERS=$(mysociety vhost balancers "$VHOST")
