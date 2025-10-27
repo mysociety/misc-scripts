@@ -1,0 +1,180 @@
+#!/usr/bin/perl -w
+#
+# build-vhost-package:
+# Build a vhost package, if it's not already built, and return the URL for downloading it.
+
+
+use strict;
+use warnings;
+
+use Getopt::Long;
+use HTTP::Tiny;
+use JSON;
+
+my $help;
+my $vhost;
+my $debian_version;
+my $force;
+my $clear_repo_cache;
+my $api_base_url = "https://packaging.mysociety.org:49090/api/";
+my $poll_seconds = 5;
+GetOptions(
+    'help'             => \$help,
+    'vhost=s'          => \$vhost,
+    'debian_version=s' => \$debian_version,
+    'force'            => \$force,
+    'clear_repo_cache' => \$clear_repo_cache,
+    'api_base_url=s'   => \$api_base_url,
+    'poll_seconds=i'   => \$poll_seconds,
+) or die "bad options; try --help for help";
+
+sub print_help {
+    print "Build a vhost package, if it's not already built, and return the URL for downloading it.\n";
+    print "--vhost <vhost>                     The name vhost to build for.\n";
+    print "--debian_version <debian_version>   The version of debian to build for (e.g. bookworm).\n";
+    print "--force                             Whether or not to build even if the package has already been built. False by default.\n";
+    print "--clear_repo_cache                  Whether or not to clear out the repo cache when building. False by default.\n";
+    print "--api_base_url <api_base_url>       Defaults to $api_base_url.\n";
+    print "--poll_seconds <poll_seconds>       Time between requests querying for build status. Defaults to $poll_seconds.\n";
+}
+
+if ($help) {
+    print_help;
+    exit;
+}
+
+if (!$vhost) {
+    print "vhost is missing\n\n";
+    print_help;
+    die;
+}
+
+if (!$debian_version) {
+    print "debian_version is missing\n\n";
+    print_help;
+    die;
+}
+
+my $json = JSON->new;
+my $client = HTTP::Tiny->new;
+
+sub fail_with_response_content {
+    my ($message, $response_json) = @_;
+    print STDERR $message . "\n";
+    print STDERR "Content:\n " . $json->pretty->encode($response_json) . "\n";
+    die;
+}
+print STDERR "Sending build package request...\n";
+
+my $build_request = {
+    vhost => $vhost,
+    debian_version => $debian_version,
+};
+
+if ($force) {
+    $build_request->{force} = JSON::true;
+}
+
+if ($clear_repo_cache) {
+    $build_request->{clear_repo_cache} = JSON::true;
+}
+
+my $build_response = $client->post(
+    $api_base_url . "/packages",
+    {
+        headers => {
+            'Content-Type' => 'application/json',
+            'Accept'       => 'application/json',
+        },
+        content => $json->encode($build_request),
+    }
+);
+
+my $decoded_build_response_json = $json->decode($build_response->{content});
+
+if ($build_response->{status} eq '200') {
+    print STDERR "Got 200 - package was already built.\n";
+    my $filename = $decoded_build_response_json->{filename};
+    if (!$filename) {
+        fail_with_response_content(
+            "No package filename found despite 200 response.",
+            $decoded_build_response_json
+        );
+    }
+    # Package is already built and we have the filename; print the dowload URL and exit success.
+    print $api_base_url . "packages/" . $filename;
+    exit;
+}
+
+my $build_id;
+if ($build_response->{status} eq '202') {
+    print STDERR "Got 202 - package build has been kicked off.\n";
+    $build_id = $decoded_build_response_json->{build_id};
+    if (!$build_id) {
+        fail_with_response_content(
+            "No build_id found despite 202 response.",
+            $decoded_build_response_json
+        );
+    }
+} else {
+    fail_with_response_content(
+        "Got unexpected status code: $build_response->{status}",
+        $decoded_build_response_json
+    );
+}
+
+# The build is in progress and we have a build_id which we will use to poll the status until we have a
+# package or error.
+
+while (1) {
+    print STDERR "Querying build status...\n";
+    my $build_status_response = $client->get(
+        $api_base_url . "builds/" . $build_id,
+        {
+            headers => {
+                'Accept' => 'application/json',
+            },
+        }
+    );
+    my $decoded_build_status_response_json = $json->decode($build_status_response->{content});
+    if ($build_status_response->{status} eq '200') {
+        my $build_status = $decoded_build_status_response_json->{status};
+        if (!$build_status) {
+            fail_with_response_content(
+                "Build status query was successful but build_id is missing.",
+                $decoded_build_status_response_json
+            );
+        }
+        if ($build_status eq 'running' || $build_status eq 'pending') {
+            print STDERR "Build is $build_status, querying again in $poll_seconds seconds.\n";
+            sleep $poll_seconds;
+            next;
+        } elsif ($build_status eq 'completed') {
+            my $filename = $decoded_build_status_response_json->{filename};
+            if (!$filename) {
+                fail_with_response_content(
+                    "No package filename found despite build complete response.",
+                    $decoded_build_status_response_json
+                );
+            }
+            # Package has been built and we have the filename; print the dowload URL and exit success.
+            print $api_base_url . "packages/" . $filename;
+            exit;
+        } elsif ($build_status eq 'failed') {
+            fail_with_response_content(
+                "Build failed.",
+                $decoded_build_status_response_json
+            );
+        } else {
+            fail_with_response_content(
+                "Got unexpected status code: $build_status_response->{status}",
+                $decoded_build_status_response_json
+            );
+        }
+    } else {
+        fail_with_response_content(
+            "Got unexpected status code: $build_status_response->{status}.",
+            $decoded_build_status_response_json
+        );
+    }
+}
