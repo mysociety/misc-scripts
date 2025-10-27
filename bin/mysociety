@@ -40,7 +40,7 @@ COMMAND is one of:
         Print which servers VHOST is deployed on
 
     vhost package VHOST
-        Build a package for the given vhost
+        Build a package for the given vhost and return a URL to download it from.
 
     test VHOST
         Deploy, then run test script on VHOST, e.g. testharness.pet.mysociety.org
@@ -135,16 +135,16 @@ case $COMMAND in
         USE_PACKAGE=${USE_PACKAGE-$USE_PACKAGE_FROM_CONFIG}
         if [[ "$COMMAND" == "package" || "$USE_PACKAGE" == "1" || "$USE_PACKAGE" == "true" ]]
         then
-            if [ -z "$VHOST_PACKAGE" ]
+            if [ -z "$VHOST_PACKAGE_URL" ]
             then
                 PACKAGE_DEBIAN_VERSION=${PACKAGE_DEBIAN_VERSION:-bookworm}
-                VHOST_PACKAGE=$(ssh packaging.mysociety.org "sudo su vpackager -c 'vpackager build --vhost $VHOST --debian-version $PACKAGE_DEBIAN_VERSION --vhosts-config /data/vhosts.json --output-dir /data/packages'")
+                VHOST_PACKAGE_URL=$(/data/mysociety/bin/build-vhost-package --vhost $VHOST --debian_version $PACKAGE_DEBIAN_VERSION)
             else
-                echo "Using vhost package $VHOST_PACKAGE."
+                echo "Using vhost package at $VHOST_PACKAGE_URL."
             fi
             if [ "$COMMAND" == "package" ]
             then
-                echo "$VHOST_PACKAGE"
+                echo "$VHOST_PACKAGE_URL"
                 exit
             fi
         fi
@@ -194,7 +194,7 @@ case $COMMAND in
                     sleep 5
                 fi
                 echo -e "\033[34m[deploy] Performing ${COMMAND:-deploy} for ${VHOST} on ${s}...\033[0m"
-                ssh -t "$s" sudo ${VHOST_PACKAGE:+env VHOST_PACKAGE="$VHOST_PACKAGE"} mysociety vhost "$COMMAND" "$VHOST" "$@" --thread $THREAD_ID
+                ssh -t "$s" sudo ${VHOST_PACKAGE_URL:+env VHOST_PACKAGE_URL="$VHOST_PACKAGE_URL"} mysociety vhost "$COMMAND" "$VHOST" "$@" --thread $THREAD_ID
                 if [ "$COMMAND" != "stop" ] && [ "$COMMAND" != "remove" ]; then
                     if [ -n "$BALANCERS" ] && [ "$DO_VARNISH" == "yes" ]; then
                         # This should provide a bit of time for process manager to start, or at least have the
@@ -228,12 +228,12 @@ case $COMMAND in
             shift || die "specify a vhost"
             if [ "$COMMAND" == "deploy" ]; then COMMAND=""; fi
             for s in $SERVER; do
-                ssh -t "$s" sudo ${VHOST_PACKAGE:+env VHOST_PACKAGE="$VHOST_PACKAGE"} mysociety vhost "$COMMAND" "$VHOST" "$@"
+                ssh -t "$s" sudo ${VHOST_PACKAGE_URL:+env VHOST_PACKAGE_URL="$VHOST_PACKAGE_URL"} mysociety vhost "$COMMAND" "$VHOST" "$@"
             done
             exit
         fi
         # deploy vhost
-        ${VHOST_PACKAGE:+env VHOST_PACKAGE="$VHOST_PACKAGE"} /data/mysociety/bin/deploy-vhost $VHOST $COMMAND "$@"
+        ${VHOST_PACKAGE_URL:+env VHOST_PACKAGE_URL="$VHOST_PACKAGE_URL"} /data/mysociety/bin/deploy-vhost $VHOST $COMMAND "$@"
         ;;
 
     devhost)

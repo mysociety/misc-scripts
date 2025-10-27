@@ -26,6 +26,7 @@ use File::Path qw(make_path);
 use File::Copy;
 use File::Copy::Recursive qw(dircopy);
 use File::Temp qw(mktemp);
+use File::Basename;
 use URI::Escape;
 use Data::Dumper;
 
@@ -58,7 +59,7 @@ my $vhost = shift @ARGV;
 my $action = shift @ARGV;
 die "Specify 'deploy', 'stop', 'update', 'start', 'servers', 'balancers' or 'remove' as second parameter" if $action ne "deploy" && $action ne "stop" && $action ne "update" && $action ne "start" && $action ne 'remove' && $action ne 'servers' && $action ne 'balancers';
 
-my $vhost_package = $ENV{VHOST_PACKAGE};
+my $vhost_package_url = $ENV{VHOST_PACKAGE_URL};
 
 my $hostname = `hostname`;
 chomp($hostname);
@@ -445,12 +446,13 @@ sub create_or_update_files {
     make_symlink($web_dir, "$vhost_dir/docs");
     shell("chown", "-h", "$conf->{user_uid}:$conf->{user_gid}", "$vhost_dir/docs"); # perl's chown doesn't do symlinks
 
-    if ($vhost_package) {
+    if ($vhost_package_url) {
+        my $vhost_package = basename($vhost_package_url);
         print "Will deploy from package $vhost_package.\n";
-        print "Fetching $vhost_package..\n.";
+        print "Fetching $vhost_package_url..\n.";
         shell(
             "curl",
-            "https://packaging.mysociety.org:49090/$vhost_package",
+            "$vhost_package_url",
             "--output",
             "/tmp/$vhost_package",
         );
