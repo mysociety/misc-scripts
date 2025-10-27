@@ -135,10 +135,15 @@ case $COMMAND in
         USE_PACKAGE=${USE_PACKAGE-$USE_PACKAGE_FROM_CONFIG}
         if [[ "$COMMAND" == "package" || "$USE_PACKAGE" == "1" || "$USE_PACKAGE" == "true" ]]
         then
+            VHOST_FOR_PACKAGE=$VHOST
+            if [ "$VHOST" == "--all" -o "$VHOST" == "--server" ]
+            then
+                VHOST_FOR_PACKAGE=$2
+            fi
             if [ -z "$VHOST_PACKAGE_URL" ]
             then
                 PACKAGE_DEBIAN_VERSION=${PACKAGE_DEBIAN_VERSION:-bookworm}
-                VHOST_PACKAGE_URL=$(/data/mysociety/bin/build-vhost-package --vhost $VHOST --debian_version $PACKAGE_DEBIAN_VERSION)
+                VHOST_PACKAGE_URL=$(/data/mysociety/bin/build-vhost-package --vhost $VHOST_FOR_PACKAGE --debian_version $PACKAGE_DEBIAN_VERSION)
             else
                 echo "Using vhost package at $VHOST_PACKAGE_URL."
             fi
