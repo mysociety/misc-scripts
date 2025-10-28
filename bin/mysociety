@@ -120,6 +120,7 @@ case $COMMAND in
     vhost)
         COMMAND=deploy
         VHOST=$1
+        DEPLOYMENT_ID=${DEPLOYMENT_ID:-$(uuidgen | tr -d '\n')}
         shift || die "specify a command or a virtual host"
         if [ "$VHOST" == "stop" -o "$VHOST" == "update" -o "$VHOST" == "start" -o "$VHOST" == "remove" -o "$VHOST" == "servers" -o "$VHOST" == "balancers" ]
         then
@@ -176,7 +177,7 @@ case $COMMAND in
                     sleep 5
                 fi
                 echo -e "\033[34m[deploy] Performing ${COMMAND:-deploy} for ${VHOST} on ${s}...\033[0m"
-                ssh -t "$s" sudo ${USE_PACKAGE:+env USE_PACKAGE="$USE_PACKAGE"} mysociety vhost "$COMMAND" "$VHOST" "$@" --thread $THREAD_ID
+                ssh -t "$s" sudo env ${USE_PACKAGE:+USE_PACKAGE="$USE_PACKAGE"} DEPLOYMENT_ID="$DEPLOYMENT_ID" mysociety vhost "$COMMAND" "$VHOST" "$@" --thread $THREAD_ID
                 if [ "$COMMAND" != "stop" ] && [ "$COMMAND" != "remove" ]; then
                     if [ -n "$BALANCERS" ] && [ "$DO_VARNISH" == "yes" ]; then
                         # This should provide a bit of time for process manager to start, or at least have the
@@ -210,12 +211,12 @@ case $COMMAND in
             shift || die "specify a vhost"
             if [ "$COMMAND" == "deploy" ]; then COMMAND=""; fi
             for s in $SERVER; do
-                ssh -t "$s" sudo ${USE_PACKAGE:+env USE_PACKAGE="$USE_PACKAGE"} mysociety vhost "$COMMAND" "$VHOST" "$@"
+                ssh -t "$s" sudo env ${USE_PACKAGE:+USE_PACKAGE="$USE_PACKAGE"} DEPLOYMENT_ID="$DEPLOYMENT_ID" mysociety vhost "$COMMAND" "$VHOST" "$@"
             done
             exit
         fi
         # deploy vhost
-        ${USE_PACKAGE:+env USE_PACKAGE="$USE_PACKAGE"} /data/mysociety/bin/deploy-vhost $VHOST $COMMAND "$@"
+        env ${USE_PACKAGE:+USE_PACKAGE="$USE_PACKAGE"} DEPLOYMENT_ID="$DEPLOYMENT_ID" /data/mysociety/bin/deploy-vhost $VHOST $COMMAND "$@"
         ;;
 
     devhost)
