@@ -132,8 +132,9 @@ if ($build_response->{status} eq '202') {
 
 # The build is in progress and we have a build_id which we will use to poll the status until we have a
 # package or error.
-#
-print STDERR "Querying build status every $poll_seconds seconds until it's finished (no output)...\n";
+
+my $logs_url = $api_base_url . "builds/$build_id/logs";
+print STDERR "Querying build status every $poll_seconds seconds until it's finished (no output - get build logs at $logs_url)...\n";
 
 while (1) {
     my $build_status_response = $client->get(
@@ -169,7 +170,7 @@ while (1) {
             exit;
         } elsif ($build_status eq 'failed') {
             fail_with_response_content(
-                "Build failed.",
+                "Build failed. Get logs at $logs_url",
                 $decoded_build_status_response_json
             );
         } else {
