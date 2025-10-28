@@ -64,6 +64,8 @@ if ($ENV{USE_PACKAGE} eq "1" || $ENV{USE_PACKAGE} eq "true") {
     $use_package = 1;
 }
 
+my $deployment_id = $ENV{DEPLOYMENT_ID};
+
 my $hostname = `hostname`;
 chomp($hostname);
 
@@ -453,7 +455,11 @@ sub create_or_update_files {
 
     if ($use_package) {
         print "Will deploy from package.\n";
-        my $vhost_package_url = `/data/mysociety/bin/build-vhost-package --vhost $vhost --debian_version $debian_codename`;
+        my $build_command = "/data/mysociety/bin/build-vhost-package --vhost $vhost --debian_version $debian_codename";
+        if ($deployment_id) {
+            $build_command .= " --deployment_id $deployment_id";
+        }
+        my $vhost_package_url = `$build_command`;
         if ($? != 0) {
             die "Failed to build vhost package.";
         }
