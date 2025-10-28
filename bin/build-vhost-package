@@ -16,6 +16,7 @@ my $vhost;
 my $debian_version;
 my $force;
 my $clear_repo_cache;
+my $deployment_id;
 my $api_base_url = "https://packaging.mysociety.org:49090/api/";
 my $poll_seconds = 5;
 GetOptions(
@@ -24,6 +25,7 @@ GetOptions(
     'debian_version=s' => \$debian_version,
     'force'            => \$force,
     'clear_repo_cache' => \$clear_repo_cache,
+    'deployment_id=s'  => \$deployment_id,
     'api_base_url=s'   => \$api_base_url,
     'poll_seconds=i'   => \$poll_seconds,
 ) or die "bad options; try --help for help";
@@ -34,6 +36,7 @@ sub print_help {
     print "--debian_version <debian_version>   The version of debian to build for (e.g. bookworm).\n";
     print "--force                             Whether or not to build even if the package has already been built. False by default.\n";
     print "--clear_repo_cache                  Whether or not to clear out the repo cache when building. False by default.\n";
+    print "--deployment_id <deployment_id>     Used to ensure the same commit is used for vhost when building packages. Not used by default.\n";
     print "--api_base_url <api_base_url>       Defaults to $api_base_url.\n";
     print "--poll_seconds <poll_seconds>       Time between requests querying for build status. Defaults to $poll_seconds.\n";
 }
@@ -77,6 +80,10 @@ if ($force) {
 
 if ($clear_repo_cache) {
     $build_request->{clear_repo_cache} = JSON::true;
+}
+
+if ($deployment_id) {
+    $build_request->{deployment_id} = $deployment_id;
 }
 
 my $build_response = $client->post(
