@@ -129,7 +129,7 @@ case $COMMAND in
             shift || die "specify a virtual host"
         fi
 
-        USE_PACKAGE_FROM_CONFIG=$(jq .vhosts.\"${VHOST}\".use_package /data/vhosts.json 2>/dev/null)
+        USE_PACKAGE_FROM_CONFIG=$(jq .vhosts.\"${VHOST}\".use_package /data/vhosts.json 2>/dev/null | tr -d '\n')
         USE_PACKAGE=${USE_PACKAGE-$USE_PACKAGE_FROM_CONFIG}
         if [ "$VHOST" == "--all" ]
         then
