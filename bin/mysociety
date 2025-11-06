@@ -98,6 +98,11 @@ shift || die "specify a command (try --help for help)"
 
 set -e
 
+should_use_package_for_vhost() {
+    local use_package_from_config=$(jq .vhosts.\"$1\".use_package /data/vhosts.json 2>/dev/null | tr -d '\n')
+    echo "${USE_PACKAGE:-$use_package_from_config}"
+}
+
 case $COMMAND in
     config)
         # if a puppet agent is (or should be) running, force it to fetch new configs
@@ -129,11 +134,10 @@ case $COMMAND in
             shift || die "specify a virtual host"
         fi
 
-        USE_PACKAGE_FROM_CONFIG=$(jq .vhosts.\"${VHOST}\".use_package /data/vhosts.json 2>/dev/null | tr -d '\n')
-        USE_PACKAGE=${USE_PACKAGE-$USE_PACKAGE_FROM_CONFIG}
         if [ "$VHOST" == "--all" ]
         then
             VHOST=$1
+            USE_PACKAGE=$(should_use_package_for_vhost "$VHOST")
             # Varnish doesn't like backends to start with numbers
             # So where a vhost starts with a number we prefix a "b".
             if [[ "$VHOST" =~ ^[0-9] ]]; then
@@ -209,6 +213,7 @@ case $COMMAND in
             shift || die "specify a server"
             VHOST=$1
             shift || die "specify a vhost"
+            USE_PACKAGE=$(should_use_package_for_vhost "$VHOST")
             if [ "$COMMAND" == "deploy" ]; then COMMAND=""; fi
             for s in $SERVER; do
                 ssh -t "$s" sudo env ${USE_PACKAGE:+USE_PACKAGE="$USE_PACKAGE"} DEPLOYMENT_ID="$DEPLOYMENT_ID" mysociety vhost "$COMMAND" "$VHOST" "$@"
@@ -216,6 +221,7 @@ case $COMMAND in
             exit
         fi
         # deploy vhost
+        USE_PACKAGE=$(should_use_package_for_vhost "$VHOST")
         env ${USE_PACKAGE:+USE_PACKAGE="$USE_PACKAGE"} DEPLOYMENT_ID="$DEPLOYMENT_ID" /data/mysociety/bin/deploy-vhost $VHOST $COMMAND "$@"
         ;;
 
