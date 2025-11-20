@@ -8,6 +8,9 @@ use strict;
 use warnings;
 use Sys::Hostname;
 
+
+$ENV{'GNUPGHOME'} = '/etc/mysociety/debian/gpg';
+
 unless (@ARGV && $ARGV[0] eq "--no-host-check") {
     # Sanity check - are we on the right host?
     die "Run on primary only - this looks like a replica.\n" if (-e "/etc/cron.daily/sync-debian-mysociety-org");
