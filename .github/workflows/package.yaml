@@ -93,6 +93,7 @@ jobs:
           --depends libunix-mknod-perl \
           --depends libyaml-perl \
           --depends perl-doc \
+          --depends uuid-runtime \
           --deb-suggests nodejs \
           --deb-suggests node-jshint \
           ./=/data/mysociety/
