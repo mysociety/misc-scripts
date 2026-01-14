@@ -105,6 +105,7 @@ my $timestamp = gmtime->strftime('%Y-%m-%dT%H-%M-%S');
 if ($timestamped_deploy && $action eq "deploy") {
     $vcspath_install = "$vcspath-$timestamp";
 }
+$conf->{vcspath_install} = $vcspath_install;
 
 # Ensure that the conf_dir and private_conf_dir elements are references to a list of config dirs.
 foreach my $dir (qw( conf_dir private_conf_dir )){
