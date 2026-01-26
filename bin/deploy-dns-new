@@ -1,0 +1,340 @@
+#!/usr/bin/perl -w
+#
+# deploy-dns:
+# Generate appropriate bind configuration from the zones we use.
+#
+# Copyright (c) 2006 UK Citizens Online Democracy. All rights reserved.
+# Email: chris@mysociety.org; WWW: http://www.mysociety.org/
+#
+
+use strict;
+
+package Oops;
+
+use Error;
+
+@Oops::ISA = qw(Error::Simple);
+
+package main;
+require 5.8.0;
+
+use FindBin;
+use lib "$FindBin::Bin/../perllib";
+
+use Errno;
+use Error qw(:try);
+use File::Slurp qw(read_file);
+use Getopt::Long;
+use IO::File;
+use Sys::Hostname;
+use mySociety::SystemMisc qw(describe_waitval shell);
+use mySociety::TempFiles qw(create_file_to_replace);
+# we use ::Fast not for speed, but because it works and the regular one
+# doesn't.
+use Net::DNS::ZoneFile::Fast;
+use Pod::Usage;
+use POSIX qw(strftime);
+use Regexp::Common qw(dns);
+use Socket;
+
+my $be_verbose = 0;
+my $be_quiet = 0;
+sub verbose (@) {
+    return unless ($be_verbose);
+    print STDERR @_;
+}
+
+sub parse ($) {
+    my $filename = shift;
+    my $R;
+    $@ = undef;
+    # Behaviour of Net::DNS::ZoneFile::Fast::parse on errors is not documented,
+    # but it appears to throw an error which contains a line number.
+    eval {
+        $R = Net::DNS::ZoneFile::Fast::parse(file => $filename);
+    };
+    if ($@) {
+        my $err = $@;
+        $err =~ s/\n+.*//s;
+        return $err;
+    } else {
+        return $R;
+    }
+}
+
+# test_zonefile FILE NOCHECK
+# Confirm that the named zone FILE (a) is syntactically valid; and (b) has a
+# later serial number than any existing version of the same zonefile, if it
+# differs. Throws an Oops on a fatal error, returns a string describing any
+# error in FILE, or undef if nothing is wrong.
+sub test_zonefile ($$) {
+    my ($file, $no_check_existing) = @_;
+
+    my $newtext = read_file($file) || throw Oops("$file: $!");
+    my $oldfile = "/etc/bind/primary/$file";
+    my $f = new IO::File($oldfile, O_RDONLY);
+    throw Oops("$oldfile: $!") if (!$f && !$!{ENOENT});
+    my $oldtext;
+    if ($f) {
+        $oldtext = read_file($f) || throw Oops("$oldfile: $!");
+        $f->close();
+    }
+
+    verbose("  parsing file... ");
+    my $rrset = parse($file);
+    if (!ref($rrset)) {
+        return $rrset;
+    } elsif (!@$rrset) {
+        return "no RRs in zone file";
+    } elsif ($rrset->[0]->type() ne 'SOA') {
+        return "first RR should be SOA, not " . $rrset->[0]->type();
+    }
+    verbose("OK\n");
+
+    # If there's no old file or the file hasn't changed, this is all we need to
+    # do.
+    return undef if (!$oldtext || $newtext eq $oldtext);
+
+    verbose("  an old version exists; parsing that... ");
+
+    my $newserial = $rrset->[0]->serial();
+    my $t = strftime '%Y%m%d', localtime(time);
+    my $t_yest = strftime '%Y%m%d', localtime(time-86400);
+    return "new serial number '$newserial' (in $file) begins neither with today's date nor yesterday's. Use --no-check-existing to skip this check."
+        unless $no_check_existing || substr($newserial, 0, 8) eq $t || substr($newserial, 0, 8) eq $t_yest;
+    $rrset = Net::DNS::ZoneFile::Fast::parse(file => $oldfile);
+    if ($rrset && @$rrset && $rrset->[0]->type() eq 'SOA') {
+        verbose("OK\n");
+        my $oldserial = $rrset->[0]->serial();
+        verbose("  old serial = $oldserial; new serial = $newserial\n");
+        return "new serial number, '$newserial' (in $file), is not larger than old serial number, '$oldserial' (in $oldfile), but the files differ"
+            unless int($newserial) > int($oldserial) || $no_check_existing;
+    } elsif (!defined($rrset)) {
+        print STDERR "deploy-dns: WARNING: current $file is syntactically invalid\n";
+    } elsif (!@$rrset) {
+        print STDERR "deploy-dns: WARNING: current $file contains no RRs\n";
+    } else {
+        print STDERR "deploy-dns: WARNING: first RR in $file is not SOA\n";
+    }
+    verbose("  new file is OK\n");
+
+    return undef;
+}
+
+#
+# Our zonefiles are stored in git in servers/dns. There are both zone files and
+# .symlink files (as used by deploy-configuration) for configuring several
+# domains identically. This script is responsible for checking that each zone
+# file in the working directory at /data/servers/dns is valid, for copying them
+# into /etc/bind/primary, writing an appropriate /etc/bind/domains.conf and
+# restarting the nameserver.
+#
+
+my @files_to_delete = ();
+my $ret = 1;
+
+try {
+    my $help = 0;
+    my $check_only = 0;
+    my $no_check_existing = 0;
+    my $thread_id = '';
+    if (!GetOptions(
+            'help' =>           \$help,
+            'verbose' =>        \$be_verbose,
+            'quiet' =>          \$be_quiet,
+            'check-only' =>     \$check_only,
+            'no-check-existing' =>  \$no_check_existing,
+            'thread:s' => \$thread_id,
+        )) {
+        throw Oops("bad options; try --help for help");
+    }
+
+    if ($help) {
+        pod2usage(-exitval => 0, -verbose => 2);
+        exit(0);
+    }
+
+    chdir("/data/servers/dns") || throw Oops("/data/servers/dns: $!");
+    shell("su maint -c 'git -C /data/servers/dns pull -q origin'");
+
+    # Get the list of files under git control.
+    verbose("getting list of domains...");
+    open GIT, "git ls-files|" || throw Oops("git ls-files: $!");
+
+    my %files = ();
+    while (<GIT>) {
+        chop;
+        unless (/^(?:_perm|\.cvsignore|README)$/) {
+            $files{$_} = 0;
+        }
+    }
+    close GIT;
+
+    verbose("done; found " . scalar(keys(%files)) . " domains\n");
+
+    my $errors = 0;
+    my @domains = ();
+    foreach my $n (sort keys %files) {
+        my $domain = $n;
+        if ($domain =~ /^(.*)\.symlink$/) {
+            push(@domains, $1);
+            verbose("will symlink $1 to ");
+            my $t = read_file($domain) || throw Oops("$domain: $!");
+            if ($t !~ /^To:\s*(.*)$/m) {
+                print STDERR "deploy-dns: $domain: not a proper .symlink file\n";
+                ++$errors;
+                next;
+            } elsif (!exists($files{$1})) {
+                print STDERR "deploy-dns: $domain: symlink to a file which does not exist: $1\n";
+                ++$errors;
+                next;
+            }
+            verbose("$1\n");
+            $domain = $1;
+        } else {
+            verbose("will create zone file $domain\n");
+            push(@domains, $domain);
+            # Force permissions to a+r.
+            chmod(0644, $domain);
+        }
+
+        if (!$files{$domain}) {
+            verbose("testing zone file $domain for validity...\n");
+            if (my $err = test_zonefile($domain, $no_check_existing)) {
+                print STDERR "deploy-dns: $domain: $err\n";
+                ++$errors;
+            } else {
+            }
+            ++$files{$domain};
+        }
+    }
+
+    throw Oops("problems with DNS zones") if ($errors > 0);
+
+    if ($check_only) {
+        verbose("done, since only checking the zone files\n");
+        goto done;
+    }
+
+    # In case this is the first time we've been run, create an empty
+    # domains.conf.
+    verbose("trying to open /etc/bind/domains.conf... ");
+    my $f = new IO::File("/etc/bind/domains.conf", O_WRONLY | O_CREAT, 0644);
+    throw Oops("/etc/bind/domains.conf: $!") if (!$f);
+    $f->close();
+    verbose("OK\n");
+
+    $@ = undef;
+    my ($name, $h);
+    verbose("creating file to replace /etc/bind/domains.conf... ");
+    eval {
+        ($name, $h) = create_file_to_replace("/etc/bind/domains.conf");
+    };
+    throw Oops("unable to create file to replace /etc/bind/domains.conf: $!") if ($@);
+    push(@files_to_delete, $name);
+    verbose("done; temporary filename is $name\n");
+
+    $h->print(<<EOF);
+/*
+ * domains.conf: configuration for domains we host
+ *
+ * THIS FILE IS AUTOMATICALLY GENERATED! DO NOT EDIT!
+ *
+ * See /data/servers/dns for the real deal.
+ */
+
+EOF
+    foreach my $domain (@domains) {
+        $h->printf(<<EOF,
+zone "%s" {
+    type master;
+    file "/etc/bind/primary/%s";
+    allow-query { any; };
+    allow-transfer { allow_xfer_list; };
+};
+EOF
+        $domain, $domain) || throw Oops("$name: $!");
+    }
+
+    $h->close() || throw Oops("$name: $!");
+
+    # Now copy the zonefiles themselves. Use deploy-configuration for that.
+    # XXX this is broken -- deploy-configuration will also copy files that
+    # aren't in git, such as editor backup files, etc. Should warn/abort if
+    # there are any such before we get to this stage.
+    my @cmd = qw(/data/mysociety/bin/deploy-configuration
+                --no-check-existing
+                --target /etc/bind/primary
+                --save-file /var/lib/deploy-dns.tar);
+    push(@cmd, "--verbose") if ($be_verbose);
+    push(@cmd, qw(/data/servers/dns /dev/null));
+    verbose("args to deploy-configuration: ", join(" ", @cmd), "\n");
+    verbose("invoking deploy-configuration...\n");
+    shell(@cmd);
+    verbose("  done\n");
+
+    # We win.
+    verbose("renaming $name to /etc/bind/domains.conf... ");
+    rename($name, "/etc/bind/domains.conf")
+        || throw Oops("/etc/bind/domains.conf: $!");
+    verbose("done\n");
+
+    # Try to reload the zones, but failure is not a fatal error.
+    verbose("telling bind to reload zones... ");
+    shell(qw(rndc reload));
+    verbose("done\n");
+
+
+    # and before that's all banged out, log
+    shell('/data/mysociety/bin/deploy-logger', 'Deployed DNS', $thread_id)
+        unless $be_quiet;
+done:
+    $ret = 0;
+
+} catch Oops with {
+    my $E = shift;
+    print STDERR "deploy-dns: ", $E->text(), "\n";
+    $ret ||= 1;
+} finally {
+    foreach (@files_to_delete) {
+        unlink($_);
+    }
+};
+
+exit($ret);
+
+__END__
+
+=head1 NAME
+
+deploy-dns
+
+=head1 SYNOPSIS
+
+deploy-dns --help | [OPTIONS]
+
+=head1 DESCRIPTION
+
+Takes zone files etc. in /data/servers/dns (which should be a git repo),
+installs them in /etc/bind for bind to read, and creates a bind configuration
+file to draw the nameserver's attention to them.
+
+=head1 OPTIONS
+
+=over 4
+
+=item --help
+
+Display this help message.
+
+=item --verbose
+
+Print lots of verbose debugging information on standard error.
+
+=item --check-only
+
+Only check that the new zone files are valid; do not install them.
+
+=back
+
+=cut

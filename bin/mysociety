@@ -7,6 +7,8 @@
 SCRIPT_LOCATION=$(dirname $(readlink -f $0))
 SCRIPT_COMMAND=$(basename $(readlink -f $0))
 
+DEBIAN_CODENAME=$(/usr/bin/lsb_release -sc)
+
 source $SCRIPT_LOCATION/../shlib/deployfns
 
 if [ x$1 = x ] ; then 
@@ -262,7 +264,13 @@ case $COMMAND in
                 ssh $srv "/data/mysociety/bin/mysociety dns --quiet --thread $THREAD_ID" || echo " -- ...failed"
             done
         else
-            exec /data/mysociety/bin/deploy-dns "$@"
+            if [ "$DEBIAN_CODENAME" = "trixie" ]; then
+                DEPLOY_DNS="deploy-dns-new"
+            else
+                DEPLOY_DNS="deploy-dns"
+            fi
+            echo "==> Using ${DEPLOY_DNS}"
+            exec /data/mysociety/bin/$DEPLOY_DNS "$@"
         fi
         ;;
 
