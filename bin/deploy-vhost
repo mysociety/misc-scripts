@@ -471,22 +471,22 @@ sub create_or_update_files {
             "curl",
             "$vhost_package_url",
             "--output",
-            "/tmp/$vhost_package",
+            "/var/tmp/$vhost_package",
         );
         print "Extracting $vhost_package...\n";
         shell(
             "tar",
             "-xzf",
-            "/tmp/$vhost_package",
+            "/var/tmp/$vhost_package",
             "-C",
-            "/tmp/",
+            "/var/tmp/",
         );
         print "Changing file ownership to $conf->{'user'}...\n";
         shell(
             "chown",
             "-R",
             $conf->{'user'} . ':' . $conf->{'user'},
-            "/tmp/$vhost",
+            "/var/tmp/$vhost",
         );
         foreach (@{$conf->{packaging}->{custom_unpackage_locations} || []}) {
             my $package_path = $_->{package_path};
@@ -498,7 +498,7 @@ sub create_or_update_files {
                 die "Missing 'vhost_path' in 'custom_unpackage_locations' entry " . Dumper($_);
             }
             print "Moving $package_path to vhost path $vhost_path...\n";
-            my $source_path = "/tmp/$vhost/$package_path";
+            my $source_path = "/var/tmp/$vhost/$package_path";
             if (-d $source_path) {
                 $source_path .= "/";
             }
@@ -508,7 +508,7 @@ sub create_or_update_files {
         print "Moving extracted package to $vcspath_install...\n";
         shell(
             "mv",
-            "/tmp/$vhost",
+            "/var/tmp/$vhost",
             "$vhost_dir/$vcspath_install",
         );
     } else {
