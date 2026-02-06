@@ -492,14 +492,14 @@ sub create_or_update_files {
         my $deploy_dir_package_path = $conf->{packaging}->{deploy_dir_package_path};
         die "A deploy_dir_package_path must be specified" unless $deploy_dir_package_path;
 
-        foreach (@{$conf->{packaging}->{custom_unpackage_locations} || []}) {
+        foreach (@{$conf->{packaging}->{vhost_level_package_path_mappings} || []}) {
             my $package_path = $_->{package_path};
             if (!$package_path) {
-                die "Missing 'package_path' in 'custom_unpackage_locations' entry " . Dumper($_);
+                die "Missing 'package_path' in 'vhost_level_package_path_mappings' entry " . Dumper($_);
             }
             my $vhost_path = $_->{vhost_path};
             if (!$vhost_path) {
-                die "Missing 'vhost_path' in 'custom_unpackage_locations' entry " . Dumper($_);
+                die "Missing 'vhost_path' in 'vhost_level_package_path_mappings' entry " . Dumper($_);
             }
             print "Moving $package_path to vhost path $vhost_path...\n";
             my $source_path = "/var/tmp/$vhost/$package_path";
