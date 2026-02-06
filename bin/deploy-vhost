@@ -488,6 +488,10 @@ sub create_or_update_files {
             $conf->{'user'} . ':' . $conf->{'user'},
             "/var/tmp/$vhost",
         );
+
+        my $deploy_dir_package_path = $conf->{packaging}->{deploy_dir_package_path};
+        die "A deploy_dir_package_path must be specified" unless $deploy_dir_package_path;
+
         foreach (@{$conf->{packaging}->{custom_unpackage_locations} || []}) {
             my $package_path = $_->{package_path};
             if (!$package_path) {
@@ -505,10 +509,11 @@ sub create_or_update_files {
             shell("rsync -a --delete $source_path $vhost_dir/$vhost_path");
             shell("rm -rf $source_path");
         }
+
         print "Moving extracted package to $vcspath_install...\n";
         shell(
             "mv",
-            "/var/tmp/$vhost",
+            "/var/tmp/$vhost/$deploy_dir_package_path",
             "$vhost_dir/$vcspath_install",
         );
     } else {
