@@ -36,7 +36,7 @@ sub setup_conf {
     # Merge vhost and site configs together
     foreach my $key ( keys %$site_conf ) { $conf->{$key} = $site_conf->{$key}; }
     foreach my $key ( keys %$vhost_conf ) { $conf->{$key} = $vhost_conf->{$key}; }
-    foreach ("exec_extras", "exec_before_down", "exec_while_down") {
+    foreach ("exec_extras", "exec_before_down", "exec_while_down", "packaging") {
         next unless ref $vhost_conf->{$_} eq 'HASH' && ref $site_conf->{$_} eq 'HASH';
         $conf->{$_} = $site_conf->{$_};
         foreach my $key ( keys %{$vhost_conf->{$_}}) {
