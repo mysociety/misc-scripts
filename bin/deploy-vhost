@@ -1097,6 +1097,15 @@ sub start_site {
                         make_dot_forward($email_user, $script, $suffix);
                     }
                 }
+
+            } elsif (ref($email_conf) eq 'ARRAY') {
+                foreach my $entry (@$email_conf) {
+                    die "Email entry for $email_user is missing 'script' key" unless defined $entry->{script};
+
+                    # Pass wrapper explicitly (even if undef) to suppress ruby_version inference in make_dot_forward
+                    make_dot_forward($email_user, $entry->{script}, $entry->{suffix} || undef, $entry->{wrapper} || undef);
+                }
+
             } else {
                 make_dot_forward($email_user, $email_conf);
             }
