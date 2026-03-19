@@ -1088,9 +1088,9 @@ sub start_site {
     # Make .forward files
     if ($conf->{'email'}) {
         foreach my $email_user (keys %{$conf->{'email'}}) {
-            my $email_pipeto = $conf->{'email'}->{$email_user};
-            if (ref($email_pipeto) eq "HASH") {
-                while (my ($suffix, $script) = each(%$email_pipeto)) {
+            my $email_conf = $conf->{'email'}->{$email_user};
+            if (ref($email_conf) eq "HASH") {
+                while (my ($suffix, $script) = each(%$email_conf)) {
                     if ($suffix eq '') {
                         make_dot_forward($email_user, $script);
                     } else {
@@ -1098,7 +1098,7 @@ sub start_site {
                     }
                 }
             } else {
-                make_dot_forward($email_user, $email_pipeto);
+                make_dot_forward($email_user, $email_conf);
             }
         }
     }
