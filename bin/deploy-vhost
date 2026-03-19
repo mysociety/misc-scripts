@@ -943,11 +943,13 @@ sub set_or_clear_ruby_version {
     copy($rbenv_profile, "/home/$conf->{'user'}/.profile.rbenv");
     shell("chown", "$conf->{user_uid}:$conf->{user_gid}", "/home/$conf->{'user'}/.profile.rbenv");
 
-    # add a wrapper script to allow the user's .forward files to operate with the right ruby version
+    # add a wrapper scripts to allow the user's .forward files to operate with the right ruby version
     # The logic in the mugly template checks for rbenv_global.
-    mugly("$servers_dir/vhosts/run-with-rbenv-path.ugly", "/home/$conf->{'user'}/run-with-rbenv-path");
-    shell("chown", "$conf->{user_uid}:$conf->{user_gid}", "/home/$conf->{'user'}/run-with-rbenv-path");
-    chmod 0755, "/home/$conf->{'user'}/run-with-rbenv-path";
+    foreach my $file ("run-with-rbenv-path", "run-with-rbenv-path-exec") {
+        mugly("$servers_dir/vhosts/$file.ugly", "/home/$conf->{'user'}/$file");
+        shell("chown", "$conf->{user_uid}:$conf->{user_gid}", "/home/$conf->{'user'}/$file");
+        chmod 0755, "/home/$conf->{'user'}/$file";
+    }
 
   } else {
 
@@ -969,6 +971,7 @@ sub resolve_wrapper {
 
     my %named_wrappers = (
         rbenv => "/home/${email_user}/run-with-rbenv-path",
+        rbenv_exec => "/home/${email_user}/run-with-rbenv-path-exec",
     );
 
     return $named_wrappers{$wrapper} // $wrapper;
