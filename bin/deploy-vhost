@@ -962,8 +962,20 @@ sub set_or_clear_ruby_version {
   }
 }
 
+# Resolve a named wrapper (e.g. "rbenv") to the actual executable path,
+# or treat an unrecognised value as a literal path.
+sub resolve_wrapper {
+    my ($email_user, $wrapper) = @_;
+
+    my %named_wrappers = (
+        rbenv => "/home/${email_user}/run-with-rbenv-path",
+    );
+
+    return $named_wrappers{$wrapper} // $wrapper;
+}
+
 sub make_dot_forward {
-    my ($email_user, $script, $suffix) = @_;
+    my ($email_user, $script, $suffix, $wrapper) = @_;
     my $forward_file_name = defined($suffix) ? ".forward-$suffix" : ".forward";
 
     # remove any backup files created by the disable-email script.
@@ -971,13 +983,17 @@ sub make_dot_forward {
         unlink "/home/${email_user}/${forward_file_name}.bak";
     }
 
-    # Create new version.
-    if ($conf->{ruby_version}){
-        shell("su", "-", $email_user, "-c echo \"|/home/$conf->{'user'}/run-with-rbenv-path $vhost_dir/$vcspath/$script\" >~$email_user/$forward_file_name");
-    } else {
-        shell("su", "-", $email_user, "-c echo \"|$vhost_dir/$vcspath/$script\" >~$email_user/$forward_file_name");
+    if (scalar @_ < 4) {
+        $wrapper = 'rbenv' if $conf->{ruby_version};
     }
 
+    if (defined $wrapper) {
+        my $wrapper_bin = resolve_wrapper($email_user, $wrapper);
+        $script = "$wrapper_bin $vhost_dir/$vcspath/$script";
+    }
+
+    # Create new version.
+    shell("su", "-", $email_user, "-c echo \"|$script\" >~$email_user/$forward_file_name");
 }
 
 sub install_or_remove_crontab {
