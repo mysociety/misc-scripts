@@ -970,11 +970,11 @@ sub resolve_wrapper {
     my ($email_user, $wrapper) = @_;
 
     my %named_wrappers = (
-        rbenv => "/home/${email_user}/run-with-rbenv-path",
-        rbenv_exec => "/home/${email_user}/run-with-rbenv-path-exec",
+        rbenv => { bin => "/home/${email_user}/run-with-rbenv-path", },
+        rbenv_exec => { bin => "/home/${email_user}/run-with-rbenv-path-exec", chdir => 1 },
     );
 
-    return $named_wrappers{$wrapper} // $wrapper;
+    return $named_wrappers{$wrapper} // { bin => $wrapper };
 }
 
 sub make_dot_forward {
@@ -991,8 +991,13 @@ sub make_dot_forward {
     }
 
     if (defined $wrapper) {
-        my $wrapper_bin = resolve_wrapper($email_user, $wrapper);
-        $script = "$wrapper_bin $vhost_dir/$vcspath/$script";
+        my $w = resolve_wrapper($email_user, $wrapper);
+
+        if ($w->{chdir}) {
+            $script = "/bin/sh -c 'cd $vhost_dir/$vcspath && $w->{bin} $script'";
+        } else {
+            $script = "$w->{bin} $vhost_dir/$vcspath/$script";
+        }
     }
 
     # Create new version.
