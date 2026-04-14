@@ -943,11 +943,13 @@ sub set_or_clear_ruby_version {
     copy($rbenv_profile, "/home/$conf->{'user'}/.profile.rbenv");
     shell("chown", "$conf->{user_uid}:$conf->{user_gid}", "/home/$conf->{'user'}/.profile.rbenv");
 
-    # add a wrapper script to allow the user's .forward files to operate with the right ruby version
+    # add a wrapper scripts to allow the user's .forward files to operate with the right ruby version
     # The logic in the mugly template checks for rbenv_global.
-    mugly("$servers_dir/vhosts/run-with-rbenv-path.ugly", "/home/$conf->{'user'}/run-with-rbenv-path");
-    shell("chown", "$conf->{user_uid}:$conf->{user_gid}", "/home/$conf->{'user'}/run-with-rbenv-path");
-    chmod 0755, "/home/$conf->{'user'}/run-with-rbenv-path";
+    foreach my $file ("run-with-rbenv-path", "run-with-rbenv-path-exec") {
+        mugly("$servers_dir/vhosts/$file.ugly", "/home/$conf->{'user'}/$file");
+        shell("chown", "$conf->{user_uid}:$conf->{user_gid}", "/home/$conf->{'user'}/$file");
+        chmod 0755, "/home/$conf->{'user'}/$file";
+    }
 
   } else {
 
@@ -962,8 +964,21 @@ sub set_or_clear_ruby_version {
   }
 }
 
+# Resolve a named wrapper (e.g. "rbenv") to the actual executable path,
+# or treat an unrecognised value as a literal path.
+sub resolve_wrapper {
+    my ($email_user, $wrapper) = @_;
+
+    my %named_wrappers = (
+        rbenv => { bin => "/home/${email_user}/run-with-rbenv-path", },
+        rbenv_exec => { bin => "/home/${email_user}/run-with-rbenv-path-exec", chdir => 1 },
+    );
+
+    return $named_wrappers{$wrapper} // { bin => $wrapper };
+}
+
 sub make_dot_forward {
-    my ($email_user, $script, $suffix) = @_;
+    my ($email_user, $script, $suffix, $wrapper) = @_;
     my $forward_file_name = defined($suffix) ? ".forward-$suffix" : ".forward";
 
     # remove any backup files created by the disable-email script.
@@ -971,13 +986,22 @@ sub make_dot_forward {
         unlink "/home/${email_user}/${forward_file_name}.bak";
     }
 
-    # Create new version.
-    if ($conf->{ruby_version}){
-        shell("su", "-", $email_user, "-c echo \"|/home/$conf->{'user'}/run-with-rbenv-path $vhost_dir/$vcspath/$script\" >~$email_user/$forward_file_name");
-    } else {
-        shell("su", "-", $email_user, "-c echo \"|$vhost_dir/$vcspath/$script\" >~$email_user/$forward_file_name");
+    if (scalar @_ < 4) {
+        $wrapper = 'rbenv' if $conf->{ruby_version};
     }
 
+    if (defined $wrapper) {
+        my $w = resolve_wrapper($email_user, $wrapper);
+
+        if ($w->{chdir}) {
+            $script = "/bin/sh -c 'cd $vhost_dir/$vcspath && $w->{bin} $script'";
+        } else {
+            $script = "$w->{bin} $vhost_dir/$vcspath/$script";
+        }
+    }
+
+    # Create new version.
+    shell("su", "-", $email_user, "-c echo \"|$script\" >~$email_user/$forward_file_name");
 }
 
 sub install_or_remove_crontab {
@@ -1069,17 +1093,26 @@ sub start_site {
     # Make .forward files
     if ($conf->{'email'}) {
         foreach my $email_user (keys %{$conf->{'email'}}) {
-            my $email_pipeto = $conf->{'email'}->{$email_user};
-            if (ref($email_pipeto) eq "HASH") {
-                while (my ($suffix, $script) = each(%$email_pipeto)) {
+            my $email_conf = $conf->{'email'}->{$email_user};
+            if (ref($email_conf) eq "HASH") {
+                while (my ($suffix, $script) = each(%$email_conf)) {
                     if ($suffix eq '') {
                         make_dot_forward($email_user, $script);
                     } else {
                         make_dot_forward($email_user, $script, $suffix);
                     }
                 }
+
+            } elsif (ref($email_conf) eq 'ARRAY') {
+                foreach my $entry (@$email_conf) {
+                    die "Email entry for $email_user is missing 'script' key" unless defined $entry->{script};
+
+                    # Pass wrapper explicitly (even if undef) to suppress ruby_version inference in make_dot_forward
+                    make_dot_forward($email_user, $entry->{script}, $entry->{suffix} || undef, $entry->{wrapper} || undef);
+                }
+
             } else {
-                make_dot_forward($email_user, $email_pipeto);
+                make_dot_forward($email_user, $email_conf);
             }
         }
     }
