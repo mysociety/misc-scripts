@@ -1002,6 +1002,9 @@ sub make_dot_forward {
 
     # Create new version.
     shell("su", "-", $email_user, "-c echo \"|$script\" >~$email_user/$forward_file_name");
+
+    # Ensure permissions are correct: writeable only by the user, regardless of umask.
+    chmod 0644, "~${email_user}/${forward_file_name}";
 }
 
 sub install_or_remove_crontab {
