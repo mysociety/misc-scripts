@@ -998,6 +998,8 @@ sub make_dot_forward {
         } else {
             $script = "$w->{bin} $vhost_dir/$vcspath/$script";
         }
+    } else {
+        $script = "${vhost_dir}/${vcspath}/${script}";
     }
 
     # Create new version.
