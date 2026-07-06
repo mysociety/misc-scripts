@@ -501,13 +501,26 @@ sub create_or_update_files {
             if (!$vhost_path) {
                 die "Missing 'vhost_path' in 'vhost_level_package_path_mappings' entry " . Dumper($_);
             }
+
             print "Moving $package_path to vhost path $vhost_path...\n";
+
             my $source_path = "/var/tmp/$vhost/$package_path";
-            if (-d $source_path) {
-                $source_path .= "/";
+            my $target_path = "$vhost_dir/$vhost_path";
+            my $target_bk_path = "$vhost_dir/$vhost_path.old";
+
+            if (-e $target_bk_path) {
+                shell("rm -rf $target_bk_path");
             }
-            shell("rsync -a --delete $source_path $vhost_dir/$vhost_path");
+            if (-e $target_path) {
+                shell("mv $target_path $target_bk_path");
+            }
+
+            shell("mv $source_path $target_path");
             shell("rm -rf $source_path");
+
+            if (-e $target_bk_path) {
+                shell("rm -rf $target_bk_path");
+            }
         }
 
         print "Moving extracted package to $vcspath_install...\n";
