@@ -139,6 +139,19 @@ case $COMMAND in
         if [ "$VHOST" == "--all" ]
         then
             VHOST=$1
+
+            if [ -e "/etc/mysociety/no-deploys" ]; then
+                if [ -s "/etc/mysociety/no-deploys" ]; then
+                    if grep -q "$VHOST" "/etc/mysociety/no-deploys"; then
+                        echo "NO DEPLOYING AT THIS TIME"
+                        exit 1
+                    fi
+                else
+                    echo "NO DEPLOYING AT THIS TIME"
+                    exit 1
+                fi
+            fi
+
             USE_PACKAGE=$(should_use_package_for_vhost "$VHOST")
             # Varnish doesn't like backends to start with numbers
             # So where a vhost starts with a number we prefix a "b".
