@@ -71,7 +71,7 @@ sub test_zonefile ($$) {
     my ($file, $no_check_existing) = @_;
 
     my $newtext = read_file($file) || throw Oops("$file: $!");
-    my $oldfile = "/var/named/master/$file";
+    my $oldfile = "/etc/bind/primary/$file";
     my $f = new IO::File($oldfile, O_RDONLY);
     throw Oops("$oldfile: $!") if (!$f && !$!{ENOENT});
     my $oldtext;
@@ -126,7 +126,7 @@ sub test_zonefile ($$) {
 # .symlink files (as used by deploy-configuration) for configuring several
 # domains identically. This script is responsible for checking that each zone
 # file in the working directory at /data/servers/dns is valid, for copying them
-# into /var/named/master, writing an appropriate /etc/bind/domains.conf and
+# into /etc/bind/primary, writing an appropriate /etc/bind/domains.conf and
 # restarting the nameserver.
 #
 
@@ -218,19 +218,19 @@ try {
 
     # In case this is the first time we've been run, create an empty
     # domains.conf.
-    verbose("trying to open /var/named/etc/bind/domains.conf... ");
-    my $f = new IO::File("/var/named/etc/bind/domains.conf", O_WRONLY | O_CREAT, 0644);
-    throw Oops("/var/named/etc/bind/domains.conf: $!") if (!$f);
+    verbose("trying to open /etc/bind/domains.conf... ");
+    my $f = new IO::File("/etc/bind/domains.conf", O_WRONLY | O_CREAT, 0644);
+    throw Oops("/etc/bind/domains.conf: $!") if (!$f);
     $f->close();
     verbose("OK\n");
 
     $@ = undef;
     my ($name, $h);
-    verbose("creating file to replace /var/named/etc/bind/domains.conf... ");
+    verbose("creating file to replace /etc/bind/domains.conf... ");
     eval {
-        ($name, $h) = create_file_to_replace("/var/named/etc/bind/domains.conf");
+        ($name, $h) = create_file_to_replace("/etc/bind/domains.conf");
     };
-    throw Oops("unable to create file to replace /var/named/etc/bind/domains.conf: $!") if ($@);
+    throw Oops("unable to create file to replace /etc/bind/domains.conf: $!") if ($@);
     push(@files_to_delete, $name);
     verbose("done; temporary filename is $name\n");
 
@@ -248,7 +248,7 @@ EOF
         $h->printf(<<EOF,
 zone "%s" {
     type master;
-    file "/var/named/master/%s";
+    file "/etc/bind/primary/%s";
     allow-query { any; };
     allow-transfer { allow_xfer_list; };
 };
@@ -264,7 +264,7 @@ EOF
     # there are any such before we get to this stage.
     my @cmd = qw(/data/mysociety/bin/deploy-configuration
                 --no-check-existing
-                --target /var/named/master
+                --target /etc/bind/primary
                 --save-file /var/lib/deploy-dns.tar);
     push(@cmd, "--verbose") if ($be_verbose);
     push(@cmd, qw(/data/servers/dns /dev/null));
@@ -274,9 +274,9 @@ EOF
     verbose("  done\n");
 
     # We win.
-    verbose("renaming $name to /var/named/etc/bind/domains.conf... ");
-    rename($name, "/var/named/etc/bind/domains.conf")
-        || throw Oops("/var/named/etc/bind/domains.conf: $!");
+    verbose("renaming $name to /etc/bind/domains.conf... ");
+    rename($name, "/etc/bind/domains.conf")
+        || throw Oops("/etc/bind/domains.conf: $!");
     verbose("done\n");
 
     # Try to reload the zones, but failure is not a fatal error.
@@ -316,7 +316,7 @@ deploy-dns --help | [OPTIONS]
 =head1 DESCRIPTION
 
 Takes zone files etc. in /data/servers/dns (which should be a git repo),
-installs them in /var/named for bind to read, and creates a bind configuration
+installs them in /etc/bind for bind to read, and creates a bind configuration
 file to draw the nameserver's attention to them.
 
 =head1 OPTIONS

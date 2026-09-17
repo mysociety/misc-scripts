@@ -277,13 +277,7 @@ case $COMMAND in
                 ssh $srv "/data/mysociety/bin/mysociety dns --quiet --thread $THREAD_ID" || echo " -- ...failed"
             done
         else
-            if [ "$DEBIAN_CODENAME" = "trixie" ]; then
-                DEPLOY_DNS="deploy-dns-new"
-            else
-                DEPLOY_DNS="deploy-dns"
-            fi
-            echo "==> Using ${DEPLOY_DNS}"
-            exec /data/mysociety/bin/$DEPLOY_DNS "$@"
+            exec /data/mysociety/bin/deploy-dns "$@"
         fi
         ;;
 
