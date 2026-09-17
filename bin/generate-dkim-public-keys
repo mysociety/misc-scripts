@@ -7,7 +7,7 @@
 use File::Temp qw/tempfile/;
 use File::Basename;
 
-my $pubkeyfile='/var/named/dkim/dkim-public-keys';
+my $pubkeyfile='/etc/bind/dkim/dkim-public-keys';
 my $privkeyfile='/etc/exim4/dkim/mysociety.key';
 my $selector=`cat /etc/exim4/dkim/selector`;
 
