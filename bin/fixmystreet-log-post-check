@@ -1,0 +1,11 @@
+set -e
+
+if ! grep -q 'POST /waste/whitespace' /var/log/remote/www.fixmystreet.com/apache.info.log
+then
+    echo "No Whitespace POSTs today"
+fi
+
+if ! grep -q 'POST /waste/echo' /var/log/remote/www.fixmystreet.com/apache.info.log
+then
+    echo "No Echo POSTs today"
+fi
